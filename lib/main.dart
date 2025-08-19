@@ -9,10 +9,14 @@ import 'screens/user_profile_screen.dart';
 import 'screens/permission_screen.dart';
 import 'screens/site_album_screen.dart';
 import 'services/session_manager.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   // Initialize session manager
   SessionManager.instance;
+  // Initialize theme service
+  WidgetsFlutterBinding.ensureInitialized();
+  await ThemeService.init();
   runApp(const MyApp());
 }
 
@@ -21,26 +25,31 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Core PMC',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system, // Auto switch between light and dark
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/profile': (context) => const UserProfileScreen(),
-        '/permissions': (context) => const PermissionScreen(),
-        '/site-albums': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return SiteAlbumScreen(
-            siteId: args['siteId'],
-            siteName: args['siteName'],
-          );
-        },
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.themeMode,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Core PMC',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: mode,
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const SplashScreen(),
+            '/login': (context) => const LoginScreen(),
+            '/home': (context) => const HomeScreen(),
+            '/profile': (context) => const UserProfileScreen(),
+            '/permissions': (context) => const PermissionScreen(),
+            '/site-albums': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+              return SiteAlbumScreen(
+                siteId: args['siteId'],
+                siteName: args['siteName'],
+              );
+            },
+          },
+        );
       },
     );
   }
