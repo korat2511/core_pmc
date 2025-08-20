@@ -1,4 +1,6 @@
-import 'package:core_pmc/widgets/dismiss_keyboard.dart';
+// ignore_for_file: unused_import
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/site_album_model.dart';
 
@@ -7,12 +9,50 @@ import '../widgets/folder_card.dart';
 import '../widgets/content_item_card.dart';
 import '../widgets/custom_search_bar.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/dismiss_keyboard.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../services/session_manager.dart';
 import '../core/utils/navigation_utils.dart';
 import '../core/utils/image_picker_utils.dart';
+
+// Model for uploading items
+class UploadingItem {
+  final String fileName;
+  final String filePath;
+  final bool isImage;
+  final DateTime uploadStartTime;
+  final String? errorMessage;
+  final bool isUploading;
+
+  UploadingItem({
+    required this.fileName,
+    required this.filePath,
+    required this.isImage,
+    required this.uploadStartTime,
+    this.errorMessage,
+    this.isUploading = true,
+  });
+
+  UploadingItem copyWith({
+    String? fileName,
+    String? filePath,
+    bool? isImage,
+    DateTime? uploadStartTime,
+    String? errorMessage,
+    bool? isUploading,
+  }) {
+    return UploadingItem(
+      fileName: fileName ?? this.fileName,
+      filePath: filePath ?? this.filePath,
+      isImage: isImage ?? this.isImage,
+      uploadStartTime: uploadStartTime ?? this.uploadStartTime,
+      errorMessage: errorMessage ?? this.errorMessage,
+      isUploading: isUploading ?? this.isUploading,
+    );
+  }
+}
 
 class SiteAlbumScreen extends StatefulWidget {
   final int siteId;
@@ -43,10 +83,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   bool _isDeletingFolder = false;
   bool _isUploadingImages = false;
   bool _isUploadingAttachments = false;
+  
+  // List to track uploading items
+  List<UploadingItem> _uploadingItems = [];
+  
+  // Timer for upload progress simulation
+  Timer? _uploadProgressTimer;
 
   @override
   void initState() {
     super.initState();
+    _clearOldUploadingItems();
     _loadSiteAlbums();
   }
 
@@ -55,7 +102,18 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     _searchController.dispose();
     _folderNameController.dispose();
     _editFolderNameController.dispose();
+    _uploadProgressTimer?.cancel();
     super.dispose();
+  }
+
+  // Clear old uploading items (older than 5 minutes)
+  void _clearOldUploadingItems() {
+    final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+    setState(() {
+      _uploadingItems.removeWhere((item) => 
+        item.uploadStartTime.isBefore(fiveMinutesAgo) && !item.isUploading
+      );
+    });
   }
 
   Future<void> _loadSiteAlbums() async {
@@ -99,6 +157,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   }
 
   void _navigateBack() {
+    // Clear old uploading items when navigating
+    _clearOldUploadingItems();
+    
     if (_folderPath.isEmpty) {
       // Go back to home
       Navigator.of(context).pop();
@@ -160,6 +221,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   }
 
   void _viewFolderContent(SiteAlbumModel folder) async {
+    // Clear old uploading items when navigating
+    _clearOldUploadingItems();
+    
     // Navigate to folder and show its contents
     setState(() {
       _currentFolder = folder;
@@ -198,204 +262,204 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DismissKeyboard(
-      child: Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        appBar: CustomAppBar(
-          title: _getAppBarTitle(),
-          showBackButton: true,
-        ),
-        floatingActionButton: _currentFolder != null ? FloatingActionButton.extended(
-          onPressed: () => _showUploadOptions(),
-          backgroundColor: AppColors.primary,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Upload', style: TextStyle(color: Colors.white)),
-        ) : FloatingActionButton(
-          onPressed: _showAddFolderDialog,
-          backgroundColor: AppColors.primary,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        body: Column(
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: CustomAppBar(
+        title: _getAppBarTitle(),
+        showBackButton: true,
+      ),
+      floatingActionButton: _currentFolder != null ? FloatingActionButton.extended(
+        onPressed: () => _showUploadOptions(),
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Upload', style: TextStyle(color: Colors.white)),
+      ) : null,
+      body: DismissKeyboard(
+        child: Column(
           children: [
             // Search Bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: CustomSearchBar(
-                hintText: _currentFolder == null ? 'Search folders...' : 'Search folders and files...',
-                onChanged: _onSearchChanged,
-                controller: _searchController,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: CustomSearchBar(
+              hintText: _currentFolder == null ? 'Search folders...' : 'Search folders and files...',
+              onChanged: _onSearchChanged,
+              controller: _searchController,
             ),
+          ),
 
-            // Breadcrumb
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    'Path: ',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
+          // Breadcrumb
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(
+              children: [
+                Text(
+                  'Path: ',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
                   ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          // Home option
-                          GestureDetector(
-                            onTap: () {
-                              // Navigate back to home (main albums screen)
-                              setState(() {
-                                _currentFolder = null;
-                                _folderPath.clear();
-                                _displayedFolders = _albumService.mainFolders;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _folderPath.isEmpty ? AppColors.primary : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Home',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: _folderPath.isEmpty ? Colors.white : Colors.grey.shade700,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // Home option
+                        GestureDetector(
+                          onTap: () {
+                            // Clear old uploading items when going home
+                            _clearOldUploadingItems();
+                            // Navigate back to home (main albums screen)
+                            setState(() {
+                              _currentFolder = null;
+                              _folderPath.clear();
+                              _displayedFolders = _albumService.mainFolders;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _folderPath.isEmpty ? AppColors.primary : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Home',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: _folderPath.isEmpty ? Colors.white : Colors.grey.shade700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-
-                          // Folder path
-                          if (_folderPath.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.chevron_right,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            for (int i = 0; i < _folderPath.length; i++) ...[
-                              if (i > 0) ...[
-                                const Icon(
-                                  Icons.chevron_right,
-                                  size: 16,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 4),
-                              ],
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      // Navigate to this folder in the path
-                                      setState(() {
-                                        _folderPath = _folderPath.sublist(0, i + 1);
-                                        _currentFolder = _folderPath.last;
-                                        _displayedFolders = _currentFolder!.children;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: i == _folderPath.length - 1 ? AppColors.primary : Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        _folderPath[i].albumName,
-                                        style: AppTypography.bodySmall.copyWith(
-                                          color: i == _folderPath.length - 1 ? Colors.white : Colors.grey.shade700,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                        ),
+                        
+                        // Folder path
+                        if (_folderPath.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 8),
+                          for (int i = 0; i < _folderPath.length; i++) ...[
+                            if (i > 0) ...[
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    // Clear old uploading items when navigating
+                                    _clearOldUploadingItems();
+                                    // Navigate to this folder in the path
+                                    setState(() {
+                                      _folderPath = _folderPath.sublist(0, i + 1);
+                                      _currentFolder = _folderPath.last;
+                                      _displayedFolders = _currentFolder!.children;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: i == _folderPath.length - 1 ? AppColors.primary : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _folderPath[i].albumName,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: i == _folderPath.length - 1 ? Colors.white : Colors.grey.shade700,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
+                                ),
+                                
 
+                                                                  if (i == _folderPath.length - 1 && _folderPath[i].parentId != null) ...[
 
-                                                                    if (i == _folderPath.length - 1 && _folderPath[i].parentId != null) ...[
-
-                                      const SizedBox(width: 4),
-                                      // Edit button
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: GestureDetector(
-                                          onTap: () => _showEditFolderDialog(_folderPath[i]),
-                                          child: const Icon(
-                                            Icons.edit,
-                                            size: 12,
-                                            color: Colors.white,
-                                          ),
+                                    const SizedBox(width: 4),
+                                    // Edit button
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1,
                                         ),
                                       ),
-
-                                      const SizedBox(width: 4),
-                                      // Delete button
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 1,
-                                          ),
+                                      child: GestureDetector(
+                                        onTap: () => _showEditFolderDialog(_folderPath[i]),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          size: 12,
+                                          color: Colors.white,
                                         ),
-                                        child: GestureDetector(
-                                          onTap: _isDeletingFolder ? null : () => _deleteFolder(_folderPath[i]),
-                                          child: _isDeletingFolder
-                                              ? const SizedBox(
-                                                  width: 12,
-                                                  height: 12,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                  ),
-                                                )
-                                              : const Icon(
-                                                  Icons.delete,
-                                                  size: 12,
-                                                  color: Colors.white,
+                                      ),
+                                    ),
+                                    
+                                    const SizedBox(width: 4),
+                                    // Delete button
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: _isDeletingFolder ? null : () => _deleteFolder(_folderPath[i]),
+                                        child: _isDeletingFolder
+                                            ? const SizedBox(
+                                                width: 12,
+                                                height: 12,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                 ),
-                                        ),
+                                              )
+                                            : const Icon(
+                                                Icons.delete,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
                                       ),
-                                    ],
-                                ],
-                              ),
-                            ],
+                                    ),
+                                  ],
+                              ],
+                            ),
                           ],
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Content List
-            Expanded(
-              child: _albumService.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildContentList(),
-            ),
-          ],
-        ),
+          // Content List
+          Expanded(
+            child: _albumService.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildContentList(),
+          ),
+        ],
       ),
-    );
+    ),
+  );
   }
 
   String _getAppBarTitle() {
@@ -412,7 +476,12 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       final subfolders = _currentFolder!.children;
       final contentItems = _currentFolder!.images;
       
-      if (subfolders.isEmpty && contentItems.isEmpty) {
+      // Filter uploading items for current folder
+      final uploadingItems = _uploadingItems.where((item) => 
+        item.isUploading || item.errorMessage != null
+      ).toList();
+      
+      if (subfolders.isEmpty && contentItems.isEmpty && uploadingItems.isEmpty) {
         return _buildEmptyState();
       }
       
@@ -449,6 +518,38 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                 itemBuilder: (context, index) {
                   final folder = subfolders[index];
                   return _buildGridFolderCard(folder);
+                },
+              ),
+            ],
+            
+            // Show uploading items
+            if (uploadingItems.isNotEmpty) ...[
+              // Uploading section header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                child: Text(
+                  'Uploading (${uploadingItems.length})',
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange.shade700,
+                  ),
+                ),
+              ),
+              // Uploading items grid
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 1.1,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                ),
+                itemCount: uploadingItems.length,
+                itemBuilder: (context, index) {
+                  final item = uploadingItems[index];
+                  return _buildUploadingItemCard(item);
                 },
               ),
             ],
@@ -515,7 +616,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
     Widget _buildGridFolderCard(SiteAlbumModel folder) {
     return GestureDetector(
-        onTap: () => _viewFolderContent(folder),
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          _viewFolderContent(folder);
+        },
         onLongPress: null,
         child: Container(
           decoration: BoxDecoration(
@@ -578,9 +682,146 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     );
   }
 
+  Widget _buildUploadingItemCard(UploadingItem item) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: item.errorMessage != null ? Colors.red.shade300 : Colors.orange.shade300,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Main content
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // File Icon with overlay
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: item.errorMessage != null 
+                        ? Colors.red.shade500 
+                        : (item.isImage ? Colors.blue.shade500 : Colors.orange.shade500),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        item.isImage ? Icons.image : Icons.description,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      if (item.isUploading)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade600,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const SizedBox(
+                              width: 8,
+                              height: 8,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 4),
+                
+                // File Name
+                Flexible(
+                  child: Text(
+                    item.fileName,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: item.errorMessage != null ? Colors.red.shade700 : Colors.black87,
+                      fontSize: 9,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                // Status text
+                if (item.errorMessage != null)
+                  Text(
+                    'Failed',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.red.shade600,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  Text(
+                    'Uploading...',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.orange.shade600,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          
+          // Error overlay with retry button
+          if (item.errorMessage != null)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                  _retryUpload(item);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.refresh,
+                      color: Colors.red.shade600,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGridContentCard(SiteAlbumImage item) {
     return GestureDetector(
       onTap: () {
+        FocusScope.of(context).unfocus();
         // TODO: Open content viewer
         SnackBarUtils.showInfo(
           context,
@@ -773,7 +1014,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   void _showEditFolderDialog(SiteAlbumModel folder) {
     _editFolderNameController.text = folder.albumName;
     
-    showDialog(
+    showDialogWithKeyboardDismissal(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
@@ -787,7 +1028,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   labelText: 'Folder Name',
                   border: OutlineInputBorder(),
                 ),
-                autofocus: true,
+                autofocus: false,
                 onSubmitted: (value) {
                   _editFolder(folder, dialogContext);
                 },
@@ -797,6 +1038,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           actions: [
             TextButton(
               onPressed: () {
+                FocusScope.of(context).unfocus();
                 Navigator.of(dialogContext).pop();
               },
               child: const Text('Cancel'),
@@ -821,7 +1063,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
   void _showAddFolderDialog() {
     _folderNameController.clear();
-    showDialog(
+    
+    showDialogWithKeyboardDismissal(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
@@ -859,7 +1102,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                Navigator.of(dialogContext).pop();
+              },
               child: Text(
                 'Cancel',
                 style: AppTypography.bodyMedium.copyWith(
@@ -911,8 +1157,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
       if (files.isEmpty) return;
 
+      // Add placeholders immediately
       setState(() {
         _isUploadingImages = true;
+        for (final file in files) {
+          _uploadingItems.add(UploadingItem(
+            fileName: file.path.split('/').last,
+            filePath: file.path,
+            isImage: true,
+            uploadStartTime: DateTime.now(),
+          ));
+        }
       });
 
       final response = await _albumService.saveImages(
@@ -922,6 +1177,13 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       );
 
       if (response.status == 1) {
+        // Remove uploading placeholders
+        setState(() {
+          _uploadingItems.removeWhere((item) => 
+            item.isImage && files.any((file) => file.path == item.filePath)
+          );
+        });
+        
         // Refresh the current folder data
         await _refreshCurrentFolder();
         
@@ -930,12 +1192,37 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           message: 'Images uploaded successfully!',
         );
       } else {
+        // Mark uploads as failed
+        setState(() {
+          for (final file in files) {
+            final index = _uploadingItems.indexWhere((item) => item.filePath == file.path);
+            if (index != -1) {
+              _uploadingItems[index] = _uploadingItems[index].copyWith(
+                errorMessage: response.message,
+                isUploading: false,
+              );
+            }
+          }
+        });
+        
         SnackBarUtils.showError(
           context,
           message: response.message,
         );
       }
     } catch (e) {
+      // Mark all uploads as failed
+      setState(() {
+        for (int i = 0; i < _uploadingItems.length; i++) {
+          if (_uploadingItems[i].isImage) {
+            _uploadingItems[i] = _uploadingItems[i].copyWith(
+              errorMessage: e.toString(),
+              isUploading: false,
+            );
+          }
+        }
+      });
+      
       SnackBarUtils.showError(
         context,
         message: 'Error uploading images: ${e.toString()}',
@@ -1036,8 +1323,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
       if (files.isEmpty) return;
 
+      // Add placeholders immediately
       setState(() {
         _isUploadingAttachments = true;
+        for (final file in files) {
+          _uploadingItems.add(UploadingItem(
+            fileName: file.path.split('/').last,
+            filePath: file.path,
+            isImage: false,
+            uploadStartTime: DateTime.now(),
+          ));
+        }
       });
 
       final response = await _albumService.saveAttachments(
@@ -1047,6 +1343,13 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       );
 
       if (response.status == 1) {
+        // Remove uploading placeholders
+        setState(() {
+          _uploadingItems.removeWhere((item) => 
+            !item.isImage && files.any((file) => file.path == item.filePath)
+          );
+        });
+        
         // Refresh the current folder data
         await _refreshCurrentFolder();
         
@@ -1055,12 +1358,37 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           message: 'Documents uploaded successfully!',
         );
       } else {
+        // Mark uploads as failed
+        setState(() {
+          for (final file in files) {
+            final index = _uploadingItems.indexWhere((item) => item.filePath == file.path);
+            if (index != -1) {
+              _uploadingItems[index] = _uploadingItems[index].copyWith(
+                errorMessage: response.message,
+                isUploading: false,
+              );
+            }
+          }
+        });
+        
         SnackBarUtils.showError(
           context,
           message: response.message,
         );
       }
     } catch (e) {
+      // Mark all uploads as failed
+      setState(() {
+        for (int i = 0; i < _uploadingItems.length; i++) {
+          if (!_uploadingItems[i].isImage) {
+            _uploadingItems[i] = _uploadingItems[i].copyWith(
+              errorMessage: e.toString(),
+              isUploading: false,
+            );
+          }
+        }
+      });
+      
       SnackBarUtils.showError(
         context,
         message: 'Error uploading documents: ${e.toString()}',
@@ -1226,8 +1554,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       if (response.status == 1) {
         // Close dialog using the dialog context if provided
         if (dialogContext != null) {
+          FocusScope.of(context).unfocus();
           Navigator.of(dialogContext).pop();
         } else {
+          FocusScope.of(context).unfocus();
           Navigator.of(context).pop();
         }
         
@@ -1296,8 +1626,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       if (response.status == 1) {
         // Close dialog using the dialog context if provided
         if (dialogContext != null) {
+          FocusScope.of(context).unfocus();
           Navigator.of(dialogContext).pop();
         } else {
+          FocusScope.of(context).unfocus();
           Navigator.of(context).pop();
         }
         
@@ -1376,6 +1708,39 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   void _updateFolderPath() {
     if (_currentFolder != null) {
       _folderPath = _albumService.getFolderPath(_currentFolder!.id);
+    }
+  }
+
+  // Helper method to close dialog and dismiss keyboard
+  void _closeDialogAndDismissKeyboard(BuildContext? dialogContext) {
+    FocusScope.of(context).unfocus();
+    if (dialogContext != null) {
+      Navigator.of(dialogContext).pop();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _retryUpload(UploadingItem item) async {
+    // Remove the failed item from the list
+    setState(() {
+      _uploadingItems.removeWhere((uploadingItem) => uploadingItem.filePath == item.filePath);
+    });
+
+    // Re-upload the file
+    if (item.isImage) {
+      // For images, we need to recreate the file from the path
+      // This is a simplified retry - in a real app you might want to store the actual file
+      SnackBarUtils.showInfo(
+        context,
+        message: 'Please select the file again to retry upload',
+      );
+    } else {
+      // For attachments, same approach
+      SnackBarUtils.showInfo(
+        context,
+        message: 'Please select the file again to retry upload',
+      );
     }
   }
 }

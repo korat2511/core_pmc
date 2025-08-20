@@ -1,4 +1,3 @@
-import 'package:core_pmc/widgets/dismiss_keyboard.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
@@ -14,6 +13,10 @@ import '../widgets/custom_drawer.dart';
 import '../widgets/attendance_card.dart';
 import '../widgets/site_card.dart';
 import '../widgets/custom_search_bar.dart';
+import '../widgets/dismiss_keyboard.dart';
+import '../core/utils/validation_utils.dart';
+import '../core/utils/navigation_utils.dart';
+import '../widgets/custom_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,174 +70,651 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final UserModel? user = AuthService.currentUser;
 
-    return DismissKeyboard(
-      child: Scaffold(
-        appBar: CustomAppBar(
-          title: 'Home',
-        ),
-        drawer: const CustomDrawer(),
-        body: RefreshIndicator(
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Home',
+      ),
+      drawer: const CustomDrawer(),
+      floatingActionButton: ValidationUtils.canCreateSite(context)
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/create-site');
+              },
+              backgroundColor: AppColors.primaryColor,
+              foregroundColor: AppColors.textWhite,
+              icon: Icon(Icons.add),
+              label: Text('Create Site'),
+            )
+          : null,
+      body: DismissKeyboard(
+        child: RefreshIndicator(
           onRefresh: _loadSites,
           color: AppColors.primaryColor,
           child: CustomScrollView(
-            slivers: [
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: ResponsiveUtils.responsivePadding(context),
-                  child: CustomSearchBar(
-                    hintText: 'Search sites...',
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
+          slivers: [
+            // Sliver App Bar with Search and Status Dropdown
+            // SliverAppBar(
+            //   expandedHeight: ResponsiveUtils.responsiveFontSize(
+            //     context,
+            //     mobile: 140,
+            //     tablet: 160,
+            //     desktop: 180,
+            //   ),
+            //   floating: true,
+            //   pinned: true,
+            //   backgroundColor: AppColors.surfaceColor,
+            //   elevation: 0,
+            //   title: Row(
+            //     children: [
+            //       // Search Bar in App Bar (Collapsed State)
+            //       Expanded(
+            //         flex: 2,
+            //         child: Container(
+            //           height: ResponsiveUtils.responsiveFontSize(
+            //             context,
+            //             mobile: 35,
+            //             tablet: 40,
+            //             desktop: 45,
+            //           ),
+            //           padding: EdgeInsets.symmetric(
+            //             horizontal: ResponsiveUtils.responsiveSpacing(
+            //               context,
+            //               mobile: 8,
+            //               tablet: 12,
+            //               desktop: 16,
+            //             ),
+            //           ),
+            //           decoration: BoxDecoration(
+            //             color: AppColors.textWhite,
+            //             borderRadius: BorderRadius.circular(
+            //               ResponsiveUtils.responsiveSpacing(
+            //                 context,
+            //                 mobile: 6,
+            //                 tablet: 8,
+            //                 desktop: 10,
+            //               ),
+            //             ),
+            //             border: Border.all(
+            //               color: AppColors.borderColor,
+            //               width: 1,
+            //             ),
+            //           ),
+            //           child: TextField(
+            //             onChanged: (value) {
+            //               setState(() {
+            //                 _searchQuery = value;
+            //               });
+            //             },
+            //             decoration: InputDecoration(
+            //               hintText: 'Search sites...',
+            //               prefixIcon: Icon(
+            //                 Icons.search,
+            //                 color: AppColors.textSecondary,
+            //                 size: ResponsiveUtils.responsiveFontSize(
+            //                   context,
+            //                   mobile: 16,
+            //                   tablet: 18,
+            //                   desktop: 20,
+            //                 ),
+            //               ),
+            //               border: InputBorder.none,
+            //               contentPadding: EdgeInsets.zero,
+            //             ),
+            //           ),
+            //         ),
+            //       ),
+            //       SizedBox(
+            //         width: ResponsiveUtils.responsiveSpacing(
+            //           context,
+            //           mobile: 8,
+            //           tablet: 12,
+            //           desktop: 16,
+            //         ),
+            //       ),
+            //       // Status Dropdown in App Bar (Collapsed State)
+            //       Expanded(
+            //         flex: 1,
+            //         child: Container(
+            //           height: ResponsiveUtils.responsiveFontSize(
+            //             context,
+            //             mobile: 35,
+            //             tablet: 40,
+            //             desktop: 45,
+            //           ),
+            //           padding: EdgeInsets.symmetric(
+            //             horizontal: ResponsiveUtils.responsiveSpacing(
+            //               context,
+            //               mobile: 6,
+            //               tablet: 8,
+            //               desktop: 10,
+            //             ),
+            //           ),
+            //           decoration: BoxDecoration(
+            //             color: AppColors.textWhite,
+            //             borderRadius: BorderRadius.circular(
+            //               ResponsiveUtils.responsiveSpacing(
+            //                 context,
+            //                 mobile: 6,
+            //                 tablet: 8,
+            //                 desktop: 10,
+            //               ),
+            //             ),
+            //             border: Border.all(
+            //               color: AppColors.borderColor,
+            //               width: 1,
+            //             ),
+            //           ),
+            //           child: DropdownButtonHideUnderline(
+            //             child: DropdownButton<String>(
+            //               value: _selectedStatus.isEmpty ? 'All' : _selectedStatus,
+            //               isExpanded: true,
+            //               icon: Icon(
+            //                 Icons.keyboard_arrow_down,
+            //                 color: AppColors.textSecondary,
+            //                 size: ResponsiveUtils.responsiveFontSize(
+            //                   context,
+            //                   mobile: 14,
+            //                   tablet: 16,
+            //                   desktop: 18,
+            //                 ),
+            //               ),
+            //               items: [
+            //                 DropdownMenuItem(
+            //                   value: 'All',
+            //                   child: Text(
+            //                     'All',
+            //                     style: AppTypography.bodyMedium.copyWith(
+            //                       fontSize: ResponsiveUtils.responsiveFontSize(
+            //                         context,
+            //                         mobile: 10,
+            //                         tablet: 12,
+            //                         desktop: 14,
+            //                       ),
+            //                       color: AppColors.textPrimary,
+            //                     ),
+            //                     overflow: TextOverflow.ellipsis,
+            //                   ),
+            //                 ),
+            //                 DropdownMenuItem(
+            //                   value: 'Active',
+            //                   child: Text(
+            //                     'Active',
+            //                     style: AppTypography.bodyMedium.copyWith(
+            //                       fontSize: ResponsiveUtils.responsiveFontSize(
+            //                         context,
+            //                         mobile: 10,
+            //                         tablet: 12,
+            //                         desktop: 14,
+            //                       ),
+            //                       color: AppColors.textPrimary,
+            //                     ),
+            //                     overflow: TextOverflow.ellipsis,
+            //                   ),
+            //                 ),
+            //                 DropdownMenuItem(
+            //                   value: 'Pending',
+            //                   child: Text(
+            //                     'Pending',
+            //                     style: AppTypography.bodyMedium.copyWith(
+            //                       fontSize: ResponsiveUtils.responsiveFontSize(
+            //                         context,
+            //                         mobile: 10,
+            //                         tablet: 12,
+            //                         desktop: 14,
+            //                       ),
+            //                       color: AppColors.textPrimary,
+            //                     ),
+            //                     overflow: TextOverflow.ellipsis,
+            //                   ),
+            //                 ),
+            //                 DropdownMenuItem(
+            //                   value: 'Complete',
+            //                   child: Text(
+            //                     'Complete',
+            //                     style: AppTypography.bodyMedium.copyWith(
+            //                       fontSize: ResponsiveUtils.responsiveFontSize(
+            //                         context,
+            //                         mobile: 10,
+            //                         tablet: 12,
+            //                         desktop: 14,
+            //                       ),
+            //                       color: AppColors.textPrimary,
+            //                     ),
+            //                     overflow: TextOverflow.ellipsis,
+            //                   ),
+            //                 ),
+            //                 DropdownMenuItem(
+            //                   value: 'Overdue',
+            //                   child: Text(
+            //                     'Overdue',
+            //                     style: AppTypography.bodyMedium.copyWith(
+            //                       fontSize: ResponsiveUtils.responsiveFontSize(
+            //                         context,
+            //                         mobile: 10,
+            //                         tablet: 12,
+            //                         desktop: 14,
+            //                       ),
+            //                       color: AppColors.textPrimary,
+            //                     ),
+            //                     overflow: TextOverflow.ellipsis,
+            //                   ),
+            //                 ),
+            //               ],
+            //               onChanged: (String? newValue) {
+            //                 setState(() {
+            //                   _selectedStatus = newValue == 'All' ? '' : (newValue ?? '');
+            //                 });
+            //                 _loadSites();
+            //               },
+            //             ),
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            //   flexibleSpace: FlexibleSpaceBar(
+            //     background: Container(
+            //       padding: ResponsiveUtils.responsivePadding(context),
+            //       child: Column(
+            //         mainAxisAlignment: MainAxisAlignment.center,
+            //         children: [
+            //           // Search Bar (Expanded State)
+            //           Container(
+            //             width: double.infinity,
+            //             height: ResponsiveUtils.responsiveFontSize(
+            //               context,
+            //               mobile: 45,
+            //               tablet: 50,
+            //               desktop: 55,
+            //             ),
+            //             padding: EdgeInsets.symmetric(
+            //               horizontal: ResponsiveUtils.responsiveSpacing(
+            //                 context,
+            //                 mobile: 12,
+            //                 tablet: 16,
+            //                 desktop: 20,
+            //               ),
+            //             ),
+            //             decoration: BoxDecoration(
+            //               color: AppColors.textWhite,
+            //               borderRadius: BorderRadius.circular(
+            //                 ResponsiveUtils.responsiveSpacing(
+            //                   context,
+            //                   mobile: 8,
+            //                   tablet: 12,
+            //                   desktop: 16,
+            //                 ),
+            //               ),
+            //               border: Border.all(
+            //                 color: AppColors.borderColor,
+            //                 width: 1,
+            //               ),
+            //             ),
+            //             child: TextField(
+            //               onChanged: (value) {
+            //                 setState(() {
+            //                   _searchQuery = value;
+            //                 });
+            //               },
+            //               decoration: InputDecoration(
+            //                 hintText: 'Search sites...',
+            //                 prefixIcon: Icon(
+            //                   Icons.search,
+            //                   color: AppColors.textSecondary,
+            //                   size: ResponsiveUtils.responsiveFontSize(
+            //                     context,
+            //                     mobile: 18,
+            //                     tablet: 20,
+            //                     desktop: 22,
+            //                   ),
+            //                 ),
+            //                 border: InputBorder.none,
+            //                 contentPadding: EdgeInsets.zero,
+            //               ),
+            //             ),
+            //           ),
+            //           SizedBox(
+            //             height: ResponsiveUtils.responsiveSpacing(
+            //               context,
+            //               mobile: 12,
+            //               tablet: 16,
+            //               desktop: 20,
+            //             ),
+            //           ),
+            //           // Status Dropdown (Expanded State)
+            //           Container(
+            //             width: double.infinity,
+            //             height: ResponsiveUtils.responsiveFontSize(
+            //               context,
+            //               mobile: 45,
+            //               tablet: 50,
+            //               desktop: 55,
+            //             ),
+            //             padding: EdgeInsets.symmetric(
+            //               horizontal: ResponsiveUtils.responsiveSpacing(
+            //                 context,
+            //                 mobile: 12,
+            //                 tablet: 16,
+            //                 desktop: 20,
+            //               ),
+            //             ),
+            //             decoration: BoxDecoration(
+            //               color: AppColors.textWhite,
+            //               borderRadius: BorderRadius.circular(
+            //                 ResponsiveUtils.responsiveSpacing(
+            //                   context,
+            //                   mobile: 8,
+            //                   tablet: 12,
+            //                   desktop: 16,
+            //                 ),
+            //               ),
+            //               border: Border.all(
+            //                 color: AppColors.borderColor,
+            //                 width: 1,
+            //               ),
+            //             ),
+            //             child: DropdownButtonHideUnderline(
+            //               child: DropdownButton<String>(
+            //                 value: _selectedStatus.isEmpty ? 'All' : _selectedStatus,
+            //                 isExpanded: true,
+            //                 icon: Icon(
+            //                   Icons.keyboard_arrow_down,
+            //                   color: AppColors.textSecondary,
+            //                   size: ResponsiveUtils.responsiveFontSize(
+            //                     context,
+            //                     mobile: 16,
+            //                     tablet: 18,
+            //                     desktop: 20,
+            //                   ),
+            //                 ),
+            //                 items: [
+            //                   DropdownMenuItem(
+            //                     value: 'All',
+            //                     child: Text(
+            //                       'All',
+            //                       style: AppTypography.bodyMedium.copyWith(
+            //                         fontSize: ResponsiveUtils.responsiveFontSize(
+            //                           context,
+            //                           mobile: 12,
+            //                           tablet: 14,
+            //                           desktop: 16,
+            //                         ),
+            //                         color: AppColors.textPrimary,
+            //                       ),
+            //                       overflow: TextOverflow.ellipsis,
+            //                     ),
+            //                   ),
+            //                   DropdownMenuItem(
+            //                     value: 'Active',
+            //                     child: Text(
+            //                       'Active',
+            //                       style: AppTypography.bodyMedium.copyWith(
+            //                         fontSize: ResponsiveUtils.responsiveFontSize(
+            //                           context,
+            //                           mobile: 12,
+            //                           tablet: 14,
+            //                           desktop: 16,
+            //                         ),
+            //                         color: AppColors.textPrimary,
+            //                       ),
+            //                       overflow: TextOverflow.ellipsis,
+            //                     ),
+            //                   ),
+            //                   DropdownMenuItem(
+            //                     value: 'Pending',
+            //                     child: Text(
+            //                       'Pending',
+            //                       style: AppTypography.bodyMedium.copyWith(
+            //                         fontSize: ResponsiveUtils.responsiveFontSize(
+            //                           context,
+            //                           mobile: 12,
+            //                           tablet: 14,
+            //                           desktop: 16,
+            //                         ),
+            //                         color: AppColors.textPrimary,
+            //                       ),
+            //                       overflow: TextOverflow.ellipsis,
+            //                     ),
+            //                   ),
+            //                   DropdownMenuItem(
+            //                     value: 'Complete',
+            //                     child: Text(
+            //                       'Complete',
+            //                       style: AppTypography.bodyMedium.copyWith(
+            //                         fontSize: ResponsiveUtils.responsiveFontSize(
+            //                           context,
+            //                           mobile: 12,
+            //                           tablet: 14,
+            //                           desktop: 16,
+            //                         ),
+            //                         color: AppColors.textPrimary,
+            //                       ),
+            //                       overflow: TextOverflow.ellipsis,
+            //                     ),
+            //                   ),
+            //                   DropdownMenuItem(
+            //                     value: 'Overdue',
+            //                     child: Text(
+            //                       'Overdue',
+            //                       style: AppTypography.bodyMedium.copyWith(
+            //                         fontSize: ResponsiveUtils.responsiveFontSize(
+            //                           context,
+            //                           mobile: 12,
+            //                           tablet: 14,
+            //                           desktop: 16,
+            //                         ),
+            //                         color: AppColors.textPrimary,
+            //                       ),
+            //                       overflow: TextOverflow.ellipsis,
+            //                     ),
+            //                   ),
+            //                 ],
+            //                 onChanged: (String? newValue) {
+            //                   setState(() {
+            //                     _selectedStatus = newValue == 'All' ? '' : (newValue ?? '');
+            //                   });
+            //                   _loadSites();
+            //                 },
+            //               ),
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //   ),
+            // ),
+                        // Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: ResponsiveUtils.responsivePadding(context),
+                child: CustomSearchBar(
+                  hintText: 'Search sites...',
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                 ),
               ),
-              // Status Filter Chips
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding:EdgeInsets.symmetric(horizontal: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            ),
+            // Status Filter Chips
+            SliverToBoxAdapter(
+              child: Padding(
+                padding:EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildStatusChip(context, 'All', '', SiteService.allSites.length),
-                            SizedBox(
-                              width: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 12,
-                                desktop: 16,
-                              ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildStatusChip(context, 'All', '', SiteService.allSites.length),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
                             ),
-                            _buildStatusChip(context, 'Active', 'Active', SiteService.getActiveSites().length),
-                            SizedBox(
-                              width: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 12,
-                                desktop: 16,
-                              ),
+                          ),
+                          _buildStatusChip(context, 'Active', 'Active', SiteService.getActiveSites().length),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
                             ),
-                            _buildStatusChip(context, 'Pending', 'Pending', SiteService.getPendingSites().length),
-                            SizedBox(
-                              width: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 12,
-                                desktop: 16,
-                              ),
+                          ),
+                          _buildStatusChip(context, 'Pending', 'Pending', SiteService.getPendingSites().length),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
                             ),
-                            _buildStatusChip(context, 'Complete', 'Complete', SiteService.getCompleteSites().length),
-                            SizedBox(
-                              width: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 12,
-                                desktop: 16,
-                              ),
+                          ),
+                          _buildStatusChip(context, 'Complete', 'Complete', SiteService.getCompleteSites().length),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
                             ),
-                            _buildStatusChip(context, 'Overdue', 'Overdue', SiteService.getOverdueSites().length),
-                          ],
+                          ),
+                          _buildStatusChip(context, 'Overdue', 'Overdue', SiteService.getOverdueSites().length),
+                        ],
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+            ),
+            
+            // Quick Actions Section
+            // SliverToBoxAdapter(
+            //   child: Padding(
+            //     padding: ResponsiveUtils.responsivePadding(context),
+            //     child: Column(
+            //       crossAxisAlignment: CrossAxisAlignment.start,
+            //       children: [
+            //         Text(
+            //           'Quick Actions',
+            //           style: AppTypography.titleMedium.copyWith(
+            //             fontSize: ResponsiveUtils.responsiveFontSize(
+            //               context,
+            //               mobile: 18,
+            //               tablet: 20,
+            //               desktop: 22,
+            //             ),
+            //             color: AppColors.textPrimary,
+            //             fontWeight: FontWeight.bold,
+            //           ),
+            //         ),
+            //         SizedBox(
+            //           height: ResponsiveUtils.responsiveSpacing(
+            //             context,
+            //             mobile: 12,
+            //             tablet: 16,
+            //             desktop: 20,
+            //           ),
+            //         ),
+            //         AttendanceCard(),
+            //       ],
+            //     ),
+            //   ),
+            // ),
+            
+            // Sites List
+            SliverPadding(
+              padding: ResponsiveUtils.responsivePadding(context),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+
+                  if (_isLoading)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 40,
+                            tablet: 50,
+                            desktop: 60,
+                          ),
+                        ),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryColor,
                         ),
                       ),
-
-                    ],
-                  ),
-                ),
-              ),
-
-              SliverPadding(
-                padding: ResponsiveUtils.responsivePadding(context),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-
-                    if (_isLoading)
-                      Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(
-                            ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 40,
-                              tablet: 50,
-                              desktop: 60,
-                            ),
-                          ),
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryColor,
+                    )
+                  else if (SiteService.sites.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 40,
+                            tablet: 50,
+                            desktop: 60,
                           ),
                         ),
-                      )
-                    else if (SiteService.sites.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(
-                            ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 40,
-                              tablet: 50,
-                              desktop: 60,
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.business,
+                              size: ResponsiveUtils.responsiveFontSize(
+                                context,
+                                mobile: 60,
+                                tablet: 80,
+                                desktop: 100,
+                              ),
+                              color: AppColors.textSecondary,
                             ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.business,
-                                size: ResponsiveUtils.responsiveFontSize(
+                            SizedBox(
+                              height: ResponsiveUtils.responsiveSpacing(
+                                context,
+                                mobile: 16,
+                                tablet: 20,
+                                desktop: 24,
+                              ),
+                            ),
+                            Text(
+                              'No sites found',
+                              style: AppTypography.bodyLarge.copyWith(
+                                fontSize: ResponsiveUtils.responsiveFontSize(
                                   context,
-                                  mobile: 60,
-                                  tablet: 80,
-                                  desktop: 100,
+                                  mobile: 16,
+                                  tablet: 18,
+                                  desktop: 20,
                                 ),
                                 color: AppColors.textSecondary,
                               ),
-                              SizedBox(
-                                height: ResponsiveUtils.responsiveSpacing(
-                                  context,
-                                  mobile: 16,
-                                  tablet: 20,
-                                  desktop: 24,
-                                ),
-                              ),
-                              Text(
-                                'No sites found',
-                                style: AppTypography.bodyLarge.copyWith(
-                                  fontSize: ResponsiveUtils.responsiveFontSize(
-                                    context,
-                                    mobile: 16,
-                                    tablet: 18,
-                                    desktop: 20,
-                                  ),
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      )
-                    else
-                      ..._getFilteredSites().map((site) => SiteCard(
-                        site: site,
-                        onTap: () {
-                          closeKeyboard(context);
-                        },
-                        onSiteUpdated: _updateSite,
-                        currentStatus: _selectedStatus,
-                      )),
-                  ]),
-                ),
+                      ),
+                    )
+                  else
+                    ..._getFilteredSites().map((site) => SiteCard(
+                      site: site,
+                      onTap: () {
+                        // TODO: Navigate to site details
+                      },
+                      onSiteUpdated: _updateSite,
+                      currentStatus: _selectedStatus,
+                    )),
+                ]),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   void _updateSite(SiteModel updatedSite) {
@@ -266,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = _selectedStatus == status;
     return GestureDetector(
       onTap: () {
-        closeKeyboard(context);
+        FocusScope.of(context).unfocus();
         setState(() {
           _selectedStatus = isSelected ? '' : status;
         });

@@ -8,7 +8,11 @@ import 'screens/home_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/permission_screen.dart';
 import 'screens/site_album_screen.dart';
+import 'screens/create_site_screen.dart';
+import 'screens/task_details_screen.dart';
+import 'models/task_model.dart';
 import 'services/session_manager.dart';
+import 'widgets/dismiss_keyboard.dart';
 
 void main() async {
   // Initialize session manager
@@ -41,6 +45,10 @@ class MyApp extends StatelessWidget {
             siteName: args['siteName'],
           );
         },
+        '/create-site': (context) => const CreateSiteScreen(),
+        '/task-details': (context) => TaskDetailsScreen(
+          task: ModalRoute.of(context)!.settings.arguments as TaskModel,
+        ),
       },
     );
   }

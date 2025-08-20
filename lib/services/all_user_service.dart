@@ -16,7 +16,7 @@ class AllUserService {
   bool get hasError => _errorMessage.isNotEmpty;
 
   // Get all users from API
-  Future<bool> getAllUsers({String search = ''}) async {
+  Future<bool> getAllUsers() async {
     try {
       _isLoading = true;
       _errorMessage = '';
@@ -32,7 +32,6 @@ class AllUserService {
       // Call API
       final SiteUserResponse response = await ApiService.getAllUsers(
         apiToken: apiToken,
-        search: search,
       );
 
       if (response.isSuccess) {

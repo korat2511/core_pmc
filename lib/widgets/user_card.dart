@@ -4,6 +4,9 @@ import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../models/site_user_model.dart';
+import '../screens/attendance_screen.dart';
+import '../core/utils/navigation_utils.dart';
+import 'dismiss_keyboard.dart';
 
 class UserCard extends StatelessWidget {
   final SiteUserModel user;
@@ -96,7 +99,10 @@ class UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        onTap?.call();
+      },
       child: Container(
         margin: EdgeInsets.only(
           bottom: ResponsiveUtils.responsiveSpacing(

@@ -7,6 +7,7 @@ import '../core/utils/navigation_utils.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../screens/all_users_screen.dart';
+import '../screens/attendance_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class CustomDrawer extends StatefulWidget {
@@ -207,7 +208,15 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   icon: Icons.calendar_today_outlined,
                   title: 'View Attendance',
                   onTap: widget.onViewAttendance ?? () {
-                    // Handle view attendance
+                    if (user != null) {
+                      NavigationUtils.push(
+                        context,
+                        AttendanceScreen(
+                          userId: user.id,
+                          userName: user.displayName,
+                        ),
+                      );
+                    }
                   },
                 ),
                 // View All Users

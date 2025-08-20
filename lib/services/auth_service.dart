@@ -1,6 +1,8 @@
 import '../models/user_model.dart';
+import '../models/api_response.dart';
 import 'api_service.dart';
 import 'local_storage_service.dart';
+import '../core/utils/snackbar_utils.dart';
 
 class AuthService {
   static UserModel? _currentUser;

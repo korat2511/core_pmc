@@ -261,12 +261,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           longitude: _longitudeController.text.trim().isNotEmpty
               ? double.tryParse(_longitudeController.text.trim())
               : null,
-          minRange:
-              int.tryParse(_minRangeController.text.trim()) ??
-              _currentSite.minRange,
-          maxRange:
-              int.tryParse(_maxRangeController.text.trim()) ??
-              _currentSite.maxRange,
+          minRange: int.tryParse(_minRangeController.text.trim()) ?? _currentSite.minRange,
+          maxRange: int.tryParse(_maxRangeController.text.trim()) ?? _currentSite.maxRange,
         );
 
         setState(() {
@@ -281,7 +277,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         context,
         message: 'Location updated successfully!',
       );
-
+      
       setState(() {
         _isLocationEditMode = false;
       });
@@ -775,14 +771,14 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       _isLoading = true;
     });
 
-    final success = await _siteUpdateService.updateSite(
-      siteId: _currentSite.id,
-      siteName: _siteNameController.text.trim(),
-      clientName: _clientNameController.text.trim(),
-      architectName: _architectNameController.text.trim(),
-      startDate: _startDateController.text.trim(),
-      endDate: _endDateController.text.trim(),
-    );
+          final success = await _siteUpdateService.updateSite(
+        siteId: _currentSite.id,
+        siteName: _siteNameController.text.trim(),
+        clientName: _clientNameController.text.trim(),
+        architectName: _architectNameController.text.trim(),
+        startDate: _startDateController.text.trim(),
+        endDate: _endDateController.text.trim(),
+      );
 
     setState(() {
       _isLoading = false;
@@ -1530,7 +1526,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   Widget _buildMapSection(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 10),
+      padding:EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.textWhite,
         borderRadius: BorderRadius.circular(
@@ -1613,6 +1609,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                     ],
                   ),
+
                 ],
               ],
 
@@ -1658,6 +1655,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                     ),
                   ],
                 ),
+
               ],
 
               // Show message if no location data in view mode
@@ -1674,6 +1672,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             ],
           ),
 
+
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
               context,
@@ -1682,32 +1681,32 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
               desktop: 12,
             ),
           ),
-          // Map Section
-          GestureDetector(
-            onPanUpdate: (details) {
-              // Prevent screen scroll when panning on map
-            },
-            child: SizedBox(
-              width: double.infinity,
-              height: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 250,
-                tablet: 300,
-                desktop: 350,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 12,
-                    tablet: 16,
-                    desktop: 20,
-                  ),
-                ),
-                child: _buildMapWidget(context),
-              ),
-            ),
-          ),
+                     // Map Section
+           GestureDetector(
+             onPanUpdate: (details) {
+               // Prevent screen scroll when panning on map
+             },
+             child: SizedBox(
+               width: double.infinity,
+               height: ResponsiveUtils.responsiveFontSize(
+                 context,
+                 mobile: 250,
+                 tablet: 300,
+                 desktop: 350,
+               ),
+               child: ClipRRect(
+                 borderRadius: BorderRadius.circular(
+                   ResponsiveUtils.responsiveSpacing(
+                     context,
+                     mobile: 12,
+                     tablet: 16,
+                     desktop: 20,
+                   ),
+                 ),
+                 child: _buildMapWidget(context),
+               ),
+             ),
+           ),
 
           if (_isLocationEditMode) ...[
             SizedBox(
@@ -1753,8 +1752,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         GoogleMap(
           initialCameraPosition: CameraPosition(
             target: targetLocation,
-            zoom:
-                _currentSite.latitude != null && _currentSite.longitude != null
+            zoom: _currentSite.latitude != null && _currentSite.longitude != null
                 ? 15.0
                 : 5.0,
           ),
@@ -1764,18 +1762,14 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           onTap: _onMapTap,
           markers: _markers,
           myLocationEnabled: true,
-          myLocationButtonEnabled: false,
-          // Disable default location button
-          zoomControlsEnabled: false,
-          // Disable default zoom controls
+          myLocationButtonEnabled: false, // Disable default location button
+          zoomControlsEnabled: false, // Disable default zoom controls
           mapToolbarEnabled: false,
           gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-            Factory<OneSequenceGestureRecognizer>(
-              () => EagerGestureRecognizer(),
-            ),
+            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
           },
         ),
-
+        
         // Custom zoom controls
         Positioned(
           right: ResponsiveUtils.responsiveSpacing(
@@ -1836,7 +1830,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                     ),
                     onTap: () {
-                      _mapController?.animateCamera(CameraUpdate.zoomIn());
+                      _mapController?.animateCamera(
+                        CameraUpdate.zoomIn(),
+                      );
                     },
                     child: Icon(
                       Icons.add,
@@ -1851,7 +1847,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   ),
                 ),
               ),
-
+              
               SizedBox(
                 height: ResponsiveUtils.responsiveSpacing(
                   context,
@@ -1860,7 +1856,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   desktop: 8,
                 ),
               ),
-
+              
               // Zoom Out Button
               Container(
                 width: ResponsiveUtils.responsiveFontSize(
@@ -1905,7 +1901,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                     ),
                     onTap: () {
-                      _mapController?.animateCamera(CameraUpdate.zoomOut());
+                      _mapController?.animateCamera(
+                        CameraUpdate.zoomOut(),
+                      );
                     },
                     child: Icon(
                       Icons.remove,
@@ -1923,7 +1921,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             ],
           ),
         ),
-
+        
         // Custom location button
         Positioned(
           right: ResponsiveUtils.responsiveSpacing(
@@ -2303,11 +2301,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      TextButton(onPressed: _toggleEditMode, child: Text(_isEditMode ? 'Cancel' : 'Edit Info',)),
 
-                      TextButton(
-                        onPressed: _toggleEditMode,
-                        child: Text(_isEditMode ? 'Cancel' : 'Edit Info'),
-                      ),
                     ],
                   ),
 
@@ -2366,6 +2361,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                             'End Date',
                             _endDateController,
                           ),
+
                         ] else ...[
                           _buildInfoRow(
                             context,
@@ -2392,6 +2388,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                             'End Date',
                             _currentSite.endDate ?? 'Not set',
                           ),
+
                         ],
                         _buildInfoRow(context, 'Company', _currentSite.company),
                       ],
@@ -2442,13 +2439,14 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TextButton(
-                        onPressed: _toggleLocationEditMode,
-                        child: Text(_isLocationEditMode ? 'Cancel' : 'Edit Location'),
-                      ),
+                      TextButton(onPressed: _toggleLocationEditMode, child: Text(_isLocationEditMode ? 'Cancel' : 'Edit Location',)),
 
                     ],
                   ),
+
+
+
+
 
                   // Map Section
                   _buildMapSection(context),

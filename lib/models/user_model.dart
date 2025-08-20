@@ -7,7 +7,7 @@ class UserModel {
   final String email;
   final int userType;
   final String status;
-  final int? siteId;
+  final dynamic siteId; // Can be int or String (comma-separated site IDs)
   final String? image;
   final String lastActiveTime;
   final String createdAt;
@@ -45,7 +45,7 @@ class UserModel {
       email: json['email'] ?? '',
       userType: json['user_type'] ?? 0,
       status: json['status'] ?? '',
-      siteId: json['site_id'] is int ? json['site_id'] : null,
+      siteId: json['site_id'],
       image: json['image'],
       lastActiveTime: json['last_active_time']?.toString() ?? '',
       createdAt: json['created_at']?.toString() ?? '',
@@ -82,4 +82,24 @@ class UserModel {
   String get displayName => fullName.isNotEmpty ? fullName : email;
 
   bool get isActive => status.toLowerCase() == 'active';
+  
+  // Get formatted site IDs
+  String get formattedSiteIds {
+    if (siteId == null) return 'N/A';
+    if (siteId is String) return siteId as String;
+    if (siteId is int) return siteId.toString();
+    return 'N/A';
+  }
+  
+  // Get list of site IDs
+  List<String> get siteIdList {
+    if (siteId == null) return [];
+    if (siteId is String) {
+      return (siteId as String).split(',').map((id) => id.trim()).toList();
+    }
+    if (siteId is int) {
+      return [siteId.toString()];
+    }
+    return [];
+  }
 }

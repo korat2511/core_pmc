@@ -18,8 +18,6 @@ class SiteUserService {
   // Get users by site from API
   Future<bool> getUsersBySite({
     required int siteId,
-    String search = '',
-    int userType = 0,
   }) async {
     try {
       _isLoading = true;
@@ -37,8 +35,6 @@ class SiteUserService {
       final SiteUserResponse response = await ApiService.getUsersBySite(
         apiToken: apiToken,
         siteId: siteId,
-        search: search,
-        userType: userType,
       );
 
       if (response.isSuccess) {

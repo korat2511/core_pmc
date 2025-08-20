@@ -8,6 +8,7 @@ import '../models/site_model.dart';
 import '../services/site_service.dart';
 import '../screens/manage_user_screen.dart';
 import '../screens/site_details_screen.dart';
+import '../screens/site_details_with_bottom_nav.dart';
 import 'dismiss_keyboard.dart';
 
 class SiteCard extends StatefulWidget {
@@ -197,33 +198,30 @@ class _SiteCardState extends State<SiteCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        // Navigate to site details screen with bottom navigation
+        NavigationUtils.push(
+          context,
+          SiteDetailsWithBottomNav(site: widget.site),
+        );
+      },
       child: Container(
         margin: EdgeInsets.only(
           bottom: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20,
+            mobile: 8,
+            tablet: 12,
+            desktop: 16,
           ),
         ),
         decoration: BoxDecoration(
           color: AppColors.textWhite,
-          borderRadius: BorderRadius.circular(
-            ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 16,
-              tablet: 20,
-              desktop: 24,
-            ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.borderColor,
+            width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowColor.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,50 +229,17 @@ class _SiteCardState extends State<SiteCard> {
             // Site Image
             Container(
               width: double.infinity,
-              height: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 120,
-                tablet: 140,
-                desktop: 160,
-              ),
+              height: 120,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(
-                    ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
-                      desktop: 24,
-                    ),
-                  ),
-                  topRight: Radius.circular(
-                    ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
-                      desktop: 24,
-                    ),
-                  ),
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
                 ),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(
-                    ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
-                      desktop: 24,
-                    ),
-                  ),
-                  topRight: Radius.circular(
-                    ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 16,
-                      tablet: 20,
-                      desktop: 24,
-                    ),
-                  ),
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
                 ),
                 child: widget.site.hasImages
                     ? Image.network(
@@ -290,7 +255,7 @@ class _SiteCardState extends State<SiteCard> {
 
             // Site Content
             Padding(
-              padding: ResponsiveUtils.responsivePadding(context),
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -303,15 +268,10 @@ class _SiteCardState extends State<SiteCard> {
                           children: [
                             Text(
                               widget.site.name,
-                              style: AppTypography.titleLarge.copyWith(
-                                fontSize: ResponsiveUtils.responsiveFontSize(
-                                  context,
-                                  mobile: 16,
-                                  tablet: 18,
-                                  desktop: 20,
-                                ),
+                              style: AppTypography.titleMedium.copyWith(
+                                fontSize: 16,
                                 color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -322,90 +282,35 @@ class _SiteCardState extends State<SiteCard> {
                       ),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                          vertical: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 4,
-                            tablet: 6,
-                            desktop: 8,
-                          ),
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: _getStatusColor().withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(
-                            ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 12,
-                              tablet: 16,
-                              desktop: 20,
-                            ),
-                          ),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           widget.site.status.toUpperCase(),
                           style: AppTypography.bodySmall.copyWith(
-                            fontSize: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 10,
-                              tablet: 12,
-                              desktop: 14,
-                            ),
+                            fontSize: 10,
                             color: _getStatusColor(),
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       SizedBox(width: 10,),
                       if (widget.site.isPinned == 1)
-                        Container(
-                          padding: EdgeInsets.all(
-                            ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 4,
-                              tablet: 6,
-                              desktop: 8,
-                            ),
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(
-                              ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 12,
-                                desktop: 16,
-                              ),
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.push_pin,
-                            color: AppColors.primaryColor,
-                            size: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 16,
-                              tablet: 18,
-                              desktop: 20,
-                            ),
-                          ),
+                        Icon(
+                          Icons.push_pin,
+                          color: AppColors.primaryColor,
+                          size: 16,
                         ),
 
 
                     ],
                   ),
 
-                  SizedBox(
-                    height: ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 12,
-                      tablet: 16,
-                      desktop: 20,
-                    ),
-                  ),
+                  SizedBox(height: 12),
 
                                      // Progress and Dates Section
                    Column(
@@ -417,12 +322,7 @@ class _SiteCardState extends State<SiteCard> {
                            Text(
                              'Progress',
                              style: AppTypography.bodyMedium.copyWith(
-                               fontSize: ResponsiveUtils.responsiveFontSize(
-                                 context,
-                                 mobile: 12,
-                                 tablet: 14,
-                                 desktop: 16,
-                               ),
+                               fontSize: 12,
                                color: AppColors.textSecondary,
                                fontWeight: FontWeight.w500,
                              ),
@@ -430,48 +330,24 @@ class _SiteCardState extends State<SiteCard> {
                            const Spacer(),
                            Text(
                              '${widget.site.progress}%',
-                             style: AppTypography.bodyLarge.copyWith(
-                               fontSize: ResponsiveUtils.responsiveFontSize(
-                                 context,
-                                 mobile: 14,
-                                 tablet: 16,
-                                 desktop: 18,
-                               ),
+                             style: AppTypography.bodyMedium.copyWith(
+                               fontSize: 14,
                                color: AppColors.textPrimary,
-                               fontWeight: FontWeight.bold,
+                               fontWeight: FontWeight.w600,
                              ),
                            ),
                          ],
                        ),
-                       SizedBox(
-                         height: ResponsiveUtils.responsiveSpacing(
-                           context,
-                           mobile: 8,
-                           tablet: 12,
-                           desktop: 16,
-                         ),
-                       ),
+                       SizedBox(height: 8),
                        LinearProgressIndicator(
                          value: widget.site.progress / 100,
                          backgroundColor: AppColors.surfaceColor,
                          valueColor: AlwaysStoppedAnimation<Color>(
                            _getStatusColor(),
                          ),
-                         minHeight: ResponsiveUtils.responsiveFontSize(
-                           context,
-                           mobile: 6,
-                           tablet: 8,
-                           desktop: 10,
-                         ),
+                         minHeight: 4,
                        ),
-                       SizedBox(
-                         height: ResponsiveUtils.responsiveSpacing(
-                           context,
-                           mobile: 12,
-                           tablet: 16,
-                           desktop: 20,
-                         ),
-                       ),
+                       SizedBox(height: 12),
                        // Dates Row
                        Row(
                          children: [
@@ -482,32 +358,15 @@ class _SiteCardState extends State<SiteCard> {
                                  Text(
                                    'Start Date',
                                    style: AppTypography.bodySmall.copyWith(
-                                     fontSize: ResponsiveUtils.responsiveFontSize(
-                                       context,
-                                       mobile: 10,
-                                       tablet: 12,
-                                       desktop: 14,
-                                     ),
+                                     fontSize: 10,
                                      color: AppColors.textSecondary,
                                    ),
                                  ),
-                                 SizedBox(
-                                   height: ResponsiveUtils.responsiveSpacing(
-                                     context,
-                                     mobile: 2,
-                                     tablet: 4,
-                                     desktop: 6,
-                                   ),
-                                 ),
+                                 SizedBox(height: 2),
                                  Text(
                                    widget.site.startDate ?? 'Not set',
                                    style: AppTypography.bodyMedium.copyWith(
-                                     fontSize: ResponsiveUtils.responsiveFontSize(
-                                       context,
-                                       mobile: 12,
-                                       tablet: 14,
-                                       desktop: 16,
-                                     ),
+                                     fontSize: 12,
                                      color: AppColors.textPrimary,
                                      fontWeight: FontWeight.w500,
                                    ),
@@ -522,32 +381,15 @@ class _SiteCardState extends State<SiteCard> {
                                  Text(
                                    'End Date',
                                    style: AppTypography.bodySmall.copyWith(
-                                     fontSize: ResponsiveUtils.responsiveFontSize(
-                                       context,
-                                       mobile: 10,
-                                       tablet: 12,
-                                       desktop: 14,
-                                     ),
+                                     fontSize: 10,
                                      color: AppColors.textSecondary,
                                    ),
                                  ),
-                                 SizedBox(
-                                   height: ResponsiveUtils.responsiveSpacing(
-                                     context,
-                                     mobile: 2,
-                                     tablet: 4,
-                                     desktop: 6,
-                                   ),
-                                 ),
+                                 SizedBox(height: 2),
                                  Text(
                                    widget.site.endDate ?? 'Not set',
                                    style: AppTypography.bodyMedium.copyWith(
-                                     fontSize: ResponsiveUtils.responsiveFontSize(
-                                       context,
-                                       mobile: 12,
-                                       tablet: 14,
-                                       desktop: 16,
-                                     ),
+                                     fontSize: 12,
                                      color: AppColors.textPrimary,
                                      fontWeight: FontWeight.w500,
                                    ),
@@ -566,10 +408,7 @@ class _SiteCardState extends State<SiteCard> {
                                  desktop: 24,
                                ),
                              ),
-
-
                              onSelected: (value) {
-
                                _handleMenuAction(context, value);
                              },
                              itemBuilder: (BuildContext context) => [
@@ -613,8 +452,8 @@ class _SiteCardState extends State<SiteCard> {
                                        ),
                                      SizedBox(width: 12),
                                      Text(
-                                       _isPinning
-                                         ? 'Processing...'
+                                       _isPinning 
+                                         ? 'Processing...' 
                                          : (widget.site.isPinned == 1 ? 'Unpin Site' : 'Pin Site'),
                                        style: AppTypography.bodyMedium.copyWith(
                                          color: AppColors.textPrimary,
