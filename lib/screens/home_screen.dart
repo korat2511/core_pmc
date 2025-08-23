@@ -17,6 +17,7 @@ import '../widgets/dismiss_keyboard.dart';
 import '../core/utils/validation_utils.dart';
 import '../core/utils/navigation_utils.dart';
 import '../widgets/custom_button.dart';
+import '../screens/attendance_check_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -73,6 +74,19 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Home',
+        actions: [
+          IconButton(
+            icon: Icon(Icons.fingerprint, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => AttendanceCheckScreen(),
+                ),
+              );
+            },
+            tooltip: 'Attendance',
+          ),
+        ],
       ),
       drawer: const CustomDrawer(),
       floatingActionButton: ValidationUtils.canCreateSite(context)
@@ -799,6 +813,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+
 
   Widget _buildFilterChip(BuildContext context, String label, String status) {
     final isSelected = _selectedStatus == status;

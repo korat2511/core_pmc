@@ -3,17 +3,23 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/navigation_utils.dart';
 import '../core/utils/responsive_utils.dart';
+import '../core/utils/snackbar_utils.dart';
+import '../core/utils/validation_utils.dart';
 import '../models/task_model.dart';
 import '../screens/task_details_screen.dart';
+import '../screens/update_task_screen.dart';
+import '../services/auth_service.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskModel task;
   final VoidCallback? onTap;
+  final Function(TaskModel)? onTaskUpdated;
 
   const TaskCard({
     super.key,
     required this.task,
     this.onTap,
+    this.onTaskUpdated,
   });
 
     @override
@@ -21,7 +27,10 @@ class TaskCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // Navigate to task details when anywhere on card is tapped
-        NavigationUtils.push(context, TaskDetailsScreen(task: task));
+        NavigationUtils.push(context, TaskDetailsScreen(
+          task: task,
+          onTaskUpdated: onTaskUpdated,
+        ));
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
@@ -102,8 +111,7 @@ class TaskCard extends StatelessWidget {
                     children: [
                       ElevatedButton(
                         onPressed: () {
-                          // TODO: Handle update action
-                          print('Update task: ${task.name}');
+                          _handleUpdateAction(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryColor,
@@ -118,6 +126,7 @@ class TaskCard extends StatelessWidget {
                           'Update',
                           style: AppTypography.bodySmall.copyWith(
                             fontSize: 10,
+                            color: AppColors.surfaceColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -126,7 +135,10 @@ class TaskCard extends StatelessWidget {
                       GestureDetector(
                         onTap: () {
                           // Navigate to task details
-                          NavigationUtils.push(context, TaskDetailsScreen(task: task));
+                          NavigationUtils.push(context, TaskDetailsScreen(
+                            task: task,
+                            onTaskUpdated: onTaskUpdated,
+                          ));
                         },
                         child: Text(
                           'View Details >',
@@ -240,22 +252,42 @@ class TaskCard extends StatelessWidget {
   String _getAssignDisplayText() {
     // Type 1: Site Survey - No crew members
     if (_isSiteSurveyTask()) {
-      return 'N/A';
+      return task.createdByName;
     }
     
+    // Use assign list which contains UserModel objects with actual names
     if (task.assign.isEmpty) {
       return 'No assign';
     }
     
+    // Get current user ID
+    final currentUserId = AuthService.currentUser?.id;
+    
+    // Check if current user is in the assigned users list
+    final isCurrentUserAssigned = currentUserId != null && 
+        task.assign.any((user) => user.id == currentUserId);
+    
     if (task.assign.length == 1) {
-      return task.assign.first.firstName;
+      if (isCurrentUserAssigned) {
+        return 'You';
+      } else {
+        return task.assign.first.displayName;
+      }
     }
     
     if (task.assign.length == 2) {
-      return '${task.assign.first.firstName} + 1';
+      if (isCurrentUserAssigned) {
+        return 'You + 1';
+      } else {
+        return '${task.assign.first.displayName} + 1';
+      }
     }
     
-    return '${task.assign.first.firstName} + ${task.assign.length - 1}';
+    if (isCurrentUserAssigned) {
+      return 'You + ${task.assign.length - 1}';
+    } else {
+      return '${task.assign.first.displayName} + ${task.assign.length - 1}';
+    }
   }
 
   // Task type helper methods based on category names
@@ -358,5 +390,54 @@ class TaskCard extends StatelessWidget {
     }
   }
 
+  Future<void> _handleUpdateAction(BuildContext context) async {
+    // Check if task is Site Survey
+    if (_isSiteSurveyTask()) {
+      // Redirect to Survey Page (Task Details Screen)
+      NavigationUtils.push(context, TaskDetailsScreen(
+        task: task,
+        onTaskUpdated: onTaskUpdated,
+      ));
+      return;
+    }
+    
+    // Check if task is already completed (progress = 100%)
+    if (task.progressPercentage >= 100) {
+      // Show "Task already completed" message
+      SnackBarUtils.showSuccess(context, message: 'Task already completed');
+      return;
+    }
+    
+    // Check update permissions for simple tasks (cat_sub_id 2,3,4,6)
+    if (!ValidationUtils.canUpdateTask(task)) {
+      SnackBarUtils.showError(context, message: "You don't have permission to update this task");
+      return;
+    }
+    
+    // For supported task types (cat_sub_id = 2,3,4,5,6), redirect to Update Task Screen
+    if (_isSupportedTask()) {
+      // Navigate directly to Update Task Screen
+      final result = await NavigationUtils.push(context, UpdateTaskScreen(
+        task: task,
+        onTaskUpdated: onTaskUpdated,
+      ));
+      
+      // Show success message if update was successful
+      if (result != null && result is String) {
+        SnackBarUtils.showSuccess(context, message: result);
+      }
+      return;
+    }
+    
+    // For unsupported task types, show error message
+    SnackBarUtils.showError(context, message: 'Update functionality not available for this task type');
+  }
+
+  bool _isSupportedTask() {
+    // Supported task types: cat_sub_id = 2,3,4,5,6
+    // This includes: Normal tasks, Decision, Drawing, Quotation, Selection
+    // Excludes: Site Survey (handled separately)
+    return task.categoryName.toLowerCase() != 'site survey';
+  }
 
 }

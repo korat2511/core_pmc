@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'user_model.dart';
+import 'unified_image_model.dart';
+import 'unified_attachment_model.dart';
+import 'tag_model.dart';
 
 class TaskDetailModel {
   final int id;
@@ -27,7 +31,7 @@ class TaskDetailModel {
   final String createdAt;
   final String updatedAt;
   final String? deletedAt;
-  final String? tagsData;
+  final List<TagModel> tagsData;
   final String categoryName;
   final int catSubId;
   final List<String> assignedUserName;
@@ -70,7 +74,7 @@ class TaskDetailModel {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
-    this.tagsData,
+    this.tagsData = const [],
     required this.categoryName,
     required this.catSubId,
     required this.assignedUserName,
@@ -86,6 +90,66 @@ class TaskDetailModel {
     required this.comments,
     required this.qualityChecks,
   });
+
+  static List<TagModel> _parseTagsFromJson(dynamic tagsData) {
+    if (tagsData == null) {
+      return [];
+    }
+    
+    try {
+      if (tagsData is List) {
+        return tagsData.map((tag) {
+          if (tag is Map<String, dynamic>) {
+            return TagModel.fromJson(tag);
+          } else if (tag is String) {
+            // If tag is just a string, create a TagModel with the string as name
+            return TagModel(
+              id: 0,
+              name: tag,
+              createdAt: DateTime.now().toIso8601String(),
+              updatedAt: DateTime.now().toIso8601String(),
+            );
+          } else {
+            return TagModel(
+              id: 0,
+              name: tag.toString(),
+              createdAt: DateTime.now().toIso8601String(),
+              updatedAt: DateTime.now().toIso8601String(),
+            );
+          }
+        }).toList();
+      } else if (tagsData is String) {
+        // If tagsData is a string, try to parse it as JSON
+        try {
+          final List<dynamic> tagsList = jsonDecode(tagsData);
+          return tagsList.map((tag) {
+            if (tag is Map<String, dynamic>) {
+              return TagModel.fromJson(tag);
+            } else {
+              return TagModel(
+                id: 0,
+                name: tag.toString(),
+                createdAt: DateTime.now().toIso8601String(),
+                updatedAt: DateTime.now().toIso8601String(),
+              );
+            }
+          }).toList();
+        } catch (e) {
+          // If JSON parsing fails, treat it as a comma-separated string
+          return tagsData.split(',').map((tag) => TagModel(
+            id: 0,
+            name: tag.trim(),
+            createdAt: DateTime.now().toIso8601String(),
+            updatedAt: DateTime.now().toIso8601String(),
+          )).where((tag) => tag.name.isNotEmpty).toList();
+        }
+      }
+    } catch (e) {
+      print('Error parsing tags: $e');
+    }
+    
+    return [];
+  }
 
   factory TaskDetailModel.fromJson(Map<String, dynamic> json) {
     return TaskDetailModel(
@@ -115,7 +179,9 @@ class TaskDetailModel {
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
       deletedAt: json['deleted_at'],
-      tagsData: json['tags_data'],
+      tagsData: (json['tags_data'] as List<dynamic>?)
+          ?.map((tag) => TagModel.fromJson(tag))
+          .toList() ?? [],
       categoryName: json['category_name'] ?? '',
       catSubId: json['cat_sub_id'] ?? 0,
       assignedUserName: (json['assigned_user_name'] as List<dynamic>?)
@@ -134,7 +200,12 @@ class TaskDetailModel {
           ?.map((detail) => ProgressDetailModel.fromJson(detail))
           .toList() ?? [],
       attachments: (json['attachments'] as List<dynamic>?)
-          ?.map((attachment) => attachment.toString())
+          ?.map((attachment) {
+            if (attachment is Map<String, dynamic>) {
+              return (attachment['attachment_path'] ?? attachment['attechment_path'] ?? attachment.toString()) as String;
+            }
+            return attachment.toString();
+          })
           .toList() ?? [],
       remarks: (json['remarks'] as List<dynamic>?)
           ?.map((remark) => TaskRemarkModel.fromJson(remark))
@@ -179,7 +250,7 @@ class TaskDetailModel {
       'created_at': createdAt,
       'updated_at': updatedAt,
       'deleted_at': deletedAt,
-      'tags_data': tagsData,
+      'tags_data': tagsData.map((tag) => tag.toJson()).toList(),
       'category_name': categoryName,
       'cat_sub_id': catSubId,
       'assigned_user_name': assignedUserName,
@@ -208,6 +279,117 @@ class TaskDetailModel {
   bool get isOverdue => status.toLowerCase() == 'overdue';
   
   double get progressPercentage => progress?.toDouble() ?? 0.0;
+
+  TaskDetailModel copyWith({
+    int? id,
+    String? name,
+    String? notes,
+    String? comment,
+    int? siteId,
+    int? createdBy,
+    String? assignTo,
+    String? startDate,
+    String? endDate,
+    int? progress,
+    int? totalWorkDone,
+    int? totalWork,
+    int? categoryId,
+    String? voiceNote,
+    String? totalPrice,
+    String? tag,
+    String? status,
+    String? unit,
+    String? decisionByAgency,
+    String? decisionPendingOther,
+    String? completionDate,
+    String? decisionPendingFrom,
+    int? qcCategoryId,
+    String? createdAt,
+    String? updatedAt,
+    String? deletedAt,
+    List<TagModel>? tagsData,
+    String? categoryName,
+    int? catSubId,
+    List<String>? assignedUserName,
+    String? qcPdf,
+    String? voiceNotePath,
+    UserModel? createdUser,
+    List<TaskImageModel>? images,
+    List<TaskInstructionModel>? instructions,
+    List<ProgressDetailModel>? progressDetails,
+    List<String>? attachments,
+    List<TaskRemarkModel>? remarks,
+    List<String>? voiceNotes,
+    List<TaskCommentModel>? comments,
+    List<QualityCheckModel>? qualityChecks,
+  }) {
+    return TaskDetailModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      notes: notes ?? this.notes,
+      comment: comment ?? this.comment,
+      siteId: siteId ?? this.siteId,
+      createdBy: createdBy ?? this.createdBy,
+      assignTo: assignTo ?? this.assignTo,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      progress: progress ?? this.progress,
+      totalWorkDone: totalWorkDone ?? this.totalWorkDone,
+      totalWork: totalWork ?? this.totalWork,
+      categoryId: categoryId ?? this.categoryId,
+      voiceNote: voiceNote ?? this.voiceNote,
+      totalPrice: totalPrice ?? this.totalPrice,
+      tag: tag ?? this.tag,
+      status: status ?? this.status,
+      unit: unit ?? this.unit,
+      decisionByAgency: decisionByAgency ?? this.decisionByAgency,
+      decisionPendingOther: decisionPendingOther ?? this.decisionPendingOther,
+      completionDate: completionDate ?? this.completionDate,
+      decisionPendingFrom: decisionPendingFrom ?? this.decisionPendingFrom,
+      qcCategoryId: qcCategoryId ?? this.qcCategoryId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      tagsData: tagsData ?? this.tagsData,
+      categoryName: categoryName ?? this.categoryName,
+      catSubId: catSubId ?? this.catSubId,
+      assignedUserName: assignedUserName ?? this.assignedUserName,
+      qcPdf: qcPdf ?? this.qcPdf,
+      voiceNotePath: voiceNotePath ?? this.voiceNotePath,
+      createdUser: createdUser ?? this.createdUser,
+      images: images ?? this.images,
+      instructions: instructions ?? this.instructions,
+      progressDetails: progressDetails ?? this.progressDetails,
+      attachments: attachments ?? this.attachments,
+      remarks: remarks ?? this.remarks,
+      voiceNotes: voiceNotes ?? this.voiceNotes,
+      comments: comments ?? this.comments,
+      qualityChecks: qualityChecks ?? this.qualityChecks,
+    );
+  }
+
+  // Helper methods for tags
+  List<String> get parsedTags {
+    if (tagsData.isEmpty) {
+      return [];
+    }
+    
+    // tagsData is a List<TagModel>, so just get the names
+    return tagsData.map((tag) => tag.name).toList();
+  }
+
+  String get displayTags {
+    final tagNames = parsedTags;
+    if (tagNames.isEmpty) {
+      return 'No tags';
+    }
+    return tagNames.join(', ');
+  }
+
+  // Get tag IDs for API calls
+  List<int> get tagIds {
+    return tagsData.map((tag) => tag.id).toList();
+  }
 }
 
 class ProgressDetailModel {
@@ -708,6 +890,59 @@ class QualityCheckModel {
   bool get isPreCheck => checkType.toLowerCase() == 'pre';
   bool get isDuringCheck => checkType.toLowerCase() == 'during';
   bool get isAfterCheck => checkType.toLowerCase() == 'after';
+}
+
+// Extension to add unified images and attachments functionality to TaskDetailModel
+extension TaskDetailModelExtension on TaskDetailModel {
+  List<UnifiedImageModel> get allImages {
+    final List<UnifiedImageModel> unifiedImages = [];
+    
+    // Add task images
+    for (final image in images) {
+      unifiedImages.add(UnifiedImageModel.fromTaskImage({
+        'id': image.id,
+        'image_path': image.imagePath,
+        'created_at': image.createdAt,
+        'updated_at': image.updatedAt,
+        'deleted_at': image.deletedAt,
+        'task_id': image.taskId,
+      }));
+    }
+    
+    // Add progress images
+    for (final progress in progressDetails) {
+      for (final progressImage in progress.progressImages) {
+        unifiedImages.add(UnifiedImageModel.fromProgressImage({
+          'id': progressImage.id,
+          'image_path': progressImage.imagePath,
+          'created_at': progressImage.createdAt,
+          'updated_at': progressImage.updatedAt,
+          'deleted_at': progressImage.deletedAt,
+          'task_progress_id': progressImage.taskProgressId,
+        }));
+      }
+    }
+    
+    return unifiedImages;
+  }
+
+  List<UnifiedAttachmentModel> get allAttachments {
+    final List<UnifiedAttachmentModel> unifiedAttachments = [];
+    
+    // Add task attachments
+    for (final attachment in attachments) {
+      final unifiedAttachment = UnifiedAttachmentModel.fromTaskAttachment(attachment);
+      unifiedAttachments.add(unifiedAttachment);
+      print('Added attachment to allAttachments: ${unifiedAttachment.debugInfo}');
+    }
+    
+    // Add progress attachments (if they exist in the future)
+    // Note: Currently progress details don't have attachments field
+    // This is ready for when the API includes progress attachments
+    
+    print('Total attachments in allAttachments: ${unifiedAttachments.length}');
+    return unifiedAttachments;
+  }
 }
 
 class QualityCheckItemModel {

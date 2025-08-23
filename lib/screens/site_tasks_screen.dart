@@ -5,18 +5,17 @@ import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../models/site_model.dart';
 import '../models/tag_model.dart';
-import '../models/tag_response.dart';
 import '../models/site_user_model.dart';
 import '../models/category_model.dart';
 import '../models/qc_category_model.dart';
 import '../models/task_model.dart';
-import '../models/task_response.dart';
 import '../widgets/task_card.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
-import '../services/session_manager.dart';
-import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_search_bar.dart';
+import '../screens/create_task_screen.dart';
+import '../widgets/custom_button.dart';
+import '../core/utils/navigation_utils.dart';
 
 class SiteTasksScreen extends StatefulWidget {
   final SiteModel site;
@@ -102,7 +101,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     });
 
     try {
-      final String? apiToken = await LocalStorageService.getToken();
+      final String? apiToken = LocalStorageService.getToken();
       if (apiToken == null) {
         SnackBarUtils.showError(context, message: 'Authentication token not found');
         return;
@@ -309,173 +308,202 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () {
-          // Dismiss keyboard when tapping outside
-          FocusScope.of(context).unfocus();
-        },
-        child: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: ResponsiveUtils.responsivePadding(context),
-            child: CustomSearchBar(
-              hintText: 'Search tasks...',
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+    return GestureDetector(
+      onTap: () {
+        // Dismiss keyboard when tapping outside
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            // Search Bar
+            Padding(
+              padding: ResponsiveUtils.responsivePadding(context),
+              child: CustomSearchBar(
+                hintText: 'Search tasks...',
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
             ),
-          ),
 
-          // Sort and Filter Section
-          Padding(
-            padding:EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                // Filter Button
-                GestureDetector(
-                  onTap: () {
-                    FocusScope.of(context).unfocus(); // Dismiss keyboard
-                    _showFilterOptions();
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: ResponsiveUtils.responsiveSpacing(
-                        context,
-                        mobile: 12,
-                        tablet: 16,
-                        desktop: 20,
-                      ),
-                      vertical: ResponsiveUtils.responsiveSpacing(
-                        context,
-                        mobile: 8,
-                        tablet: 10,
-                        desktop: 12,
-                      ),
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceColor,
-                      borderRadius: BorderRadius.circular(
-                        ResponsiveUtils.responsiveSpacing(
+            // Sort and Filter Section
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: [
+                  // Filter Button
+                  GestureDetector(
+                    onTap: () {
+                      FocusScope.of(context).unfocus(); // Dismiss keyboard
+                      _showFilterOptions();
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ResponsiveUtils.responsiveSpacing(
+                          context,
+                          mobile: 12,
+                          tablet: 16,
+                          desktop: 20,
+                        ),
+                        vertical: ResponsiveUtils.responsiveSpacing(
                           context,
                           mobile: 8,
-                          tablet: 12,
-                          desktop: 16,
+                          tablet: 10,
+                          desktop: 12,
                         ),
                       ),
-                      border: Border.all(
-                        color: AppColors.borderColor,
-                        width: 1,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceColor,
+                        borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 8,
+                            tablet: 12,
+                            desktop: 16,
+                          ),
+                        ),
+                        border: Border.all(
+                          color: AppColors.borderColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.filter_list,
+                            color: AppColors.textSecondary,
+                            size: ResponsiveUtils.responsiveFontSize(
+                              context,
+                              mobile: 16,
+                              tablet: 18,
+                              desktop: 20,
+                            ),
+                          ),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 4,
+                              tablet: 6,
+                              desktop: 8,
+                            ),
+                          ),
+                          Text(
+                            'Filters',
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontSize: ResponsiveUtils.responsiveFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 14,
+                                desktop: 16,
+                              ),
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.filter_list,
-                          color: AppColors.textSecondary,
-                          size: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20,
-                          ),
-                        ),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 4,
-                            tablet: 6,
-                            desktop: 8,
-                          ),
-                        ),
-                        Text(
-                          'Filters',
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontSize: ResponsiveUtils.responsiveFontSize(
+                  ),
+
+                  SizedBox(
+                    width: ResponsiveUtils.responsiveSpacing(
+                      context,
+                      mobile: 12,
+                      tablet: 16,
+                      desktop: 20,
+                    ),
+                  ),
+
+                  // Filter Chips
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFilterChip('All', ''),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
                               context,
-                              mobile: 12,
-                              tablet: 14,
+                              mobile: 8,
+                              tablet: 12,
                               desktop: 16,
                             ),
-                            color: AppColors.textSecondary,
                           ),
-                        ),
-                      ],
+                          _buildFilterChip('Pending', 'pending'),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
+                            ),
+                          ),
+                          _buildFilterChip('In Progress', 'in_progress'),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
+                            ),
+                          ),
+                          _buildFilterChip('Completed', 'completed'),
+                          SizedBox(
+                            width: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 12,
+                              desktop: 16,
+                            ),
+                          ),
+                          _buildFilterChip('Overdue', 'overdue'),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-
-                SizedBox(
-                  width: ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 12,
-                    tablet: 16,
-                    desktop: 20,
-                  ),
-                ),
-
-                // Filter Chips
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All', ''),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        _buildFilterChip('Pending', 'pending'),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        _buildFilterChip('In Progress', 'in_progress'),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        _buildFilterChip('Completed', 'completed'),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        _buildFilterChip('Overdue', 'overdue'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Task List
-          Expanded(
-            child: _buildTaskList(),
+            // Task List
+            Expanded(
+              child: _buildTaskList(),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.textWhite,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),]
+            ),
+
+          child: CustomButton(
+                          onPressed: () async {
+                final result = await NavigationUtils.push(context, CreateTaskScreen(site: widget.site));
+                // If task was created successfully, refresh the task list
+                if (result == true) {
+                  setState(() {
+                    _currentPage = 1;
+                    _hasMorePages = true;
+                  });
+                  await _loadTasks();
+                }
+              },
+            text: 'Create Task',
+            prefixIcon: Icon(Icons.add, color: AppColors.textWhite),
           ),
-        ],
+        ),
       ),
-    ));
+    );
   }
 
   int _getFilterCount() {
@@ -1684,11 +1712,26 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
 
                   final task = filteredTasks[index];
                   return TaskCard(
+                    key: ValueKey('task_${task.id}_${task.progress}'),
                     task: task,
                     onTap: () {
                       FocusScope.of(context).unfocus(); // Dismiss keyboard
                       // TODO: Navigate to task detail screen
                       print('Task tapped: ${task.name}');
+                    },
+                    onTaskUpdated: (updatedTask) {
+                    
+                      
+                      // Update the task in the local list
+                      setState(() {
+                        final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
+                        if (index != -1) {
+                          _tasks[index] = updatedTask;
+                       
+                        } else {
+                         
+                        }
+                      });
                     },
                   );
                 },

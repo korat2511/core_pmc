@@ -4,6 +4,7 @@ import '../models/site_album_response.dart';
 import '../models/api_response.dart';
 import 'api_service.dart';
 import 'session_manager.dart';
+import 'auth_service.dart';
 
 class SiteAlbumService {
   List<SiteAlbumModel> _allAlbums = [];
@@ -333,6 +334,45 @@ class SiteAlbumService {
       return ApiResponse<Map<String, dynamic>>(
         status: 0,
         message: 'Error saving attachments: ${e.toString()}',
+        data: {},
+      );
+    }
+  }
+
+  // Delete album image
+  Future<ApiResponse<Map<String, dynamic>>> deleteAlbumImage({
+    required int siteId,
+    required int imageId,
+  }) async {
+    try {
+      final token = AuthService.currentToken;
+      if (token == null) {
+        return ApiResponse<Map<String, dynamic>>(
+          status: 0,
+          message: 'Session expired. Please login again.',
+          data: {},
+        );
+      }
+
+      final response = await ApiService.deleteAlbumImage(
+        apiToken: token,
+        imageId: imageId,
+      );
+      
+      if (response?.status == 1) {
+        // Refresh the album list to get updated data
+        await getSiteAlbumList(siteId);
+      }
+      
+      return ApiResponse<Map<String, dynamic>>(
+        status: response?.status ?? 0,
+        message: response?.message ?? 'Failed to delete image',
+        data: {},
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        status: 0,
+        message: 'Error deleting image: ${e.toString()}',
         data: {},
       );
     }

@@ -56,14 +56,18 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
   }
 
   void _onTextChanged() {
-    setState(() {
-      _hasText = _controller.text.isNotEmpty;
-    });
+    if (mounted) {
+      setState(() {
+        _hasText = _controller.text.isNotEmpty;
+      });
+    }
   }
 
   void _clearText() {
     _controller.clear();
-    widget.onChanged('');
+    if (mounted) {
+      widget.onChanged('');
+    }
   }
 
   @override

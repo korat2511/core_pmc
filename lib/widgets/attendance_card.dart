@@ -5,15 +5,25 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../services/attendance_check_service.dart';
+import '../services/api_service.dart';
+import '../models/attendance_check_model.dart';
 
 class AttendanceCard extends StatefulWidget {
-  const AttendanceCard({super.key});
+  final VoidCallback? onPunchInPressed;
+  
+  const AttendanceCard({
+    super.key,
+    this.onPunchInPressed,
+  });
 
   @override
   State<AttendanceCard> createState() => _AttendanceCardState();
 }
 
 class _AttendanceCardState extends State<AttendanceCard> {
+  final AttendanceCheckService _attendanceService = AttendanceCheckService();
+  
   bool _isPunchedIn = false;
   DateTime? _punchInTime;
   DateTime? _punchOutTime;
@@ -31,88 +41,188 @@ class _AttendanceCardState extends State<AttendanceCard> {
     _loadAttendanceStatus();
   }
 
-  void _loadAttendanceStatus() {
-    // TODO: Load attendance status from API/local storage
-    // For now, using mock data
-    setState(() {
-      _isPunchedIn = false;
-      _punchInTime = null;
-      _punchOutTime = null;
-    });
+  Future<void> _loadAttendanceStatus() async {
+    if (!mounted) return;
     
-    // Load current address
-    _getCurrentAddress();
-  }
-
-  Future<void> _handlePunchIn() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // TODO: Call API to punch in
-      await Future.delayed(Duration(milliseconds: 1000)); // Simulate API call
+      final success = await _attendanceService.checkAttendance();
       
-      setState(() {
-        _isPunchedIn = true;
-        _punchInTime = DateTime.now();
+      if (success && _attendanceService.attendanceData != null) {
+        final data = _attendanceService.attendanceData!;
+        
+        // Debug logging
+        print('Attendance Check Response:');
+        print('Flag: ${data.flag}');
+        print('Current Data: ${data.data?.toJson()}');
+        print('Last Attendance: ${data.lastAttendance?.toJson()}');
+        
+        // Determine if user is punched in based on flag
+        if (data.flag == 'check_out') {
+          // User is checked in, needs to check out
+          _isPunchedIn = true;
+          if (data.data != null) {
+            _punchInTime = _parseTime(data.data!.inTime);
+            _punchOutTime = null; // No checkout time yet
+          }
+        } else {
+          // User needs to check in (flag == 'check_in')
+          _isPunchedIn = false;
+          _punchInTime = null;
+          
+          // Show last attendance data
+          if (data.lastAttendance != null) {
+            _punchInTime = _parseTime(data.lastAttendance!.inTime);
+            _punchOutTime = _parseTime(data.lastAttendance!.outTime ?? '');
+          }
+        }
+      } else {
+        // Default state if API fails
+        _isPunchedIn = false;
+        _punchInTime = null;
         _punchOutTime = null;
-        _isLoading = false;
-      });
-
-      // Show success message
-      SnackBarUtils.showSuccess(
-        context,
-        message: 'Successfully punched in at ${_formatTime(_punchInTime!)}',
-      );
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
-      // Show error message
-      SnackBarUtils.showError(
-        context,
-        message: 'Failed to punch in. Please try again.',
-      );
+      // Handle error
+      _isPunchedIn = false;
+      _punchInTime = null;
+      _punchOutTime = null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+    
+    // Load current address only if still mounted
+    if (mounted) {
+      _getCurrentAddress();
+    }
+  }
+
+  DateTime? _parseTime(String timeString) {
+    if (timeString.isEmpty || timeString == 'null') return null;
+    
+    try {
+      final now = DateTime.now();
+      final timeParts = timeString.split(':');
+      if (timeParts.length >= 2) {
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        
+        // Handle auto checkout at midnight (00:00:00)
+        if (hour == 0 && minute == 0) {
+          print('Auto checkout detected at midnight from $timeString');
+          return DateTime(now.year, now.month, now.day, 0, 0); // 12:00 AM
+        }
+        
+        print('Parsed time: $hour:$minute from $timeString');
+        return DateTime(now.year, now.month, now.day, hour, minute);
+      }
+    } catch (e) {
+      print('Error parsing time: $e for string: $timeString');
+    }
+    return null;
+  }
+
+  Future<void> _handlePunchIn() async {
+    if (widget.onPunchInPressed != null) {
+      widget.onPunchInPressed!();
     }
   }
 
   Future<void> _handlePunchOut() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // TODO: Call API to punch out
-      await Future.delayed(Duration(milliseconds: 1000)); // Simulate API call
-      
-      setState(() {
-        _isPunchedIn = false;
-        _punchOutTime = DateTime.now();
-        _isLoading = false;
-      });
+      // Get current location
+      Position currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
 
-      // Show success message
-      SnackBarUtils.showSuccess(
-        context,
-        message: 'Successfully punched out at ${_formatTime(_punchOutTime!)}',
+      // Get address from coordinates
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        currentPosition.latitude,
+        currentPosition.longitude,
       );
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       
-      // Show error message
-      SnackBarUtils.showError(
-        context,
-        message: 'Failed to punch out. Please try again.',
+      String address = placemarks.isNotEmpty 
+          ? '${placemarks.first.street}, ${placemarks.first.locality}, ${placemarks.first.administrativeArea}'
+          : 'Location not available';
+
+      // Call saveAttendance API for check-out
+      final success = await ApiService.saveAttendance(
+        type: 'check_out',
+        siteId: '', // Empty for check-out (no site validation needed)
+        address: address,
+        remark: '',
+        latitude: currentPosition.latitude.toString(),
+        longitude: currentPosition.longitude.toString(),
       );
+
+      if (success && mounted) {
+        setState(() {
+          _isPunchedIn = false;
+          _punchOutTime = DateTime.now();
+          _isLoading = false;
+        });
+
+        // Show success message
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'Successfully checked out',
+        );
+        
+        // Refresh attendance status
+        await _loadAttendanceStatus();
+      } else if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        // Show error message
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to check out. Please try again.',
+        );
+      }
+    } catch (e) {
+      print('Error during check-out: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        // Show error message
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to check out: ${e.toString()}',
+        );
+      }
     }
   }
 
   String _formatTime(DateTime time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    // Handle midnight (auto checkout)
+    if (time.hour == 0 && time.minute == 0) {
+      return '12:00 AM';
+    }
+    
+    // Format time in 12-hour format
+    final hour = time.hour == 0 ? 12 : (time.hour > 12 ? time.hour - 12 : time.hour);
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+    
+    return '$hour:$minute $period';
   }
 
   String _formatDate(DateTime date) {
@@ -123,7 +233,27 @@ class _AttendanceCardState extends State<AttendanceCard> {
     return _formatDate(DateTime.now());
   }
 
+  String _getErrorMessage(String error) {
+    if (error.contains('Location services are disabled')) {
+      return 'Location services are disabled. Please enable GPS in your device settings.';
+    } else if (error.contains('Location permission denied')) {
+      return 'Location permission denied. Please allow location access in app settings.';
+    } else if (error.contains('permanently denied')) {
+      return 'Location access permanently denied. Please enable it in device settings.';
+    } else if (error.contains('timeout') || error.contains('TimeoutException')) {
+      return 'Location request timed out. Please check your GPS signal and try again.';
+    } else if (error.contains('network') || error.contains('NetworkException')) {
+      return 'Network error while getting location. Please check your internet connection.';
+    } else if (error.contains('Could not get address from coordinates')) {
+      return 'Unable to get address from location. Please try again.';
+    } else {
+      return 'Unable to get your location. Please try again.';
+    }
+  }
+
   Future<void> _getCurrentAddress() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoadingAddress = true;
       _hasAddressError = false;
@@ -179,20 +309,24 @@ class _AttendanceCardState extends State<AttendanceCard> {
           address += address.isNotEmpty ? ', ${place.administrativeArea}' : place.administrativeArea!;
         }
 
-        setState(() {
-          _currentAddress = address.isNotEmpty ? address : 'Address not available';
-          _isLoadingAddress = false;
-        });
+        if (mounted) {
+          setState(() {
+            _currentAddress = address.isNotEmpty ? address : 'Address not available';
+            _isLoadingAddress = false;
+          });
+        }
       } else {
         throw Exception('Could not get address from coordinates');
       }
     } catch (e) {
-      setState(() {
-        _hasAddressError = true;
-        _addressError = e.toString();
-        _currentAddress = 'Unable to get location';
-        _isLoadingAddress = false;
-      });
+      if (mounted) {
+        setState(() {
+          _hasAddressError = true;
+          _addressError = e.toString();
+          _currentAddress = 'Unable to get location';
+          _isLoadingAddress = false;
+        });
+      }
     }
   }
 
@@ -300,14 +434,7 @@ class _AttendanceCardState extends State<AttendanceCard> {
              ),
 
             Padding(
-              padding:  EdgeInsets.symmetric(
-                vertical: ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 10,
-                  tablet: 12,
-                  desktop: 24,
-                )
-              ),
+              padding:  ResponsiveUtils.verticalPadding(context),
               child: Row(
                 children: [
                   Icon(
@@ -328,119 +455,116 @@ class _AttendanceCardState extends State<AttendanceCard> {
                       desktop: 16,
                     ),
                   ),
-                  if (_hasAddressError || _isLoadingAddress)
-                    IconButton(
-                      onPressed: _isLoadingAddress ? null : _getCurrentAddress,
-                      icon: _isLoadingAddress
-                          ? SizedBox(
-                        width: ResponsiveUtils.responsiveFontSize(
-                          context,
-                          mobile: 16,
-                          tablet: 18,
-                          desktop: 20,
-                        ),
-                        height: ResponsiveUtils.responsiveFontSize(
-                          context,
-                          mobile: 16,
-                          tablet: 18,
-                          desktop: 20,
-                        ),
-                        child: CircularProgressIndicator(
-                          color: AppColors.errorColor,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : Icon(
-                        Icons.refresh,
-                        color: AppColors.errorColor,
-                        size: ResponsiveUtils.responsiveFontSize(
-                          context,
-                          mobile: 18,
-                          tablet: 20,
-                          desktop: 22,
-                        ),
-                      ),
-                    ),
-                  if (_isLoadingAddress)
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20,
-                          ),
-                          height: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20,
-                          ),
-                          child: CircularProgressIndicator(
-                            color: AppColors.infoColor,
-                            strokeWidth: 2,
-                          ),
-                        ),
-                        SizedBox(
-                          width: ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        Text(
-                          'Getting your location...',
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontSize: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 12,
-                              tablet: 14,
-                              desktop: 16,
-                            ),
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Text(
-                      _currentAddress.isNotEmpty ? _currentAddress : 'Location not available',
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontSize: ResponsiveUtils.responsiveFontSize(
-                          context,
-                          mobile: 12,
-                          tablet: 14,
-                          desktop: 16,
-                        ),
-                        color: _hasAddressError ? AppColors.errorColor : AppColors.textPrimary,
-                        height: 1.4,
-                      ),
-                    ),
-                  if (_hasAddressError && _addressError.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        top: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 4,
-                          tablet: 6,
-                          desktop: 8,
-                        ),
-                      ),
-                      child: Text(
-                        'Error: ${_addressError}',
-                        style: AppTypography.bodySmall.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 10,
-                            tablet: 12,
-                            desktop: 14,
-                          ),
-                          color: AppColors.errorColor,
-                        ),
-                      ),
-                    ),
+                  Expanded(
+                    child: _isLoadingAddress
+                        ? Row(
+                            children: [
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 18,
+                                  desktop: 20,
+                                ),
+                                height: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 18,
+                                  desktop: 20,
+                                ),
+                                child: CircularProgressIndicator(
+                                  color: AppColors.infoColor,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
+                              ),
+                              Text(
+                                'Getting your location...',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 14,
+                                    tablet: 16,
+                                    desktop: 18,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          )
+                        : _hasAddressError
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getErrorMessage(_addressError),
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontSize: ResponsiveUtils.responsiveFontSize(
+                                        context,
+                                        mobile: 14,
+                                        tablet: 16,
+                                        desktop: 18,
+                                      ),
+                                      color: AppColors.errorColor,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  GestureDetector(
+                                    onTap: _getCurrentAddress,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.refresh,
+                                          color: AppColors.errorColor,
+                                          size: ResponsiveUtils.responsiveFontSize(
+                                            context,
+                                            mobile: 14,
+                                            tablet: 16,
+                                            desktop: 18,
+                                          ),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Retry',
+                                          style: AppTypography.bodySmall.copyWith(
+                                            fontSize: ResponsiveUtils.responsiveFontSize(
+                                              context,
+                                              mobile: 11,
+                                              tablet: 13,
+                                              desktop: 15,
+                                            ),
+                                            color: AppColors.errorColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                _currentAddress.isNotEmpty ? _currentAddress : 'Location not available',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 14,
+                                    tablet: 16,
+                                    desktop: 18,
+                                  ),
+                                  color: AppColors.textPrimary,
+                                  height: 1.4,
+                                ),
+                              ),
+                  ),
                 ],
               ),
             ),

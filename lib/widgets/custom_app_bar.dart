@@ -178,8 +178,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
       actions: [
-        // Notification Icon (only for home screen)
-        if (showDrawer)
+
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: onNotificationPressed ?? () {

@@ -16,6 +16,8 @@ import '../core/utils/snackbar_utils.dart';
 import '../services/session_manager.dart';
 import '../core/utils/navigation_utils.dart';
 import '../core/utils/image_picker_utils.dart';
+import '../widgets/full_screen_folder_image_viewer.dart';
+import '../widgets/full_screen_attachment_viewer.dart';
 
 // Model for uploading items
 class UploadingItem {
@@ -72,8 +74,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   final SiteAlbumService _albumService = SiteAlbumService();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _folderNameController = TextEditingController();
-  final TextEditingController _editFolderNameController = TextEditingController();
-  
+  final TextEditingController _editFolderNameController =
+      TextEditingController();
+
   List<SiteAlbumModel> _displayedFolders = [];
   List<SiteAlbumModel> _folderPath = [];
   SiteAlbumModel? _currentFolder;
@@ -83,10 +86,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   bool _isDeletingFolder = false;
   bool _isUploadingImages = false;
   bool _isUploadingAttachments = false;
-  
+
   // List to track uploading items
   List<UploadingItem> _uploadingItems = [];
-  
+
   // Timer for upload progress simulation
   Timer? _uploadProgressTimer;
 
@@ -110,34 +113,86 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   void _clearOldUploadingItems() {
     final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
     setState(() {
-      _uploadingItems.removeWhere((item) => 
-        item.uploadStartTime.isBefore(fiveMinutesAgo) && !item.isUploading
+      _uploadingItems.removeWhere(
+        (item) =>
+            item.uploadStartTime.isBefore(fiveMinutesAgo) && !item.isUploading,
       );
     });
   }
 
   Future<void> _loadSiteAlbums() async {
     final success = await _albumService.getSiteAlbumList(widget.siteId);
-    
+
     if (success) {
       setState(() {
         _displayedFolders = _albumService.mainFolders;
         _currentFolder = null;
         _folderPath.clear();
       });
-          } else {
-        if (mounted) {
-          // Check for session expiration
-          if (_albumService.errorMessage?.contains('Session expired') == true) {
-            await SessionManager.handleSessionExpired(context);
-          } else {
-            SnackBarUtils.showError(
-              context, 
-              message: _albumService.errorMessage ?? 'Failed to load albums'
-            );
-          }
+    } else {
+      if (mounted) {
+        // Check for session expiration
+        if (_albumService.errorMessage?.contains('Session expired') == true) {
+          await SessionManager.handleSessionExpired(context);
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: _albumService.errorMessage ?? 'Failed to load albums',
+          );
         }
       }
+    }
+  }
+
+  Future<void> _refreshWithContext() async {
+    // Store current context
+    final currentFolderId = _currentFolder?.id;
+    final currentFolderPath = List<int>.from(_folderPath.map((f) => f.id));
+
+    final success = await _albumService.getSiteAlbumList(widget.siteId);
+
+    if (success) {
+      setState(() {
+        if (currentFolderId != null) {
+          // Restore the folder context
+          _currentFolder = _albumService.getFolderById(currentFolderId);
+          if (_currentFolder != null) {
+            _displayedFolders = _currentFolder!.children;
+
+            // Restore the folder path
+            _folderPath.clear();
+            for (final folderId in currentFolderPath) {
+              final folder = _albumService.getFolderById(folderId);
+              if (folder != null) {
+                _folderPath.add(folder);
+              }
+            }
+          } else {
+            // If current folder not found, go back to main folders
+            _displayedFolders = _albumService.mainFolders;
+            _currentFolder = null;
+            _folderPath.clear();
+          }
+        } else {
+          // If no current folder, stay at main folders
+          _displayedFolders = _albumService.mainFolders;
+          _currentFolder = null;
+          _folderPath.clear();
+        }
+      });
+    } else {
+      if (mounted) {
+        // Check for session expiration
+        if (_albumService.errorMessage?.contains('Session expired') == true) {
+          await SessionManager.handleSessionExpired(context);
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: _albumService.errorMessage ?? 'Failed to load albums',
+          );
+        }
+      }
+    }
   }
 
   void _navigateToFolder(SiteAlbumModel folder) {
@@ -159,7 +214,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   void _navigateBack() {
     // Clear old uploading items when navigating
     _clearOldUploadingItems();
-    
+
     if (_folderPath.isEmpty) {
       // Go back to home
       Navigator.of(context).pop();
@@ -196,17 +251,24 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         } else {
           // Search in current folder's children and content
           final matchingFolders = _currentFolder!.children
-              .where((folder) => folder.albumName.toLowerCase().contains(query.toLowerCase()))
+              .where(
+                (folder) => folder.albumName.toLowerCase().contains(
+                  query.toLowerCase(),
+                ),
+              )
               .toList();
-          
+
           final matchingContent = _currentFolder!.images
-              .where((item) => item.fileName.toLowerCase().contains(query.toLowerCase()))
+              .where(
+                (item) =>
+                    item.fileName.toLowerCase().contains(query.toLowerCase()),
+              )
               .toList();
-          
+
           // For now, we'll show matching folders. In a more advanced implementation,
           // we could show both folders and content items in search results
           _displayedFolders = matchingFolders;
-          
+
           // If no folders match but content does, we could show a special view
           if (matchingFolders.isEmpty && matchingContent.isNotEmpty) {
             // TODO: Show content search results
@@ -223,11 +285,11 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   void _viewFolderContent(SiteAlbumModel folder) async {
     // Clear old uploading items when navigating
     _clearOldUploadingItems();
-    
+
     // Navigate to folder and show its contents
     setState(() {
       _currentFolder = folder;
-      
+
       // Build the folder path properly
       if (_folderPath.isEmpty) {
         // First folder - add it to path
@@ -243,19 +305,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           _folderPath.add(folder);
         }
       }
-      
+
       _displayedFolders = folder.children;
-      
-      // DEBUG: Print folder path info
-      print('Folder path length: ${_folderPath.length}');
-      for (int i = 0; i < _folderPath.length; i++) {
-        print('Path[$i]: ${_folderPath[i].albumName} (ID: ${_folderPath[i].id}, parentId: ${_folderPath[i].parentId})');
-      }
-      print('Current folder: ${folder.albumName}, parentId: ${folder.parentId}');
-      print('Current folder children: ${folder.children.length}');
-      print('Current folder images: ${folder.images.length}');
     });
-    
+
     // Refresh the folder data to ensure we have the latest content
     await _refreshCurrentFolder();
   }
@@ -267,122 +320,147 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       appBar: CustomAppBar(
         title: _getAppBarTitle(),
         showBackButton: true,
+        onBackPressed: _handleBackButton,
       ),
-      floatingActionButton: _currentFolder != null ? FloatingActionButton.extended(
-        onPressed: () => _showUploadOptions(),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Upload', style: TextStyle(color: Colors.white)),
-      ) : null,
+      floatingActionButton: _currentFolder != null
+          ? FloatingActionButton.extended(
+              onPressed: () => _showUploadOptions(),
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Upload',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          : null,
       body: DismissKeyboard(
         child: Column(
           children: [
             // Search Bar
             Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: CustomSearchBar(
-              hintText: _currentFolder == null ? 'Search folders...' : 'Search folders and files...',
-              onChanged: _onSearchChanged,
-              controller: _searchController,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: CustomSearchBar(
+                hintText: _currentFolder == null
+                    ? 'Search folders...'
+                    : 'Search folders and files...',
+                onChanged: _onSearchChanged,
+                controller: _searchController,
+              ),
             ),
-          ),
 
-          // Breadcrumb
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(
-              children: [
-                Text(
-                  'Path: ',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
+            // Breadcrumb
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  Text(
+                    'Path: ',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        // Home option
-                        GestureDetector(
-                          onTap: () {
-                            // Clear old uploading items when going home
-                            _clearOldUploadingItems();
-                            // Navigate back to home (main albums screen)
-                            setState(() {
-                              _currentFolder = null;
-                              _folderPath.clear();
-                              _displayedFolders = _albumService.mainFolders;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _folderPath.isEmpty ? AppColors.primary : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'Home',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: _folderPath.isEmpty ? Colors.white : Colors.grey.shade700,
-                                fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // Home option
+                          GestureDetector(
+                            onTap: () {
+                              // Clear old uploading items when going home
+                              _clearOldUploadingItems();
+                              // Navigate back to home (main albums screen)
+                              setState(() {
+                                _currentFolder = null;
+                                _folderPath.clear();
+                                _displayedFolders = _albumService.mainFolders;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _folderPath.isEmpty
+                                    ? AppColors.primary
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Home',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: _folderPath.isEmpty
+                                      ? Colors.white
+                                      : Colors.grey.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        
-                        // Folder path
-                        if (_folderPath.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.chevron_right,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 8),
-                          for (int i = 0; i < _folderPath.length; i++) ...[
-                            if (i > 0) ...[
-                              const Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    // Clear old uploading items when navigating
-                                    _clearOldUploadingItems();
-                                    // Navigate to this folder in the path
-                                    setState(() {
-                                      _folderPath = _folderPath.sublist(0, i + 1);
-                                      _currentFolder = _folderPath.last;
-                                      _displayedFolders = _currentFolder!.children;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: i == _folderPath.length - 1 ? AppColors.primary : Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _folderPath[i].albumName,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: i == _folderPath.length - 1 ? Colors.white : Colors.grey.shade700,
-                                        fontWeight: FontWeight.w600,
+
+                          // Folder path
+                          if (_folderPath.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            for (int i = 0; i < _folderPath.length; i++) ...[
+                              if (i > 0) ...[
+                                const Icon(
+                                  Icons.chevron_right,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      // Clear old uploading items when navigating
+                                      _clearOldUploadingItems();
+                                      // Navigate to this folder in the path
+                                      setState(() {
+                                        _folderPath = _folderPath.sublist(
+                                          0,
+                                          i + 1,
+                                        );
+                                        _currentFolder = _folderPath.last;
+                                        _displayedFolders =
+                                            _currentFolder!.children;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: i == _folderPath.length - 1
+                                            ? AppColors.primary
+                                            : Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        _folderPath[i].albumName,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: i == _folderPath.length - 1
+                                              ? Colors.white
+                                              : Colors.grey.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                
 
-                                                                  if (i == _folderPath.length - 1 && _folderPath[i].parentId != null) ...[
-
+                                  if (i == _folderPath.length - 1 &&
+                                      _folderPath[i].parentId != null) ...[
                                     const SizedBox(width: 4),
                                     // Edit button
                                     Container(
@@ -397,7 +475,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                                         ),
                                       ),
                                       child: GestureDetector(
-                                        onTap: () => _showEditFolderDialog(_folderPath[i]),
+                                        onTap: () => _showEditFolderDialog(
+                                          _folderPath[i],
+                                        ),
                                         child: const Icon(
                                           Icons.edit,
                                           size: 12,
@@ -405,7 +485,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                                         ),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(width: 4),
                                     // Delete button
                                     Container(
@@ -420,14 +500,20 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                                         ),
                                       ),
                                       child: GestureDetector(
-                                        onTap: _isDeletingFolder ? null : () => _deleteFolder(_folderPath[i]),
+                                        onTap: _isDeletingFolder
+                                            ? null
+                                            : () =>
+                                                  _deleteFolder(_folderPath[i]),
                                         child: _isDeletingFolder
                                             ? const SizedBox(
                                                 width: 12,
                                                 height: 12,
                                                 child: CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
                                                 ),
                                               )
                                             : const Icon(
@@ -438,28 +524,28 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                                       ),
                                     ),
                                   ],
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Content List
-          Expanded(
-            child: _albumService.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildContentList(),
-          ),
-        ],
+            // Content List
+            Expanded(
+              child: _albumService.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildContentList(),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   String _getAppBarTitle() {
@@ -475,18 +561,20 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       // Show both subfolders and content items
       final subfolders = _currentFolder!.children;
       final contentItems = _currentFolder!.images;
-      
+
       // Filter uploading items for current folder
-      final uploadingItems = _uploadingItems.where((item) => 
-        item.isUploading || item.errorMessage != null
-      ).toList();
-      
-      if (subfolders.isEmpty && contentItems.isEmpty && uploadingItems.isEmpty) {
+      final uploadingItems = _uploadingItems
+          .where((item) => item.isUploading || item.errorMessage != null)
+          .toList();
+
+      if (subfolders.isEmpty &&
+          contentItems.isEmpty &&
+          uploadingItems.isEmpty) {
         return _buildEmptyState();
       }
-      
+
       return RefreshIndicator(
-        onRefresh: _loadSiteAlbums,
+        onRefresh: _refreshWithContext,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 16),
           children: [
@@ -521,7 +609,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                 },
               ),
             ],
-            
+
             // Show uploading items
             if (uploadingItems.isNotEmpty) ...[
               // Uploading section header
@@ -553,7 +641,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                 },
               ),
             ],
-            
+
             // Show content items
             if (contentItems.isNotEmpty) ...[
               // Content section header
@@ -593,9 +681,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       if (_displayedFolders.isEmpty) {
         return _buildEmptyState();
       }
-      
+
       return RefreshIndicator(
-        onRefresh: _loadSiteAlbums,
+        onRefresh: _refreshWithContext,
         child: GridView.builder(
           padding: const EdgeInsets.all(16),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -614,21 +702,18 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     }
   }
 
-    Widget _buildGridFolderCard(SiteAlbumModel folder) {
+  Widget _buildGridFolderCard(SiteAlbumModel folder) {
     return GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-          _viewFolderContent(folder);
-        },
-        onLongPress: null,
-        child: Container(
-          decoration: BoxDecoration(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        _viewFolderContent(folder);
+      },
+      onLongPress: null,
+      child: Container(
+        decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -656,9 +741,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   size: 18,
                 ),
               ),
-              
+
               const SizedBox(height: 6),
-              
+
               // Folder Name
               Flexible(
                 child: Text(
@@ -673,8 +758,6 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              
-
             ],
           ),
         ),
@@ -688,7 +771,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: item.errorMessage != null ? Colors.red.shade300 : Colors.orange.shade300,
+          color: item.errorMessage != null
+              ? Colors.red.shade300
+              : Colors.orange.shade300,
           width: 1,
         ),
         boxShadow: [
@@ -712,9 +797,11 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: item.errorMessage != null 
-                        ? Colors.red.shade500 
-                        : (item.isImage ? Colors.blue.shade500 : Colors.orange.shade500),
+                    color: item.errorMessage != null
+                        ? Colors.red.shade500
+                        : (item.isImage
+                              ? Colors.blue.shade500
+                              : Colors.orange.shade500),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Stack(
@@ -741,7 +828,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                               height: 8,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -749,16 +838,18 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 4),
-                
+
                 // File Name
                 Flexible(
                   child: Text(
                     item.fileName,
                     style: AppTypography.bodySmall.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: item.errorMessage != null ? Colors.red.shade700 : Colors.black87,
+                      color: item.errorMessage != null
+                          ? Colors.red.shade700
+                          : Colors.black87,
                       fontSize: 9,
                     ),
                     textAlign: TextAlign.center,
@@ -766,7 +857,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                
+
                 // Status text
                 if (item.errorMessage != null)
                   Text(
@@ -789,7 +880,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               ],
             ),
           ),
-          
+
           // Error overlay with retry button
           if (item.errorMessage != null)
             Positioned.fill(
@@ -822,20 +913,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
-        // TODO: Open content viewer
-        SnackBarUtils.showInfo(
-          context,
-          message: 'Opening ${item.fileName}...',
-        );
+        if (item.isImage) {
+          _openFullScreenViewer(item);
+        } else {
+          _openFullScreenAttachmentViewer(item);
+        }
       },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -876,15 +964,11 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               color: _getContentColor(item),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Icon(
-              _getContentIcon(item),
-              color: Colors.white,
-              size: 14,
-            ),
+            child: Icon(_getContentIcon(item), color: Colors.white, size: 14),
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // File Name
           Flexible(
             child: Text(
@@ -941,6 +1025,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       return Colors.green.shade500;
     } else if (item.isWord) {
       return Colors.blue.shade600;
+    } else if (item.isDwg) {
+      return Colors.orange.shade600;
     } else {
       return Colors.grey.shade500;
     }
@@ -955,6 +1041,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       return Icons.table_chart;
     } else if (item.isWord) {
       return Icons.description;
+    } else if (item.isDwg) {
+      return Icons.architecture;
     } else {
       return Icons.insert_drive_file;
     }
@@ -969,6 +1057,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       return 'Excel';
     } else if (item.isWord) {
       return 'Word';
+    } else if (item.isDwg) {
+      return 'AutoCAD';
     } else {
       return 'Document';
     }
@@ -993,11 +1083,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(icon, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             message,
@@ -1013,7 +1099,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
   void _showEditFolderDialog(SiteAlbumModel folder) {
     _editFolderNameController.text = folder.albumName;
-    
+
     showDialogWithKeyboardDismissal(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -1044,9 +1130,11 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: _isEditingFolder ? null : () {
-                _editFolder(folder, dialogContext);
-              },
+              onPressed: _isEditingFolder
+                  ? null
+                  : () {
+                      _editFolder(folder, dialogContext);
+                    },
               child: _isEditingFolder
                   ? const SizedBox(
                       width: 16,
@@ -1063,7 +1151,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
   void _showAddFolderDialog() {
     _folderNameController.clear();
-    
+
     showDialogWithKeyboardDismissal(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -1114,7 +1202,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: _isAddingFolder ? null : () => _addFolder(dialogContext),
+              onPressed: _isAddingFolder
+                  ? null
+                  : () => _addFolder(dialogContext),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -1143,7 +1233,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     if (!_albumService.canContainImages(_currentFolder!.id)) {
       SnackBarUtils.showError(
         context,
-        message: 'This folder cannot contain images. Only "3d Images" and "Site Marking Data" folders can contain images.',
+        message:
+            'This folder cannot contain images. Only "3d Images" and "Site Marking Data" folders can contain images.',
       );
       return;
     }
@@ -1161,12 +1252,14 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       setState(() {
         _isUploadingImages = true;
         for (final file in files) {
-          _uploadingItems.add(UploadingItem(
-            fileName: file.path.split('/').last,
-            filePath: file.path,
-            isImage: true,
-            uploadStartTime: DateTime.now(),
-          ));
+          _uploadingItems.add(
+            UploadingItem(
+              fileName: file.path.split('/').last,
+              filePath: file.path,
+              isImage: true,
+              uploadStartTime: DateTime.now(),
+            ),
+          );
         }
       });
 
@@ -1179,14 +1272,15 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       if (response.status == 1) {
         // Remove uploading placeholders
         setState(() {
-          _uploadingItems.removeWhere((item) => 
-            item.isImage && files.any((file) => file.path == item.filePath)
+          _uploadingItems.removeWhere(
+            (item) =>
+                item.isImage && files.any((file) => file.path == item.filePath),
           );
         });
-        
+
         // Refresh the current folder data
         await _refreshCurrentFolder();
-        
+
         SnackBarUtils.showSuccess(
           context,
           message: 'Images uploaded successfully!',
@@ -1195,7 +1289,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         // Mark uploads as failed
         setState(() {
           for (final file in files) {
-            final index = _uploadingItems.indexWhere((item) => item.filePath == file.path);
+            final index = _uploadingItems.indexWhere(
+              (item) => item.filePath == file.path,
+            );
             if (index != -1) {
               _uploadingItems[index] = _uploadingItems[index].copyWith(
                 errorMessage: response.message,
@@ -1204,11 +1300,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
             }
           }
         });
-        
-        SnackBarUtils.showError(
-          context,
-          message: response.message,
-        );
+
+        SnackBarUtils.showError(context, message: response.message);
       }
     } catch (e) {
       // Mark all uploads as failed
@@ -1222,7 +1315,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           }
         }
       });
-      
+
       SnackBarUtils.showError(
         context,
         message: 'Error uploading images: ${e.toString()}',
@@ -1238,7 +1331,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     if (_currentFolder == null) return;
 
     final canUploadImages = _albumService.canContainImages(_currentFolder!.id);
-    final canUploadAttachments = _albumService.canContainAttachments(_currentFolder!.id);
+    final canUploadAttachments = _albumService.canContainAttachments(
+      _currentFolder!.id,
+    );
 
     showModalBottomSheet(
       context: context,
@@ -1250,10 +1345,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
             children: [
               const Text(
                 'Upload Options',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               if (canUploadImages) ...[
@@ -1309,7 +1401,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     if (!_albumService.canContainAttachments(_currentFolder!.id)) {
       SnackBarUtils.showError(
         context,
-        message: 'This folder cannot contain attachments. Only "Drawings", "Quotation", and "Agreement" folders can contain attachments.',
+        message:
+            'This folder cannot contain attachments. Only "Drawings", "Quotation", and "Agreement" folders can contain attachments.',
       );
       return;
     }
@@ -1318,7 +1411,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       final files = await ImagePickerUtils.pickDocumentsWithSource(
         context: context,
         maxFiles: 10,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'rtf'],
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'rtf', 'dwg'],
       );
 
       if (files.isEmpty) return;
@@ -1327,12 +1420,14 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       setState(() {
         _isUploadingAttachments = true;
         for (final file in files) {
-          _uploadingItems.add(UploadingItem(
-            fileName: file.path.split('/').last,
-            filePath: file.path,
-            isImage: false,
-            uploadStartTime: DateTime.now(),
-          ));
+          _uploadingItems.add(
+            UploadingItem(
+              fileName: file.path.split('/').last,
+              filePath: file.path,
+              isImage: false,
+              uploadStartTime: DateTime.now(),
+            ),
+          );
         }
       });
 
@@ -1345,14 +1440,16 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       if (response.status == 1) {
         // Remove uploading placeholders
         setState(() {
-          _uploadingItems.removeWhere((item) => 
-            !item.isImage && files.any((file) => file.path == item.filePath)
+          _uploadingItems.removeWhere(
+            (item) =>
+                !item.isImage &&
+                files.any((file) => file.path == item.filePath),
           );
         });
-        
+
         // Refresh the current folder data
         await _refreshCurrentFolder();
-        
+
         SnackBarUtils.showSuccess(
           context,
           message: 'Documents uploaded successfully!',
@@ -1361,7 +1458,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         // Mark uploads as failed
         setState(() {
           for (final file in files) {
-            final index = _uploadingItems.indexWhere((item) => item.filePath == file.path);
+            final index = _uploadingItems.indexWhere(
+              (item) => item.filePath == file.path,
+            );
             if (index != -1) {
               _uploadingItems[index] = _uploadingItems[index].copyWith(
                 errorMessage: response.message,
@@ -1370,11 +1469,8 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
             }
           }
         });
-        
-        SnackBarUtils.showError(
-          context,
-          message: response.message,
-        );
+
+        SnackBarUtils.showError(context, message: response.message);
       }
     } catch (e) {
       // Mark all uploads as failed
@@ -1388,7 +1484,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           }
         }
       });
-      
+
       SnackBarUtils.showError(
         context,
         message: 'Error uploading documents: ${e.toString()}',
@@ -1418,22 +1514,25 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     final totalItems = folderStats['totalItems'] ?? 0;
 
     // Build warning message
-    String warningMessage = 'Are you sure you want to delete "${folder.albumName}"?\n\n';
+    String warningMessage =
+        'Are you sure you want to delete "${folder.albumName}"?\n\n';
     warningMessage += 'This will permanently delete:\n';
-    
+
     if (subfolderCount > 0) {
-      warningMessage += '• $subfolderCount subfolder${subfolderCount > 1 ? 's' : ''}\n';
+      warningMessage +=
+          '• $subfolderCount subfolder${subfolderCount > 1 ? 's' : ''}\n';
     }
     if (imageCount > 0) {
       warningMessage += '• $imageCount image${imageCount > 1 ? 's' : ''}\n';
     }
     if (attachmentCount > 0) {
-      warningMessage += '• $attachmentCount attachment${attachmentCount > 1 ? 's' : ''}\n';
+      warningMessage +=
+          '• $attachmentCount attachment${attachmentCount > 1 ? 's' : ''}\n';
     }
     if (totalItems == 0) {
       warningMessage += '• Empty folder\n';
     }
-    
+
     warningMessage += '\nThis action cannot be undone.';
 
     // Show confirmation dialog
@@ -1468,14 +1567,12 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     });
 
     try {
-      final response = await _albumService.deleteFolder(
-        albumId: folder.id,
-      );
+      final response = await _albumService.deleteFolder(albumId: folder.id);
 
       if (response.status == 1) {
         // Refresh the entire album list to get updated data
         await _albumService.getSiteAlbumList(widget.siteId);
-        
+
         // Navigate back to parent folder or home
         if (_folderPath.length > 1) {
           // Go back to parent folder
@@ -1483,7 +1580,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
             _folderPath.removeLast();
             _currentFolder = _folderPath.last;
             // Get fresh data for the current folder
-            final updatedCurrentFolder = _albumService.getFolderById(_currentFolder!.id);
+            final updatedCurrentFolder = _albumService.getFolderById(
+              _currentFolder!.id,
+            );
             if (updatedCurrentFolder != null) {
               _currentFolder = updatedCurrentFolder;
               _displayedFolders = _currentFolder!.children;
@@ -1503,10 +1602,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           message: 'Folder deleted successfully!',
         );
       } else {
-        SnackBarUtils.showError(
-          context,
-          message: response.message,
-        );
+        SnackBarUtils.showError(context, message: response.message);
       }
     } catch (e) {
       SnackBarUtils.showError(
@@ -1520,17 +1616,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     }
   }
 
-  Future<void> _editFolder(SiteAlbumModel folder, [BuildContext? dialogContext]) async {
+  Future<void> _editFolder(
+    SiteAlbumModel folder, [
+    BuildContext? dialogContext,
+  ]) async {
     final newName = _editFolderNameController.text.trim();
-    
+
     if (newName.isEmpty) {
-      SnackBarUtils.showError(
-        context,
-        message: 'Please enter a folder name',
-      );
+      SnackBarUtils.showError(context, message: 'Please enter a folder name');
       return;
     }
-    
+
     if (newName == folder.albumName) {
       // No change, just close dialog
       if (dialogContext != null) {
@@ -1540,17 +1636,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       }
       return;
     }
-    
+
     setState(() {
       _isEditingFolder = true;
     });
-    
+
     try {
       final response = await _albumService.editFolder(
         albumId: folder.id,
         newName: newName,
       );
-      
+
       if (response.status == 1) {
         // Close dialog using the dialog context if provided
         if (dialogContext != null) {
@@ -1560,10 +1656,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           FocusScope.of(context).unfocus();
           Navigator.of(context).pop();
         }
-        
+
         // Refresh the current folder to show updated data
         await _refreshCurrentFolder();
-        
+
         // Show success message after dialog is closed
         if (mounted) {
           SnackBarUtils.showSuccess(
@@ -1577,10 +1673,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           Navigator.of(dialogContext).pop();
         }
         if (mounted) {
-          SnackBarUtils.showError(
-            context,
-            message: response.message,
-          );
+          SnackBarUtils.showError(context, message: response.message);
         }
       }
     } catch (e) {
@@ -1603,12 +1696,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
 
   Future<void> _addFolder([BuildContext? dialogContext]) async {
     final folderName = _folderNameController.text.trim();
-    
+
     if (folderName.isEmpty) {
-      SnackBarUtils.showError(
-        context,
-        message: 'Please enter a folder name',
-      );
+      SnackBarUtils.showError(context, message: 'Please enter a folder name');
       return;
     }
 
@@ -1632,10 +1722,10 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           FocusScope.of(context).unfocus();
           Navigator.of(context).pop();
         }
-        
+
         // Refresh the entire album list to get updated data
         await _refreshCurrentFolder();
-        
+
         // Show success message after dialog is closed
         if (mounted) {
           SnackBarUtils.showSuccess(
@@ -1649,10 +1739,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
           Navigator.of(dialogContext).pop();
         }
         if (mounted) {
-          SnackBarUtils.showError(
-            context,
-            message: response.message,
-          );
+          SnackBarUtils.showError(context, message: response.message);
         }
       }
     } catch (e) {
@@ -1676,27 +1763,20 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   Future<void> _refreshCurrentFolder() async {
     // Reload the entire album list
     final success = await _albumService.getSiteAlbumList(widget.siteId);
-    
+
     if (success) {
       setState(() {
         if (_currentFolder != null) {
           // Update the current folder reference with fresh data
-          final updatedCurrentFolder = _albumService.getFolderById(_currentFolder!.id);
+          final updatedCurrentFolder = _albumService.getFolderById(
+            _currentFolder!.id,
+          );
           if (updatedCurrentFolder != null) {
             _currentFolder = updatedCurrentFolder;
             _displayedFolders = _currentFolder!.children;
-            
+
             // Update folder path with fresh data but preserve the current structure
             _updateFolderPath();
-            
-            // DEBUG: Print updated folder info
-            print('Updated folder: ${updatedCurrentFolder.albumName}');
-            print('Updated folder children: ${updatedCurrentFolder.children.length}');
-            print('Updated folder images: ${updatedCurrentFolder.images.length}');
-            print('Updated folder path length: ${_folderPath.length}');
-            if (_folderPath.isNotEmpty) {
-              print('Last folder in path: ${_folderPath.last.albumName}, parentId: ${_folderPath.last.parentId}');
-            }
           }
         } else {
           _displayedFolders = _albumService.mainFolders;
@@ -1724,7 +1804,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   Future<void> _retryUpload(UploadingItem item) async {
     // Remove the failed item from the list
     setState(() {
-      _uploadingItems.removeWhere((uploadingItem) => uploadingItem.filePath == item.filePath);
+      _uploadingItems.removeWhere(
+        (uploadingItem) => uploadingItem.filePath == item.filePath,
+      );
     });
 
     // Re-upload the file
@@ -1741,6 +1823,138 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         context,
         message: 'Please select the file again to retry upload',
       );
+    }
+  }
+
+  void _openFullScreenViewer(SiteAlbumImage item) {
+    if (!item.isImage) {
+      // For non-image files, show a message or open in external app
+      SnackBarUtils.showInfo(
+        context,
+        message: 'Opening ${item.fileName} in external app...',
+      );
+      return;
+    }
+
+    // Get folders with the same parent ID as the current folder
+    List<SiteAlbumModel> foldersWithSameParent = [];
+
+    if (_currentFolder != null) {
+      final currentParentId = _currentFolder!.parentId;
+
+      if (currentParentId != null) {
+        // Get all folders with the same parent ID that have images
+        foldersWithSameParent = _albumService.allAlbums
+            .where(
+              (folder) =>
+                  folder.parentId == currentParentId &&
+                  folder.images.isNotEmpty,
+            )
+            .toList();
+      } else {
+        // If current folder is a main folder (no parent), show only the current folder
+        if (_currentFolder!.images.isNotEmpty) {
+          foldersWithSameParent = [_currentFolder!];
+        }
+      }
+    } else {
+      // If no current folder, this shouldn't happen but handle gracefully
+      SnackBarUtils.showError(context, message: 'No folder context found');
+      return;
+    }
+
+    if (foldersWithSameParent.isEmpty) {
+      SnackBarUtils.showError(context, message: 'No images found');
+      return;
+    }
+
+    // Find the folder and image index
+    int folderIndex = -1;
+    int imageIndex = -1;
+
+    for (int i = 0; i < foldersWithSameParent.length; i++) {
+      final folder = foldersWithSameParent[i];
+      final imageIndexInFolder = folder.images.indexWhere(
+        (img) => img.id == item.id,
+      );
+      if (imageIndexInFolder != -1) {
+        folderIndex = i;
+        imageIndex = imageIndexInFolder;
+        break;
+      }
+    }
+
+    if (folderIndex == -1 || imageIndex == -1) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Image not found in any folder',
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullScreenFolderImageViewer(
+          folders: foldersWithSameParent,
+          initialFolderIndex: folderIndex,
+          initialImageIndex: imageIndex,
+          siteId: widget.siteId,
+          onImageDeleted: _handleImageDeleted,
+        ),
+      ),
+    );
+  }
+
+  void _handleImageDeleted(int folderIndex, int imageIndex) {
+    // Refresh the current folder to reflect the deletion
+    _refreshCurrentFolder();
+
+    SnackBarUtils.showSuccess(context, message: 'Image deleted successfully');
+  }
+
+  void _openFullScreenAttachmentViewer(SiteAlbumImage item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullScreenAttachmentViewer(
+          attachment: item,
+          siteId: widget.siteId,
+          onAttachmentDeleted: () {
+            // Refresh the current folder to reflect the deletion
+            _refreshCurrentFolder();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _handleBackButton() {
+    // Clear old uploading items when navigating
+    _clearOldUploadingItems();
+
+    if (_folderPath.isNotEmpty) {
+      // Remove the current folder from the path
+      _folderPath.removeLast();
+
+      if (_folderPath.isNotEmpty) {
+        // Navigate to the previous folder in the path
+        final previousFolder = _folderPath.last;
+        setState(() {
+          _currentFolder = previousFolder;
+          _displayedFolders = previousFolder.children;
+        });
+
+        // Refresh the folder data
+        _refreshCurrentFolder();
+      } else {
+        // Navigate back to home (main albums screen)
+        setState(() {
+          _currentFolder = null;
+          _displayedFolders = _albumService.mainFolders;
+        });
+      }
+    } else {
+      // If no folder path, just pop the screen
+      Navigator.of(context).pop();
     }
   }
 }

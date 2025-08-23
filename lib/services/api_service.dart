@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -11,10 +12,18 @@ import '../models/qc_point_response.dart';
 import '../models/site_album_response.dart';
 import '../models/user_detail_response.dart';
 import '../models/attendance_response.dart';
+import '../models/attendance_check_model.dart';
 import '../models/manpower_response.dart';
 import '../models/tag_response.dart';
 import '../models/task_response.dart';
 import '../models/task_detail_model.dart';
+import '../models/unit_model.dart';
+import '../models/site_vendor_model.dart';
+import '../models/material_category_model.dart';
+import '../models/material_model.dart';
+import '../models/billing_address_model.dart';
+import '../models/terms_and_condition_model.dart';
+import '../models/meeting_model.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 
@@ -970,6 +979,259 @@ class ApiService {
     }
   }
 
+  // Attendance Check API
+  static Future<AttendanceCheckModel?> attendanceCheck({
+    required String apiToken,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/attendanceCheck'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return AttendanceCheckModel.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Save Attendance API
+  static Future<bool> saveAttendance({
+    required String type,
+    required String siteId,
+    required String address,
+    required String remark,
+    required String latitude,
+    required String longitude,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return false;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'type': type,
+        'site_id': siteId,
+        'address': address,
+        'remark': remark,
+        'latitude': latitude,
+        'longitude': longitude,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/saveAttendance'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final success = jsonData['status'] == 1 || jsonData['success'] == true;
+        if (!success) {
+        }
+        return success;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Get Site Vendors API
+  static Future<SiteVendorResponse?> getSiteVendors({
+    required int siteId,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'site_id': siteId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/getSiteVendor'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return SiteVendorResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Save Site Vendor API
+  static Future<SiteVendorModel?> saveSiteVendor({
+    required int siteId,
+    required int categoryId,
+    required String name,
+    required String mobile,
+    required String email,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'site_id': siteId.toString(),
+        'category_id': categoryId.toString(),
+        'name': name,
+        'mobile': mobile,
+        'email': email,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/saveSiteVendor'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
+          return SiteVendorModel.fromJson(jsonData['data']);
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Update Site Vendor API
+  static Future<SiteVendorModel?> updateSiteVendor({
+    required int vendorId,
+    required int siteId,
+    required int categoryId,
+    required String name,
+    required String mobile,
+    required String email,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'vender_id': vendorId.toString(), // Changed from 'id' to 'vender_id' to match API
+        'site_id': siteId.toString(),
+        'category_id': categoryId.toString(),
+        'name': name,
+        'mobile': mobile,
+        'email': email,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/updateSiteVendor'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
+          return SiteVendorModel.fromJson(jsonData['data']);
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Delete Site Vendor API
+  static Future<bool> deleteSiteVendor({
+    required int vendorId,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return false;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'vender_id': vendorId.toString(), // Changed from 'id' to 'vender_id' to match API
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/deleteSiteVendor'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final success = jsonData['status'] == 'success';
+        if (!success) {
+        }
+        return success;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Get Attendance Report API
   static Future<AttendanceResponse> getAttendanceReport({
     required String apiToken,
@@ -987,7 +1249,6 @@ class ApiService {
         'page': page.toString(),
       };
 
-      print('API Request: $requestData');
 
       final response = await http
           .post(
@@ -1067,7 +1328,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Assign Site API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return SiteUserResponse(
@@ -1097,7 +1357,6 @@ class ApiService {
         'site_id': siteId.toString(),
       };
 
-      print('Remove User from Site API Request: $requestData');
 
       final response = await http
           .post(
@@ -1121,7 +1380,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Remove User from Site API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return SiteUserResponse(
@@ -1173,7 +1431,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Get Categories API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return CategoryResponse(
@@ -1204,7 +1461,6 @@ class ApiService {
         'cat_sub_id': 5,
       };
 
-      print('Create Category API Request: $requestData');
 
       final response = await http
           .post(
@@ -1217,8 +1473,6 @@ class ApiService {
           )
           .timeout(timeout);
 
-      print('Create Category API Response Status: ${response.statusCode}');
-      print('Create Category API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -1231,7 +1485,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Create Category API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return CategoryResponse(
@@ -1264,7 +1517,6 @@ class ApiService {
         'cat_sub_id': '5',
       };
 
-      print('Update Category API Request: $requestData');
 
       final response = await http
           .post(
@@ -1277,8 +1529,6 @@ class ApiService {
           )
           .timeout(timeout);
 
-      print('Update Category API Response Status: ${response.statusCode}');
-      print('Update Category API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -1291,7 +1541,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Update Category API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return CategoryResponse(
@@ -1319,7 +1568,6 @@ class ApiService {
         'category_id': categoryId.toString(),
       };
 
-      print('Delete Category API Request: $requestData');
 
       final response = await http
           .post(
@@ -1332,8 +1580,6 @@ class ApiService {
           )
           .timeout(timeout);
 
-      print('Delete Category API Response Status: ${response.statusCode}');
-      print('Delete Category API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -1346,7 +1592,6 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('Delete Category API Error: $e');
       if (e.toString().contains('SocketException') ||
           e.toString().contains('TimeoutException')) {
         return CategoryResponse(
@@ -2010,6 +2255,1031 @@ class ApiService {
         throw Exception('No internet connection. Please check your network.');
       }
       throw Exception('Failed to load task details: $e');
+    }
+  }
+
+  // Edit Task API
+  static Future<ApiResponse?> editTask(Map<String, dynamic> data) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/editTask'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(queryParameters: data.map((key, value) => MapEntry(key, value.toString()))).query,
+          )
+          .timeout(timeout);
+
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Units API
+  static Future<UnitResponse?> getUnits() async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/getUnit'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return UnitResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Delete Task Image API
+  static Future<ApiResponse?> deleteTaskImage({
+    required String apiToken,
+    required int imageId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'image_id': imageId,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/delete_task_image'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Delete Task Progress Image API
+  static Future<ApiResponse?> deleteTaskProgressImage({
+    required String apiToken,
+    required int imageId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'image_id': imageId,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/delete_task_progress_image'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Delete Album Image API
+  static Future<ApiResponse?> deleteAlbumImage({
+    required String apiToken,
+    required int imageId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'image_id': imageId,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/v2/deleteAlbumImage'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Update Progress API
+  static Future<ApiResponse?> updateProgress({
+    required String apiToken,
+    required int taskId,
+    required String workDone,
+    required Map<String, dynamic> questionAnswer,
+  }) async {
+    try {
+      // Combine all data into a single map
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'task_id': taskId.toString(),
+        'work_done': workDone,
+        'question_answer': questionAnswer,
+      };
+
+      // Debug: Print the request data
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/updateProgress'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(requestData),
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Update task progress (normal tasks)
+  static Future<ApiResponse?> updateTaskProgress({
+    required String apiToken,
+    required int taskId,
+    required String workDone,
+    required String workLeft,
+    required String skillWorkers,
+    required String unskilledWorkers,
+    String? remark,
+    String? comment,
+    String? instruction,
+    List<File> images = const [],
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/updateProgress'),
+      );
+
+      // Add text fields
+      request.fields['api_token'] = apiToken;
+      request.fields['task_id'] = taskId.toString();
+      request.fields['work_done'] = workDone;
+      request.fields['work_left'] = workLeft;
+      request.fields['skill_workers'] = skillWorkers;
+      request.fields['unskill_workers'] = unskilledWorkers;
+
+      // Add optional fields
+      if (remark != null && remark.isNotEmpty) {
+        request.fields['remark'] = remark;
+      }
+      if (comment != null && comment.isNotEmpty) {
+        request.fields['comment'] = comment;
+      }
+      if (instruction != null && instruction.isNotEmpty) {
+        request.fields['instruction'] = instruction;
+      }
+
+      // Add image files
+      for (File imageFile in images) {
+        final file = await http.MultipartFile.fromPath(
+          'images[]',
+          imageFile.path,
+        );
+        request.files.add(file);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final responseData = json.decode(response.body);
+      return ApiResponse.fromJson(responseData, null);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Update simple task (decision, drawing, selection, quotation)
+  static Future<ApiResponse?> updateSimpleTask({
+    required String apiToken,
+    required int taskId,
+    String? remark,
+    List<File> images = const [],
+    List<File> attachments = const [],
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/updateProgress'),
+      );
+
+      // Add text fields
+      request.fields['api_token'] = apiToken;
+      request.fields['task_id'] = taskId.toString();
+
+      // Add optional fields
+      if (remark != null && remark.isNotEmpty) {
+        request.fields['remark'] = remark;
+      }
+
+      // Add image files
+      for (File imageFile in images) {
+        final file = await http.MultipartFile.fromPath(
+          'images[]',
+          imageFile.path,
+        );
+        request.files.add(file);
+      }
+
+      // Add attachment files
+      for (File attachmentFile in attachments) {
+        final file = await http.MultipartFile.fromPath(
+          'attachments[]',
+          attachmentFile.path,
+        );
+        request.files.add(file);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final responseData = json.decode(response.body);
+      return ApiResponse.fromJson(responseData, null);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Accept task API
+  static Future<ApiResponse?> acceptTask({
+    required String apiToken,
+    required int taskId,
+    required String remark,
+    required String completionDate,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/updateProgress'),
+      );
+
+      // Add text fields
+      request.fields['api_token'] = apiToken;
+      request.fields['task_id'] = taskId.toString();
+      request.fields['remark'] = remark;
+      request.fields['completion_date'] = completionDate;
+      request.fields['is_approved'] = '1';
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final responseData = json.decode(response.body);
+      return ApiResponse.fromJson(responseData, null);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Material Categories API
+  static Future<MaterialCategoryResponse?> getMaterialCategories({
+    int page = 1,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'page': page.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/material/getMaterialCategory'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MaterialCategoryResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Store Material Category API
+  static Future<MaterialCategoryCreateResponse?> storeMaterialCategory({
+    required String name,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/material/storeMaterialCategory'),
+      );
+
+      request.fields['api_token'] = token;
+      request.fields['name'] = name;
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MaterialCategoryCreateResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Save Material API
+  static Future<MaterialCreateResponse?> saveMaterial({
+    required String name,
+    required String unitOfMeasurement,
+    required String specification,
+    required int categoryId,
+    required String sku,
+    required String unitPrice,
+    String? gst,
+    String? description,
+    String? brandName,
+    String? hsn,
+    int minStock = 0,
+    int availableStock = 0,
+    String? length,
+    String? width,
+    String? height,
+    String? weight,
+    String? color,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/material/saveMaterial'),
+      );
+
+      // Add required fields
+      request.fields['api_token'] = token;
+      request.fields['name'] = name;
+      request.fields['unit_of_measurement'] = unitOfMeasurement;
+      request.fields['specification'] = specification;
+      request.fields['category_id'] = categoryId.toString();
+      request.fields['sku'] = sku;
+      request.fields['unit_price'] = unitPrice;
+      if (gst != null && gst.isNotEmpty) {
+        request.fields['gst'] = gst;
+      }
+      
+      if (hsn != null && hsn.isNotEmpty) {
+        request.fields['hsn'] = hsn;
+      }
+      request.fields['min_stock'] = minStock.toString();
+      request.fields['available_stock'] = availableStock.toString();
+      if (description != null && description.isNotEmpty) {
+        request.fields['description'] = description;
+      }
+      if (brandName != null && brandName.isNotEmpty) {
+        request.fields['brand_name'] = brandName;
+      }
+      if (length != null && length.isNotEmpty) {
+        request.fields['length'] = length;
+      }
+      if (width != null && width.isNotEmpty) {
+        request.fields['width'] = width;
+      }
+      if (height != null && height.isNotEmpty) {
+        request.fields['height'] = height;
+      }
+      if (weight != null && weight.isNotEmpty) {
+        request.fields['weight'] = weight;
+      }
+      if (color != null && color.isNotEmpty) {
+        request.fields['color'] = color;
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MaterialCreateResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Materials API
+  static Future<MaterialResponse?> getMaterials({
+    int page = 1,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'page': page.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/material/getMaterial'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MaterialResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Generate Daily Report API
+  static Future<Map<String, dynamic>?> generateDailyReport({
+    required String apiToken,
+    required int siteId,
+    required String date,
+    required String categoryId,
+    required String photos,
+    required String material,
+    required String manpower,
+    required String survey,
+    required String userId,
+    required String task,
+    required String decision,
+    required String decisionByAgency,
+    required String drawing,
+    required String drawingByAgency,
+    required String quotation,
+    required String quotationByAgency,
+    required String selection,
+    required String selectionByAgency,
+    required String workUpdate,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'date': date,
+        'category_id': categoryId,
+        'photos': photos,
+        'material': material,
+        'manpower': manpower,
+        'survey': survey,
+        'user_id': userId,
+        'task': task,
+        'decision': decision,
+        'decision_by_agency': decisionByAgency,
+        'drawing': drawing,
+        'drawing_by_agency': drawingByAgency,
+        'quotation': quotation,
+        'quotation_by_agency': quotationByAgency,
+        'selection': selection,
+        'selection_by_agency': selectionByAgency,
+        'work_update': workUpdate,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/dailyTaskReport'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Generate Weekly Report API
+  static Future<Map<String, dynamic>?> generateWeeklyReport({
+    required String apiToken,
+    required int siteId,
+    required String startDate,
+    required String endDate,
+    required String categoryId,
+    required String photos,
+    required String material,
+    required String manpower,
+    required String survey,
+    required String userId,
+    required String task,
+    required String decision,
+    required String decisionByAgency,
+    required String drawing,
+    required String drawingByAgency,
+    required String quotation,
+    required String quotationByAgency,
+    required String selection,
+    required String selectionByAgency,
+    required String workUpdate,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'start_date': startDate,
+        'end_date': endDate,
+        'category_id': categoryId,
+        'photos': photos,
+        'material': material,
+        'manpower': manpower,
+        'survey': survey,
+        'user_id': userId,
+        'task': task,
+        'decision': decision,
+        'decision_by_agency': decisionByAgency,
+        'drawing': drawing,
+        'drawing_by_agency': drawingByAgency,
+        'quotation': quotation,
+        'quotation_by_agency': quotationByAgency,
+        'selection': selection,
+        'selection_by_agency': selectionByAgency,
+        'work_update': workUpdate,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/weeklyReport'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Billing Addresses API
+  static Future<BillingAddressResponse?> getBillingAddresses({
+    required String apiToken,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/getBillingAddress'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return BillingAddressResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Store Billing Address API
+  static Future<BillingAddressCreateResponse?> storeBillingAddress({
+    required String apiToken,
+    required String companyName,
+    required String address,
+    required String state,
+    required String gstin,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'company_name': companyName,
+        'address': address,
+        'state': state,
+        'gstin': gstin,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/storeBillingAddress'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return BillingAddressCreateResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Update Billing Address API
+  static Future<BillingAddressCreateResponse?> updateBillingAddress({
+    required String apiToken,
+    required int addressId,
+    required String companyName,
+    required String address,
+    required String state,
+    required String gstin,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'address_id': addressId.toString(),
+        'company_name': companyName,
+        'address': address,
+        'state': state,
+        'gstin': gstin,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/updateBillingAddress'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return BillingAddressCreateResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Terms and Conditions API
+  static Future<TermsAndConditionResponse?> getTermsAndConditions({
+    required String apiToken,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/material/getTermsAndCondition'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return TermsAndConditionResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Store and Update Terms and Conditions API
+  static Future<Map<String, dynamic>?> storeAndUpdateTermsAndCondition({
+    required String apiToken,
+    required String termAndCondition,
+    int? termId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'term_and_condition': termAndCondition,
+      };
+
+      if (termId != null) {
+        requestData['term_id'] = termId.toString();
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/material/storeAndUpdateTermsAndCondition'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get Meeting List API
+  static Future<MeetingListResponse?> getMeetingList({
+    required String apiToken,
+    required int siteId,
+    int page = 1,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'page': page.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/getMeetingList'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      print('Get Meeting List API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MeetingListResponse.fromJson(jsonData);
+      } else {
+        print('Error getting meeting list: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting meeting list: $e');
+      return null;
+    }
+  }
+
+  // Get Meeting Detail API
+  static Future<MeetingDetailResponse?> getMeetingDetail({
+    required String apiToken,
+    required int meetingId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'meeting_id': meetingId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/getMeetingDetail'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      print('Get Meeting Detail API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return MeetingDetailResponse.fromJson(jsonData);
+      } else {
+        print('Error getting meeting detail: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting meeting detail: $e');
+      return null;
+    }
+  }
+
+  // Delete Meeting Discussion API
+  static Future<Map<String, dynamic>?> deleteMeetingDiscussion({
+    required String apiToken,
+    required int meetingDiscussionId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'meeting_discussion_id': meetingDiscussionId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/deleteMeetingDiscussion'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      print('Delete Meeting Discussion API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        print('Error deleting meeting discussion: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception deleting meeting discussion: $e');
+      return null;
+    }
+  }
+
+  // Delete Attachment API
+  static Future<Map<String, dynamic>?> deleteAttachment({
+    required String apiToken,
+    required int meetingAttachmentId,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'meeting_attachment_id': meetingAttachmentId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/deleteAttachment'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      print('Delete Attachment API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        print('Error deleting attachment: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception deleting attachment: $e');
+      return null;
+    }
+  }
+
+  // Save Meeting Attachment API
+  static Future<Map<String, dynamic>?> saveMeetingAttachment({
+    required String apiToken,
+    required int meetingDiscussionId,
+    required File file,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/meeting/saveAttachment'),
+      );
+
+      request.headers['Accept'] = 'application/json';
+      request.fields['api_token'] = apiToken;
+      request.fields['meeting_discussion_id'] = meetingDiscussionId.toString();
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('Save Attachment API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error saving attachment: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception saving attachment: $e');
+      return null;
     }
   }
 } 

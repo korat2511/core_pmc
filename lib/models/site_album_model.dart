@@ -167,6 +167,7 @@ class SiteAlbumImage {
   bool get isPdf => fileExtension == 'pdf';
   bool get isExcel => fileExtension == 'xlsx' || fileExtension == 'xls';
   bool get isWord => fileExtension == 'doc' || fileExtension == 'docx';
+  bool get isDwg => fileExtension == 'dwg';
   bool get isImageFile {
     final ext = fileExtension;
     return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].contains(ext);

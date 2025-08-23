@@ -8,9 +8,13 @@ import '../core/utils/navigation_utils.dart';
 import '../models/site_model.dart';
 import '../widgets/custom_app_bar.dart';
 import 'manage_user_screen.dart';
+import 'site_album_screen.dart';
 import 'site_category_screen.dart';
 import 'site_manpower_screen.dart';
 import 'site_qc_category_screen.dart';
+import 'site_vendor_screen.dart';
+import 'meeting_screen.dart';
+
 
 class SiteMoreScreen extends StatefulWidget {
   final SiteModel site;
@@ -295,13 +299,16 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         );
         break;
       case 'Folders':
-        Navigator.of(context).pushNamed(
-          '/site-albums',
-          arguments: {
-            'siteId': widget.site.id,
-            'siteName': widget.site.name,
-          },
-        );
+        NavigationUtils.push(context, SiteAlbumScreen(
+          siteId: widget.site.id,
+          siteName: widget.site.name,
+        ));
+        break;
+      case 'Vendors':
+        NavigationUtils.push(context, SiteVendorScreen(site: widget.site));
+        break;
+      case 'Meetings':
+        NavigationUtils.push(context, MeetingScreen(site: widget.site));
         break;
       default:
         // Show a temporary message for other options
