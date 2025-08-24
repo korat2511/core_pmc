@@ -29,6 +29,7 @@ dependencies:
   flutter_contacts: ^1.1.9+2
   dio: ^5.9.0
   path_provider: ^2.1.5
+  fl_downloader: ^2.0.2
 
 dev_dependencies:
   flutter_test:

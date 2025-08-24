@@ -27,13 +27,16 @@ class AttendanceCheckService {
         return false;
       }
 
-      final response = await ApiService.attendanceCheck(apiToken: token);
+      // Add timeout to prevent infinite loading
+      final response = await ApiService.attendanceCheck(apiToken: token)
+          .timeout(Duration(seconds: 30), onTimeout: () {
+        _errorMessage = 'Request timeout. Please try again.';
+        return null;
+      });
 
-      log("Attendance Check - ${response?.lastAttendance!.date}");
-
-      
       if (response != null) {
         _attendanceData = response;
+        log("Attendance Check - ${response.lastAttendance?.date ?? 'No date'}");
         return true;
       } else {
         _errorMessage = 'Failed to check attendance';

@@ -11,10 +11,12 @@ import '../models/attendance_check_model.dart';
 
 class AttendanceCard extends StatefulWidget {
   final VoidCallback? onPunchInPressed;
+  final VoidCallback? onRefresh;
   
   const AttendanceCard({
     super.key,
     this.onPunchInPressed,
+    this.onRefresh,
   });
 
   @override
@@ -39,6 +41,18 @@ class _AttendanceCardState extends State<AttendanceCard> {
   void initState() {
     super.initState();
     _loadAttendanceStatus();
+  }
+
+  @override
+  void didUpdateWidget(AttendanceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload attendance status when widget updates
+    _loadAttendanceStatus();
+  }
+
+  // Public method to refresh attendance data
+  Future<void> refreshAttendance() async {
+    await _loadAttendanceStatus();
   }
 
   Future<void> _loadAttendanceStatus() async {
@@ -86,6 +100,7 @@ class _AttendanceCardState extends State<AttendanceCard> {
         _punchOutTime = null;
       }
     } catch (e) {
+      print('Error loading attendance status: $e');
       // Handle error
       _isPunchedIn = false;
       _punchInTime = null;

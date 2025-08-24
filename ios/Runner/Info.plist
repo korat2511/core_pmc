@@ -58,5 +58,9 @@
 	<string>This app needs contacts access for team communication and contact management.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs microphone access for voice notes and audio recording.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    <key>UIFileSharingEnabled</key>
+    <true/>
 </dict>
 </plist>

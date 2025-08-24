@@ -28,12 +28,17 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   final AttendanceCheckService _attendanceService = AttendanceCheckService();
   final TextEditingController _noteController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey _attendanceCardKey = GlobalKey();
   
   bool _isLoading = false;
   bool _showPunchInForm = false;
   SiteModel? _selectedSite;
   List<SiteModel> _availableSites = [];
   List<SiteModel> _filteredSites = [];
+  
+  // Cache for site location status to prevent repeated API calls
+  final Map<int, String> _siteLocationCache = {};
+  Position? _cachedPosition;
 
   @override
   void initState() {
@@ -50,6 +55,8 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   }
 
   Future<void> _loadAttendanceStatus() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
@@ -58,14 +65,24 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       final success = await _attendanceService.checkAttendance();
       if (success) {
         // Determine if we should show punch-in form
-        _showPunchInForm = _attendanceService.needsCheckIn;
+        setState(() {
+          _showPunchInForm = _attendanceService.needsCheckIn;
+        });
+      } else {
+        // Show error message if attendance check fails
+        if (_attendanceService.errorMessage.isNotEmpty) {
+          SnackBarUtils.showError(context, message: _attendanceService.errorMessage);
+        }
       }
     } catch (e) {
-      SnackBarUtils.showError(context, message: 'Failed to load attendance status');
+      print('Error loading attendance status: $e');
+      SnackBarUtils.showError(context, message: 'Failed to load attendance status: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -77,9 +94,62 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           _availableSites = SiteService.sites;
           _filteredSites = List.from(_availableSites);
         });
+        
+        // Sort sites by distance after loading
+        await _sortSitesByDistance();
       }
     } catch (e) {
       print('Error loading sites: $e');
+    }
+  }
+
+  Future<void> _sortSitesByDistance() async {
+    try {
+      // Get current location once
+      Position? currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        );
+      } catch (e) {
+        print('Could not get current location for sorting: $e');
+        return; // Keep original order if location unavailable
+      }
+
+      // Calculate distances and sort
+      List<MapEntry<SiteModel, double>> sitesWithDistance = [];
+      
+      for (SiteModel site in _availableSites) {
+        double distance = double.infinity;
+        
+        if (site.latitude != null && site.longitude != null) {
+          try {
+            distance = Geolocator.distanceBetween(
+              currentPosition.latitude,
+              currentPosition.longitude,
+              site.latitude!,
+              site.longitude!,
+            );
+          } catch (e) {
+            print('Error calculating distance for ${site.name}: $e');
+            distance = double.infinity;
+          }
+        }
+        
+        sitesWithDistance.add(MapEntry(site, distance));
+      }
+
+      // Sort by distance (nearest first)
+      sitesWithDistance.sort((a, b) => a.value.compareTo(b.value));
+
+      // Update the lists
+      setState(() {
+        _availableSites = sitesWithDistance.map((entry) => entry.key).toList();
+        _filteredSites = List.from(_availableSites);
+      });
+    } catch (e) {
+      print('Error sorting sites by distance: $e');
     }
   }
 
@@ -91,22 +161,77 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     });
 
     try {
-      // TODO: Call punch-out API
-      await Future.delayed(Duration(seconds: 2)); // Simulate API call
-      
-      SnackBarUtils.showSuccess(context, message: 'Successfully punched out');
-      
-      // Refresh attendance status
-      await _loadAttendanceStatus();
-      
-      // Navigate back
-      NavigationUtils.pop(context);
+      // Get current location with better error handling
+      Position currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
+        );
+      } catch (locationError) {
+        print('Location error during punch out: $locationError');
+        // Use default coordinates if location fails
+        currentPosition = Position(
+          latitude: 0.0,
+          longitude: 0.0,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+      }
+
+      // Get address from coordinates with timeout
+      String address = 'Location not available';
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          currentPosition.latitude,
+          currentPosition.longitude,
+        ).timeout(Duration(seconds: 10));
+        
+        if (placemarks.isNotEmpty) {
+          address = '${placemarks.first.street ?? ''}, ${placemarks.first.locality ?? ''}, ${placemarks.first.administrativeArea ?? ''}'.trim();
+          if (address.startsWith(',')) address = address.substring(1).trim();
+          if (address.isEmpty) address = 'Location not available';
+        }
+      } catch (addressError) {
+        print('Address error during punch out: $addressError');
+        address = 'Location not available';
+      }
+
+      // Call saveAttendance API for punch out
+      final success = await ApiService.saveAttendance(
+        type: 'check_out',
+        siteId: '', // Empty for punch out
+        address: address,
+        remark: '',
+        latitude: currentPosition.latitude.toString(),
+        longitude: currentPosition.longitude.toString(),
+      );
+
+      if (success) {
+        SnackBarUtils.showSuccess(context, message: 'Successfully punched out');
+        
+        // Refresh attendance status and update UI
+        await _loadAttendanceStatus();
+        
+        // Stay on the same screen - no navigation
+      } else {
+        SnackBarUtils.showError(context, message: 'Failed to punch out');
+      }
     } catch (e) {
-      SnackBarUtils.showError(context, message: 'Failed to punch out');
+      print('Error during punch out: $e');
+      SnackBarUtils.showError(context, message: 'Failed to punch out: ${e.toString()}');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -119,6 +244,10 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     // Reset search and filtered sites
     _searchController.clear();
     _filteredSites = List.from(_availableSites);
+    
+    // Clear location cache to get fresh data
+    _siteLocationCache.clear();
+    _cachedPosition = null;
 
     showDialog(
       context: context,
@@ -254,15 +383,22 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       builder: (context, snapshot) {
         String statusText = 'Loading...';
         Color statusColor = Colors.grey;
+        bool canCheckIn = false;
 
         if (snapshot.hasData) {
           statusText = snapshot.data!;
           if (statusText.contains('You can check in')) {
             statusColor = Colors.green;
+            canCheckIn = true;
           } else if (statusText.contains('You\'re at site')) {
             statusColor = Colors.blue;
+            canCheckIn = true;
           } else if (statusText.contains('away from site')) {
             statusColor = Colors.orange;
+            canCheckIn = false;
+          } else if (statusText.contains('Location unavailable')) {
+            statusColor = Colors.red;
+            canCheckIn = true; // Allow check-in if location unavailable
           }
         }
 
@@ -285,19 +421,37 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
                   ),
                 ),
                 SizedBox(height: 4),
-                Text(
-                  statusText,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: statusColor,
+                    ),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        statusText,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            trailing: Icon(
-              Icons.location_on,
-              color: statusColor,
-            ),
+            trailing: canCheckIn 
+                ? Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 20,
+                  )
+                : Icon(
+                    Icons.location_on,
+                    color: statusColor,
+                  ),
             onTap: () => _handleSiteSelection(site, statusText),
           ),
         );
@@ -306,17 +460,35 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   }
 
   Future<String> _getSiteLocationStatus(SiteModel site) async {
+    // Check cache first
+    if (_siteLocationCache.containsKey(site.id)) {
+      return _siteLocationCache[site.id]!;
+    }
+
     try {
       // Check if site has location data
       if (site.latitude == null || site.longitude == null) {
+        _siteLocationCache[site.id] = 'You can check in';
         return 'You can check in';
       }
 
-      // Get current location
-      Position currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
+      // Get current location (use cached if available)
+      Position currentPosition;
+      if (_cachedPosition != null) {
+        currentPosition = _cachedPosition!;
+      } else {
+        try {
+          currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          );
+          _cachedPosition = currentPosition; // Cache the position
+        } catch (locationError) {
+          print('Location error for site ${site.name}: $locationError');
+          _siteLocationCache[site.id] = 'Location unavailable';
+          return 'Location unavailable';
+        }
+      }
 
       // Calculate distance
       double distanceInMeters = Geolocator.distanceBetween(
@@ -329,18 +501,27 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       double distanceInKm = distanceInMeters / 1000;
       double minRange = (site.minRange ?? 0.1).toDouble(); // Default 100 meters
 
+      String status;
       if (distanceInKm <= minRange) {
-        return 'You\'re at site';
+        status = 'You\'re at site';
       } else {
-        return 'You\'re ${distanceInKm.toStringAsFixed(1)} km away from site';
+        status = 'You\'re ${distanceInKm.toStringAsFixed(1)} km away from site';
       }
+
+      // Cache the result
+      _siteLocationCache[site.id] = status;
+      return status;
     } catch (e) {
+      print('Error calculating site distance: $e');
+      _siteLocationCache[site.id] = 'Location unavailable';
       return 'Location unavailable';
     }
   }
 
   void _handleSiteSelection(SiteModel site, String statusText) {
-    if (statusText.contains('You can check in') || statusText.contains('You\'re at site')) {
+    if (statusText.contains('You can check in') || 
+        statusText.contains('You\'re at site') ||
+        statusText.contains('Location unavailable')) {
       // Allow punch in
       Navigator.of(context).pop();
       _performPunchIn(site);
@@ -465,21 +646,47 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     });
 
     try {
-      // Get current location
-      Position currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
+      // Get current location with better error handling
+      Position currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium, // Reduced accuracy for faster response
+          timeLimit: Duration(seconds: 15), // Increased timeout
+        );
+      } catch (locationError) {
+        print('Location error: $locationError');
+        // Use default coordinates if location fails
+        currentPosition = Position(
+          latitude: 0.0,
+          longitude: 0.0,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+      }
 
-      // Get address from coordinates
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        currentPosition.latitude,
-        currentPosition.longitude,
-      );
-      
-      String address = placemarks.isNotEmpty 
-          ? '${placemarks.first.street}, ${placemarks.first.locality}, ${placemarks.first.administrativeArea}'
-          : 'Location not available';
+      // Get address from coordinates with timeout
+      String address = 'Location not available';
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          currentPosition.latitude,
+          currentPosition.longitude,
+        ).timeout(Duration(seconds: 10));
+        
+        if (placemarks.isNotEmpty) {
+          address = '${placemarks.first.street ?? ''}, ${placemarks.first.locality ?? ''}, ${placemarks.first.administrativeArea ?? ''}'.trim();
+          if (address.startsWith(',')) address = address.substring(1).trim();
+          if (address.isEmpty) address = 'Location not available';
+        }
+      } catch (addressError) {
+        print('Address error: $addressError');
+        address = 'Location not available';
+      }
 
       // Call saveAttendance API with null site_id for remote check-in
       final success = await ApiService.saveAttendance(
@@ -497,11 +704,10 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           message: 'Successfully checked in from remote location',
         );
         
-        // Refresh attendance status
+        // Refresh attendance status and update UI
         await _loadAttendanceStatus();
         
-        // Navigate back
-        NavigationUtils.pop(context);
+        // Stay on the same screen - no navigation
       } else {
         SnackBarUtils.showError(context, message: 'Failed to check in from remote location');
       }
@@ -509,9 +715,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       print('Error during remote check-in: $e');
       SnackBarUtils.showError(context, message: 'Failed to check in: ${e.toString()}');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -521,21 +729,47 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     });
 
     try {
-      // Get current location
-      Position currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
+      // Get current location with better error handling
+      Position currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium, // Reduced accuracy for faster response
+          timeLimit: Duration(seconds: 15), // Increased timeout
+        );
+      } catch (locationError) {
+        print('Location error: $locationError');
+        // Use default coordinates if location fails
+        currentPosition = Position(
+          latitude: 0.0,
+          longitude: 0.0,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+      }
 
-      // Get address from coordinates
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        currentPosition.latitude,
-        currentPosition.longitude,
-      );
-      
-      String address = placemarks.isNotEmpty 
-          ? '${placemarks.first.street}, ${placemarks.first.locality}, ${placemarks.first.administrativeArea}'
-          : 'Location not available';
+      // Get address from coordinates with timeout
+      String address = 'Location not available';
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          currentPosition.latitude,
+          currentPosition.longitude,
+        ).timeout(Duration(seconds: 10));
+        
+        if (placemarks.isNotEmpty) {
+          address = '${placemarks.first.street ?? ''}, ${placemarks.first.locality ?? ''}, ${placemarks.first.administrativeArea ?? ''}'.trim();
+          if (address.startsWith(',')) address = address.substring(1).trim();
+          if (address.isEmpty) address = 'Location not available';
+        }
+      } catch (addressError) {
+        print('Address error: $addressError');
+        address = 'Location not available';
+      }
 
       // Call saveAttendance API
       final success = await ApiService.saveAttendance(
@@ -553,11 +787,10 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           message: 'Successfully checked in at ${site.name}',
         );
         
-        // Refresh attendance status
+        // Refresh attendance status and update UI
         await _loadAttendanceStatus();
         
-        // Navigate back
-        NavigationUtils.pop(context);
+        // Stay on the same screen - no navigation
       } else {
         SnackBarUtils.showError(context, message: 'Failed to check in');
       }
@@ -565,9 +798,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       print('Error during check-in: $e');
       SnackBarUtils.showError(context, message: 'Failed to check in: ${e.toString()}');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -603,6 +838,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
                 children: [
                   // Attendance Card with custom punch-in handler
                   AttendanceCard(
+                    key: _attendanceCardKey,
                     onPunchInPressed: _showSiteSelectionDialog,
                   ),
                   

@@ -1,8 +1,10 @@
+import 'dart:async';
+
+import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
-import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../models/site_model.dart';
 import '../models/category_model.dart';
@@ -25,6 +27,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
   String _selectedDuration = 'Today';
   DateTime _fromDate = DateTime.now();
   DateTime _toDate = DateTime.now();
+
+  int progress = 0;
+  dynamic downloadId;
+  String? status;
+  late StreamSubscription progressStream;
 
   // Report sections with sub-parts
   final Map<String, bool> _reportSections = {
@@ -83,8 +90,60 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
 
   @override
   void initState() {
+    FlDownloader.initialize();
+    progressStream = FlDownloader.progressStream.listen((event) {
+      if (event.status == DownloadStatus.successful) {
+        debugPrint('event.progress: ${event.progress}');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+        // This is a way of auto-opening downloaded file right after a download is completed
+        FlDownloader.openFile(filePath: event.filePath);
+      } else if (event.status == DownloadStatus.running) {
+        debugPrint('event.progress: ${event.progress}');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      } else if (event.status == DownloadStatus.failed) {
+        debugPrint('event: $event');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      } else if (event.status == DownloadStatus.paused) {
+        debugPrint('Download paused');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+
+        Future.delayed(
+          const Duration(milliseconds: 250),
+          () => FlDownloader.attachDownloadProgress(event.downloadId),
+        );
+      } else if (event.status == DownloadStatus.pending) {
+        debugPrint('Download pending');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      }
+    });
     super.initState();
     _loadCategoriesAndUsers();
+  }
+
+  @override
+  void dispose() {
+    progressStream.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCategoriesAndUsers() async {
@@ -200,9 +259,14 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                         });
                       },
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primaryColor : Colors.white,
+                          color: isSelected
+                              ? AppColors.primaryColor
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isSelected
@@ -295,7 +359,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                                 if (sectionSubParts.isNotEmpty) {
                                   if (newValue) {
                                     // Select all sub-parts
-                                    _selectedSubParts[key] = Set<String>.from(sectionSubParts);
+                                    _selectedSubParts[key] = Set<String>.from(
+                                      sectionSubParts,
+                                    );
                                   } else {
                                     // Deselect all sub-parts
                                     _selectedSubParts[key] = <String>{};
@@ -305,7 +371,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                             });
                           },
                           activeColor: AppColors.primaryColor,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                         Text(
                           'Select All',
@@ -328,7 +396,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                     isSelected: entry.value,
                     subParts: _subParts[entry.key] ?? [],
                     isExpanded: _expandedSections.contains(entry.key),
-                    selectedSubParts: _selectedSubParts[entry.key] ?? <String>{},
+                    selectedSubParts:
+                        _selectedSubParts[entry.key] ?? <String>{},
                     onChanged: (value) {
                       setState(() {
                         final newValue = value ?? false;
@@ -360,7 +429,10 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                     },
                     onSubPartChanged: (subPart, selected) {
                       setState(() {
-                        _selectedSubParts.putIfAbsent(entry.key, () => <String>{});
+                        _selectedSubParts.putIfAbsent(
+                          entry.key,
+                          () => <String>{},
+                        );
                         if (selected) {
                           _selectedSubParts[entry.key]!.add(subPart);
                         } else {
@@ -372,7 +444,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                         if (sectionSubParts.isNotEmpty) {
                           final selectedSubParts =
                               _selectedSubParts[entry.key] ?? <String>{};
-                          if (selectedSubParts.length == sectionSubParts.length) {
+                          if (selectedSubParts.length ==
+                              sectionSubParts.length) {
                             // All sub-parts selected
                             _reportSections[entry.key] = true;
                           } else if (selectedSubParts.isEmpty) {
@@ -687,14 +760,15 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
     try {
       // Prepare parameters
       final params = _prepareReportParameters(token);
-      
+
       // Determine API endpoint based on date range
-      final isSameDate = _fromDate.year == _toDate.year && 
-                        _fromDate.month == _toDate.month && 
-                        _fromDate.day == _toDate.day;
-      
+      final isSameDate =
+          _fromDate.year == _toDate.year &&
+          _fromDate.month == _toDate.month &&
+          _fromDate.day == _toDate.day;
+
       Map<String, dynamic>? response;
-      
+
       if (isSameDate) {
         // Daily report
         final dateStr = _formatDateForAPI(_fromDate);
@@ -750,31 +824,48 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       if (response != null) {
         final status = response['status'] ?? 0;
         final message = response['message'] ?? 'Report generated successfully';
-        
+
         if (status == 1) {
           print('Report generated successfully: $message');
-          
+
           // Handle PDF response
           final pdfUrl = response['pdfurl'];
           final pdfName = response['pdf_name'];
-          
+
           if (pdfUrl != null && pdfName != null) {
             print('PDF URL: $pdfUrl');
             print('PDF Name: $pdfName');
-            
+
             // Show success message
-            SnackBarUtils.showSuccess(context, message: 'Report generated successfully! Opening PDF...');
-            
-            // Open PDF directly from URL (this will download and open in default PDF viewer)
-            final bool success = await PdfService.openPdfFromUrl(pdfUrl);
-            
-            if (success) {
-              SnackBarUtils.showSuccess(context, message: 'PDF opened successfully!');
-            } else {
-              SnackBarUtils.showError(context, message: 'Failed to open PDF. Please try again.');
+            SnackBarUtils.showSuccess(
+              context,
+              message: 'Report generated successfully! Opening PDF...',
+            );
+
+            final permission = await FlDownloader.requestPermission();
+            if (permission == StoragePermissionStatus.granted) {
+              var success = await FlDownloader.download(
+                pdfUrl,
+                fileName: "$pdfName.pdf",
+              );
+
+              if (success) {
+                SnackBarUtils.showSuccess(
+                  context,
+                  message: 'PDF opened successfully!',
+                );
+              } else {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Failed to open PDF. Please try again.',
+                );
+              }
             }
           } else {
-            SnackBarUtils.showError(context, message: 'Invalid PDF response from server.');
+            SnackBarUtils.showError(
+              context,
+              message: 'Invalid PDF response from server.',
+            );
           }
         } else {
           print('Report generation failed: $message');
@@ -782,7 +873,10 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
         }
       } else {
         print('Failed to generate report');
-        SnackBarUtils.showError(context, message: 'Failed to generate report. Please try again.');
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to generate report. Please try again.',
+        );
       }
     } catch (e) {
       print('Error generating report: $e');
@@ -795,11 +889,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
 
   Map<String, String> _prepareReportParameters(String token) {
     final params = <String, String>{};
-    
+
     // Category IDs
     final selectedCategories = _selectedSubParts['Category'] ?? <String>{};
     final allCategories = _subParts['Category'] ?? [];
-    
+
     if (selectedCategories.length == allCategories.length) {
       params['categoryId'] = ''; // All selected
     } else {
@@ -808,7 +902,14 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       for (final categoryName in selectedCategories) {
         final category = _categories.firstWhere(
           (cat) => cat.name == categoryName,
-          orElse: () => CategoryModel(id: 0, name: '', catSubId: 0, siteId: widget.site.id, createdAt: '', updatedAt: ''),
+          orElse: () => CategoryModel(
+            id: 0,
+            name: '',
+            catSubId: 0,
+            siteId: widget.site.id,
+            createdAt: '',
+            updatedAt: '',
+          ),
         );
         if (category.id > 0) {
           selectedCategoryIds.add(category.id.toString());
@@ -820,7 +921,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
     // User IDs
     final selectedUsers = _selectedSubParts['Users'] ?? <String>{};
     final allUsers = _subParts['Users'] ?? [];
-    
+
     if (selectedUsers.length == allUsers.length) {
       params['userId'] = ''; // All selected
     } else {
@@ -852,7 +953,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
     // Task Statuses (Progress)
     final selectedProgress = _selectedSubParts['Progress'] ?? <String>{};
     final allProgress = _subParts['Progress'] ?? [];
-    
+
     if (selectedProgress.length == allProgress.length) {
       params['task'] = ''; // All selected
     } else {
