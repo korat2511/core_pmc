@@ -47,8 +47,8 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
         FocusScope.of(context).unfocus();
       },
       child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceColor,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -62,7 +62,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textLight,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -74,7 +74,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                 children: [
                   Icon(
                     Icons.people_outline,
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 24,
@@ -103,7 +103,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                               tablet: 18,
                               desktop: 20,
                             ),
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -116,7 +116,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                               tablet: 16,
                               desktop: 18,
                             ),
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -153,7 +153,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                         tablet: 16,
                         desktop: 18,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -168,7 +168,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : filteredUsers.isEmpty
@@ -184,7 +184,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                                   tablet: 56,
                                   desktop: 64,
                                 ),
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               SizedBox(
                                 height: ResponsiveUtils.responsiveSpacing(
@@ -205,7 +205,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                                     tablet: 16,
                                     desktop: 18,
                                   ),
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -272,7 +272,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -298,7 +298,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
               tablet: 16,
               desktop: 18,
             ),
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -315,7 +315,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                   tablet: 14,
                   desktop: 16,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 2),
@@ -328,7 +328,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -395,7 +395,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
         desktop: 56,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -411,7 +411,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
       ),
       child: Icon(
         Icons.person,
-        color: AppColors.textSecondary,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         size: ResponsiveUtils.responsiveFontSize(
           context,
           mobile: 20,
@@ -421,6 +421,5 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
       ),
     );
   }
-
 
 }

@@ -112,7 +112,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           width: double.infinity,
           padding: ResponsiveUtils.responsivePadding(context),
           decoration: BoxDecoration(
-            color: AppColors.surfaceColor.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
             borderRadius: BorderRadius.circular(
               ResponsiveUtils.responsiveSpacing(
                 context,
@@ -122,7 +122,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ),
             border: Border.all(
-              color: AppColors.borderColor.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -135,7 +135,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 tablet: 16,
                 desktop: 18,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,
@@ -182,7 +182,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
       padding: ResponsiveUtils.responsivePadding(context),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -197,7 +197,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -220,7 +220,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               desktop: 50,
             ),
             decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(
                 ResponsiveUtils.responsiveFontSize(
                   context,
@@ -232,7 +232,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             child: Icon(
               Icons.location_on_outlined,
-              color: AppColors.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
               size: ResponsiveUtils.responsiveFontSize(
                 context,
                 mobile: 20,
@@ -263,7 +263,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       tablet: 18,
                       desktop: 20,
                     ),
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
@@ -287,7 +287,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         tablet: 14,
                         desktop: 16,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -340,7 +340,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: AppColors.textWhite,
+                color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -353,15 +353,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'active':
-        return AppColors.successColor;
+        return Colors.green;
       case 'pending':
-        return AppColors.warningColor;
+        return Colors.orange;
       case 'completed':
-        return AppColors.infoColor;
+        return Colors.blue;
       case 'overdue':
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       default:
-        return AppColors.textSecondary;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 
@@ -378,7 +378,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         showDrawer: false,
       ),
       body: (_userDetailService.isLoading || _userSitesService.isLoading) && (widget.userId != null || AuthService.currentUser != null)
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
                     : RefreshIndicator(
             onRefresh: () async {
               if (widget.userId != null) {
@@ -410,7 +410,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 desktop: 160,
               ),
               decoration: BoxDecoration(
-                color: AppColors.errorColor,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(
                   ResponsiveUtils.responsiveFontSize(
                     context,
@@ -436,7 +436,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(
                       Icons.person,
-                      color: AppColors.textWhite,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       size: ResponsiveUtils.responsiveFontSize(
                         context,
                         mobile: 60,
@@ -449,7 +449,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               )
                   : Icon(
                 Icons.person,
-                color: AppColors.textWhite,
+                color: Theme.of(context).colorScheme.onPrimary,
                 size: ResponsiveUtils.responsiveFontSize(
                   context,
                   mobile: 60,
@@ -473,7 +473,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   width: double.infinity,
                   padding: ResponsiveUtils.responsivePadding(context),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceColor,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(
                       ResponsiveUtils.responsiveSpacing(
                         context,
@@ -499,7 +499,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             tablet: 20,
                             desktop: 22,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -549,8 +549,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         title: 'Status',
                         value: user?.status ?? 'N/A',
                         valueColor: user?.isActive == true
-                            ? AppColors.successColor
-                            : AppColors.errorColor,
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.error,
                       ),
                       _buildProfileItem(
                         context,
@@ -566,7 +566,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   width: double.infinity,
                   padding: ResponsiveUtils.responsivePadding(context),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceColor,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(
                       ResponsiveUtils.responsiveSpacing(
                         context,
@@ -592,7 +592,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             tablet: 20,
                             desktop: 22,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -649,7 +649,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               desktop: 50,
             ),
             decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(
                 ResponsiveUtils.responsiveFontSize(
                   context,
@@ -661,7 +661,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             child: Icon(
               icon,
-              color: AppColors.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
               size: ResponsiveUtils.responsiveFontSize(
                 context,
                 mobile: 20,
@@ -691,7 +691,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       tablet: 14,
                       desktop: 16,
                     ),
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(
@@ -711,7 +711,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       tablet: 16,
                       desktop: 18,
                     ),
-                    color: valueColor ?? AppColors.textPrimary,
+                    color: valueColor ?? Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,

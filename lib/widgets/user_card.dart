@@ -73,7 +73,7 @@ class UserCard extends StatelessWidget {
         desktop: 70,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -85,7 +85,7 @@ class UserCard extends StatelessWidget {
       ),
       child: Icon(
         Icons.person,
-        color: AppColors.textSecondary,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         size: ResponsiveUtils.responsiveFontSize(
           context,
           mobile: 24,
@@ -114,7 +114,7 @@ class UserCard extends StatelessWidget {
         ),
         padding: ResponsiveUtils.responsivePadding(context),
         decoration: BoxDecoration(
-          color: AppColors.textWhite,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -125,7 +125,7 @@ class UserCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadowColor.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -160,7 +160,7 @@ class UserCard extends StatelessWidget {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 1,
@@ -186,7 +186,7 @@ class UserCard extends StatelessWidget {
                         tablet: 14,
                         desktop: 16,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -218,7 +218,7 @@ class UserCard extends StatelessWidget {
                               ),
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryColor.withOpacity(0.1),
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(
                                 ResponsiveUtils.responsiveSpacing(
                                   context,
@@ -233,7 +233,7 @@ class UserCard extends StatelessWidget {
                               children: [
                                 Icon(
                                   Icons.person_outline,
-                                  color: AppColors.primaryColor,
+                                  color: Theme.of(context).colorScheme.primary,
                                   size: ResponsiveUtils.responsiveFontSize(
                                     context,
                                     mobile: 14,
@@ -258,7 +258,7 @@ class UserCard extends StatelessWidget {
                                       tablet: 12,
                                       desktop: 14,
                                     ),
-                                    color: AppColors.primaryColor,
+                                    color: Theme.of(context).colorScheme.primary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -291,7 +291,7 @@ class UserCard extends StatelessWidget {
                               ),
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.successColor.withOpacity(0.1),
+                              color: Colors.green.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(
                                 ResponsiveUtils.responsiveSpacing(
                                   context,
@@ -306,7 +306,7 @@ class UserCard extends StatelessWidget {
                               children: [
                                 Icon(
                                   Icons.calendar_today_outlined,
-                                  color: AppColors.successColor,
+                                  color: Colors.green,
                                   size: ResponsiveUtils.responsiveFontSize(
                                     context,
                                     mobile: 14,
@@ -331,7 +331,7 @@ class UserCard extends StatelessWidget {
                                       tablet: 12,
                                       desktop: 14,
                                     ),
-                                    color: AppColors.successColor,
+                                    color: Colors.green,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),

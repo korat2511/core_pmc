@@ -154,7 +154,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       ),
       body: _isLoading
           ? Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
+              child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
             )
           : SingleChildScrollView(
               padding: ResponsiveUtils.responsivePadding(context),
@@ -203,7 +203,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           style: AppTypography.titleMedium.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 16),
@@ -214,7 +214,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.borderColor),
               ),
@@ -224,12 +224,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   Text(
                     _selectedCategory?.name ?? 'Choose a category',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: _selectedCategory != null ? AppColors.textPrimary : AppColors.textSecondary,
+                      color: _selectedCategory != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Icon(
                     Icons.keyboard_arrow_down,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -248,7 +248,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           'Agency *',
           style: AppTypography.bodyMedium.copyWith(
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8),
@@ -259,7 +259,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.borderColor),
             ),
@@ -269,12 +269,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 Text(
                   _getAgencyDisplayText(),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: _selectedAgency != null && _selectedAgency!.isNotEmpty ? AppColors.textPrimary : AppColors.textSecondary,
+                    color: _selectedAgency != null && _selectedAgency!.isNotEmpty ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 Icon(
                   Icons.keyboard_arrow_down,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -301,7 +301,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   label: 'Asking Date',
                   hintText: 'Select asking date (optional)',
                   readOnly: true,
-                  suffixIcon: Icon(Icons.calendar_today, color: AppColors.primaryColor),
+                  suffixIcon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             ),
@@ -322,7 +322,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   label: 'Requirement Date',
                   hintText: 'Select requirement date (optional)',
                   readOnly: true,
-                  suffixIcon: Icon(Icons.calendar_today, color: AppColors.primaryColor),
+                  suffixIcon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             ),
@@ -374,7 +374,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           'QC Category',
           style: AppTypography.bodyMedium.copyWith(
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8),
@@ -385,7 +385,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.borderColor),
               ),
@@ -395,12 +395,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   Text(
                     _selectedQcCategory?.name ?? 'Select QC category (optional)',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: _selectedQcCategory != null ? AppColors.textPrimary : AppColors.textSecondary,
+                      color: _selectedQcCategory != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Icon(
                     Icons.keyboard_arrow_down,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -419,7 +419,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           style: AppTypography.titleMedium.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 16),
@@ -431,15 +431,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 width: 2,
                 style: BorderStyle.solid,
               ),
             ),
-            child: Icon(Icons.add_photo_alternate, color: AppColors.primaryColor, size: 32),
+            child: Icon(Icons.add_photo_alternate, color: Theme.of(context).colorScheme.primary, size: 32),
           ),
         ),
         
@@ -449,7 +449,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           Text(
             '${_selectedImages.length} photo(s) selected',
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.successColor,
+              color: Colors.green,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -482,7 +482,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                 color: AppColors.borderColor,
                                 child: Icon(
                                   Icons.error,
-                                  color: AppColors.errorColor,
+                                  color: Theme.of(context).colorScheme.error,
                                 ),
                               );
                             },
@@ -502,12 +502,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           child: Container(
                             padding: EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: AppColors.errorColor,
+                              color: Theme.of(context).colorScheme.error,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.close,
-                              color: AppColors.textWhite,
+                              color: Colors.white,
                               size: 16,
                             ),
                           ),
@@ -533,7 +533,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           style: AppTypography.titleMedium.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 16),
@@ -610,10 +610,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: hasData ? AppColors.primaryColor.withOpacity(0.1) : AppColors.surfaceColor,
+          color: hasData ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasData ? AppColors.primaryColor : AppColors.borderColor,
+            color: hasData ? Theme.of(context).colorScheme.primary : AppColors.borderColor,
             width: 1,
           ),
         ),
@@ -622,14 +622,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           children: [
             Icon(
               icon,
-              color: hasData ? AppColors.primaryColor : AppColors.textSecondary,
+              color: hasData ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
               size: 24,
             ),
             SizedBox(height: 4),
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: hasData ? AppColors.primaryColor : AppColors.textSecondary,
+                color: hasData ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: hasData ? FontWeight.w600 : FontWeight.normal,
               ),
               textAlign: TextAlign.center,
@@ -658,8 +658,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   Widget _buildAddDataModal(String type, String title) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -674,7 +674,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -694,7 +694,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -707,7 +707,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   },
                   child: Icon(
                     Icons.close,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 24,
                   ),
                 ),
@@ -731,7 +731,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     contentPadding: EdgeInsets.all(16),
                   ),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(height: 24),
@@ -744,8 +744,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       Navigator.pop(context, false); // Return false to indicate cancellation
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -754,7 +754,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     child: Text(
                       'Save',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

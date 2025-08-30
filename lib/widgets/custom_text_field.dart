@@ -54,35 +54,37 @@ class CustomTextField extends StatelessWidget {
       inputFormatters: inputFormatters,
       textCapitalization: textCapitalization,
       maxLines: maxLines,
-      style: AppTypography.bodyLarge,
+      style: AppTypography.bodyLarge.copyWith(
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
       readOnly: readOnly,
       onTap: onTap,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: AppTypography.bodySmall.copyWith(
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:  BorderSide(color: AppColors.primary),
+          borderSide:  BorderSide(color: Theme.of(context).colorScheme.primary),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:  BorderSide(color: AppColors.primary),
+          borderSide:  BorderSide(color: Theme.of(context).colorScheme.primary),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:  BorderSide(color: AppColors.primary, width: 2),
+          borderSide:  BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:  BorderSide(color: AppColors.errorColor),
+          borderSide:  BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.errorColor, width: 2),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: 2),
         ),
         contentPadding: contentPadding ??
             EdgeInsets.symmetric(

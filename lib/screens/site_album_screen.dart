@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import '../models/site_album_model.dart';
 
 import '../services/site_album_service.dart';
-import '../widgets/folder_card.dart';
-import '../widgets/content_item_card.dart';
 import '../widgets/custom_search_bar.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/dismiss_keyboard.dart';
@@ -195,44 +193,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
     }
   }
 
-  void _navigateToFolder(SiteAlbumModel folder) {
-    setState(() {
-      if (_currentFolder == null) {
-        // Navigating from root to a main folder
-        _currentFolder = folder;
-        _folderPath = [folder];
-        _displayedFolders = folder.children;
-      } else {
-        // Navigating to a subfolder
-        _folderPath.add(folder);
-        _currentFolder = folder;
-        _displayedFolders = folder.children;
-      }
-    });
-  }
 
-  void _navigateBack() {
-    // Clear old uploading items when navigating
-    _clearOldUploadingItems();
-
-    if (_folderPath.isEmpty) {
-      // Go back to home
-      Navigator.of(context).pop();
-    } else {
-      setState(() {
-        _folderPath.removeLast();
-        if (_folderPath.isEmpty) {
-          // Back to root
-          _currentFolder = null;
-          _displayedFolders = _albumService.mainFolders;
-        } else {
-          // Back to parent folder
-          _currentFolder = _folderPath.last;
-          _displayedFolders = _currentFolder!.children;
-        }
-      });
-    }
-  }
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -316,19 +277,19 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: CustomAppBar(
         title: _getAppBarTitle(),
         showBackButton: true,
         onBackPressed: _handleBackButton,
       ),
       floatingActionButton: _currentFolder != null
-          ? FloatingActionButton.extended(
+          ?             FloatingActionButton.extended(
               onPressed: () => _showUploadOptions(),
-              backgroundColor: AppColors.primary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(
-                'Upload',
+                'Add',
                 style: TextStyle(color: Colors.white),
               ),
             )
@@ -356,7 +317,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   Text(
                     'Path: ',
                     style: AppTypography.bodySmall.copyWith(
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -384,16 +345,16 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: _folderPath.isEmpty
-                                    ? AppColors.primary
-                                    : Colors.grey.shade200,
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Home',
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: _folderPath.isEmpty
-                                      ? Colors.white
-                                      : Colors.grey.shade700,
+                                                                  color: _folderPath.isEmpty
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -442,17 +403,17 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: i == _folderPath.length - 1
-                                            ? AppColors.primary
-                                            : Colors.grey.shade200,
+                                                                            color: i == _folderPath.length - 1
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.surfaceVariant,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
                                         _folderPath[i].albumName,
                                         style: AppTypography.bodySmall.copyWith(
-                                          color: i == _folderPath.length - 1
-                                              ? Colors.white
-                                              : Colors.grey.shade700,
+                                                                              color: i == _folderPath.length - 1
+                                        ? Colors.white
+                                        : Theme.of(context).colorScheme.onSurfaceVariant,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -711,12 +672,12 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       onLongPress: null,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
+          border: Border.all(color: AppColors.borderColor, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -751,7 +712,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   style: AppTypography.bodySmall.copyWith(
                     fontWeight: FontWeight.w600,
                     fontSize: 10,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 2,
@@ -768,7 +729,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
   Widget _buildUploadingItemCard(UploadingItem item) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: item.errorMessage != null
@@ -778,7 +739,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -847,9 +808,9 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                     item.fileName,
                     style: AppTypography.bodySmall.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: item.errorMessage != null
-                          ? Colors.red.shade700
-                          : Colors.black87,
+                                          color: item.errorMessage != null
+                        ? Colors.red.shade700
+                        : Theme.of(context).colorScheme.onSurface,
                       fontSize: 9,
                     ),
                     textAlign: TextAlign.center,
@@ -920,18 +881,18 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
         }
       },
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
+              decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
         child: item.isImage && item.imagePath != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -975,7 +936,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               item.fileName,
               style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                                  color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 9,
               ),
               textAlign: TextAlign.center,
@@ -1083,12 +1044,12 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey.shade400),
+          Icon(icon, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(height: 16),
           Text(
             message,
             style: AppTypography.bodyLarge.copyWith(
-              color: Colors.grey.shade600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1156,7 +1117,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Add New Folder',
             style: AppTypography.headlineSmall.copyWith(
@@ -1169,7 +1130,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               Text(
                 'Create a new folder in "${_currentFolder!.albumName}"',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.grey.shade600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 16),
@@ -1197,7 +1158,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
               child: Text(
                 'Cancel',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.grey.shade600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -1206,7 +1167,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
                   ? null
                   : () => _addFolder(dialogContext),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
               ),
               child: _isAddingFolder
@@ -1234,7 +1195,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       SnackBarUtils.showError(
         context,
         message:
-            'This folder cannot contain images. Only "3d Images" and "Site Marking Data" folders can contain images.',
+            'This folder cannot contain images. Only "3d Images", "Site Marking Data", and "Catalogue" folders can contain images.',
       );
       return;
     }
@@ -1402,7 +1363,7 @@ class _SiteAlbumScreenState extends State<SiteAlbumScreen> {
       SnackBarUtils.showError(
         context,
         message:
-            'This folder cannot contain attachments. Only "Drawings", "Quotation", and "Agreement" folders can contain attachments.',
+             'This folder cannot contain attachments. Only "Drawings", "Quotation", "Catalogue", and "Agreement" folders can contain attachments.',
       );
       return;
     }

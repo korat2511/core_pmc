@@ -386,10 +386,10 @@ class SiteAlbumService {
     // Check if it's a main folder that can contain images
     if (folder.isMainFolder) {
       final folderName = folder.albumName.toLowerCase();
-      return folderName.contains('3d') || 
-             folderName.contains('image') || 
+      return folderName.contains('3d images') || 
              folderName.contains('site marking') ||
-             folderName.contains('marking');
+             folderName.contains('marking') ||
+             folderName.contains('catalogue');
     }
     
     // For subfolders, check the parent folder
@@ -410,6 +410,7 @@ class SiteAlbumService {
       final folderName = folder.albumName.toLowerCase();
       return folderName.contains('drawing') || 
              folderName.contains('quotation') || 
+             folderName.contains('catalogue') ||
              folderName.contains('agreement');
     }
     

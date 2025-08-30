@@ -86,14 +86,14 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
         title: Text(
           'Delete Category',
           style: AppTypography.titleMedium.copyWith(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${category.name}"? This action cannot be undone.',
           style: AppTypography.bodyLarge.copyWith(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         actions: [
@@ -102,7 +102,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
             child: Text(
               'Cancel',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -114,7 +114,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
             child: Text(
               'Delete',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.errorColor,
+                color: Theme.of(context).colorScheme.error,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -209,7 +209,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -232,7 +232,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                         ),
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(
                           ResponsiveUtils.responsiveSpacing(
                             context,
@@ -247,7 +247,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                         children: [
                           Icon(
                             Icons.add,
-                            color: AppColors.textWhite,
+                            color: Colors.white,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 16,
@@ -272,7 +272,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                                 tablet: 14,
                                 desktop: 16,
                               ),
-                              color: AppColors.textWhite,
+                              color: Colors.white,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -291,7 +291,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
               child: _categoryService.isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : filteredCategories.isEmpty
@@ -307,7 +307,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                                   tablet: 80,
                                   desktop: 100,
                                 ),
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               SizedBox(
                                 height: ResponsiveUtils.responsiveSpacing(
@@ -328,7 +328,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                                     tablet: 18,
                                     desktop: 20,
                                   ),
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -337,7 +337,7 @@ class _SiteCategoryScreenState extends State<SiteCategoryScreen> {
                         )
                       : RefreshIndicator(
                           onRefresh: _loadCategories,
-                          color: AppColors.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           child: ListView.builder(
                             padding: ResponsiveUtils.horizontalPadding(context),
                             itemCount: filteredCategories.length,

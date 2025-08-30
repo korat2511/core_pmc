@@ -90,8 +90,8 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
       maxChildSize: 0.9,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surfaceColor,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -106,7 +106,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.textLight.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -125,16 +125,16 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                             tablet: 20,
                             desktop: 22,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Spacer(),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -173,7 +173,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -195,7 +195,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                   child: _qcCategoryService.isLoading
                       ? Center(
                           child: CircularProgressIndicator(
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         )
                       : _filteredQcCategories.isEmpty
@@ -211,7 +211,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                                       tablet: 80,
                                       desktop: 100,
                                     ),
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   SizedBox(
                                     height: ResponsiveUtils.responsiveSpacing(
@@ -232,7 +232,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                                         tablet: 18,
                                         desktop: 20,
                                       ),
-                                      color: AppColors.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -273,8 +273,8 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primaryColor.withOpacity(0.1)
-              : AppColors.surfaceColor,
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -285,7 +285,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
           ),
           border: Border.all(
             color: isSelected
-                ? AppColors.primaryColor
+                ? Theme.of(context).colorScheme.primary
                 : AppColors.borderColor,
             width: isSelected ? 2 : 1,
           ),
@@ -309,7 +309,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                   desktop: 56,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.successColor.withOpacity(0.1),
+                  color: Colors.green.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(
                     ResponsiveUtils.responsiveFontSize(
                       context,
@@ -321,7 +321,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                 ),
                 child: Icon(
                   Icons.verified_outlined,
-                  color: AppColors.successColor,
+                  color: Colors.green,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 20,
@@ -354,7 +354,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                           tablet: 18,
                           desktop: 20,
                         ),
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -375,7 +375,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
                           tablet: 14,
                           desktop: 16,
                         ),
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -386,7 +386,7 @@ class _QcCategoryPickerModalState extends State<_QcCategoryPickerModal> {
               if (isSelected)
                 Icon(
                   Icons.check_circle,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
@@ -8,6 +9,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../screens/all_users_screen.dart';
 import '../screens/attendance_screen.dart';
+import '../providers/theme_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class CustomDrawer extends StatefulWidget {
@@ -50,6 +52,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     final UserModel? user = AuthService.currentUser;
 
     return Drawer(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Column(
         children: [
           // Drawer Header
@@ -61,8 +64,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
               left: ResponsiveUtils.responsiveSpacing(context),
               right: ResponsiveUtils.responsiveSpacing(context),
             ),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryColor,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
             ),
             child: Row(
               children: [
@@ -81,7 +84,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     desktop: 80,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.textWhite.withOpacity(0.2),
+                    color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(
                       ResponsiveUtils.responsiveFontSize(
                         context,
@@ -107,7 +110,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
                                 Icons.person,
-                                color: AppColors.textWhite,
+                                color: Theme.of(context).colorScheme.onPrimary,
                                 size: ResponsiveUtils.responsiveFontSize(
                                   context,
                                   mobile: 30,
@@ -120,7 +123,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                         )
                       : Icon(
                           Icons.person,
-                          color: AppColors.textWhite,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           size: ResponsiveUtils.responsiveFontSize(
                             context,
                             mobile: 30,
@@ -153,7 +156,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textWhite,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
@@ -177,7 +180,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                             tablet: 14,
                             desktop: 16,
                           ),
-                          color: AppColors.textWhite.withOpacity(0.8),
+                          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -228,6 +231,19 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     NavigationUtils.push(context, const AllUsersScreen());
                   },
                 ),
+                // Theme Toggle
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                    return _buildDrawerItem(
+                      context,
+                      icon: themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                      title: themeProvider.isDarkMode ? 'Light Theme' : 'Dark Theme',
+                      onTap: () {
+                        themeProvider.toggleTheme();
+                      },
+                    );
+                  },
+                ),
                 const Divider(),
                 // Logout
                 _buildDrawerItem(
@@ -238,8 +254,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     AuthService.logout();
                     Navigator.of(context).pushReplacementNamed('/login');
                   },
-                  textColor: AppColors.errorColor,
-                  iconColor: AppColors.errorColor,
+                  textColor: Theme.of(context).colorScheme.error,
+                  iconColor: Theme.of(context).colorScheme.error,
                 ),
               ],
             ),
@@ -272,10 +288,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   ),
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundColor,
+                  color: Theme.of(context).colorScheme.surface,
                   border: Border(
                     top: BorderSide(
-                      color: AppColors.borderColor,
+                      color: Theme.of(context).colorScheme.outline,
                       width: 1,
                     ),
                   ),
@@ -285,7 +301,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   children: [
                     Icon(
                       Icons.info_outline,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: ResponsiveUtils.responsiveFontSize(
                         context,
                         mobile: 16,
@@ -310,7 +326,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                           tablet: 14,
                           desktop: 16,
                         ),
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -335,7 +351,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     return ListTile(
       leading: Icon(
         icon,
-        color: iconColor ?? AppColors.textPrimary,
+        color: iconColor ?? Theme.of(context).colorScheme.onSurface,
         size: ResponsiveUtils.responsiveFontSize(
           context,
           mobile: 20,
@@ -352,7 +368,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             tablet: 18,
             desktop: 20,
           ),
-          color: textColor ?? AppColors.textPrimary,
+          color: textColor ?? Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         ),
       ),

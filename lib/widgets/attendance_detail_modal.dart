@@ -24,8 +24,8 @@ class AttendanceDetailModal extends StatelessWidget {
     final isAbsent = !isPresent && !isFutureDate;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -40,7 +40,7 @@ class AttendanceDetailModal extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -52,7 +52,7 @@ class AttendanceDetailModal extends StatelessWidget {
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -81,7 +81,7 @@ class AttendanceDetailModal extends StatelessWidget {
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -94,7 +94,7 @@ class AttendanceDetailModal extends StatelessWidget {
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -117,8 +117,8 @@ class AttendanceDetailModal extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isPresent 
-                        ? AppColors.successColor 
-                        : (isFutureDate ? AppColors.textSecondary : AppColors.errorColor),
+                        ? Colors.green 
+                        : (isFutureDate ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.error),
                     borderRadius: BorderRadius.circular(
                       ResponsiveUtils.responsiveSpacing(
                         context,
@@ -139,7 +139,7 @@ class AttendanceDetailModal extends StatelessWidget {
                         tablet: 12,
                         desktop: 14,
                       ),
-                      color: AppColors.textWhite,
+                      color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -169,8 +169,8 @@ class AttendanceDetailModal extends StatelessWidget {
                         ? Icons.event_busy_outlined
                         : Icons.event_busy_outlined,
                     color: isFutureDate 
-                        ? AppColors.textSecondary
-                        : AppColors.errorColor,
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.error,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 48,
@@ -197,7 +197,7 @@ class AttendanceDetailModal extends StatelessWidget {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -303,7 +303,7 @@ class AttendanceDetailModal extends StatelessWidget {
                       tablet: 14,
                       desktop: 16,
                     ),
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(
@@ -323,7 +323,7 @@ class AttendanceDetailModal extends StatelessWidget {
                       tablet: 16,
                       desktop: 18,
                     ),
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
@@ -353,7 +353,7 @@ class AttendanceDetailModal extends StatelessWidget {
       width: double.infinity,
       padding: ResponsiveUtils.responsivePadding(context),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -379,7 +379,7 @@ class AttendanceDetailModal extends StatelessWidget {
                 tablet: 18,
                 desktop: 20,
               ),
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -398,7 +398,7 @@ class AttendanceDetailModal extends StatelessWidget {
             title: 'In Time',
             value: attendance.checkInTime,
             icon: Icons.login_outlined,
-            color: AppColors.successColor,
+            color: Colors.green,
           ),
           
           if (attendance.addressIn != null && attendance.addressIn!.isNotEmpty) ...[
@@ -415,7 +415,7 @@ class AttendanceDetailModal extends StatelessWidget {
               title: 'In Address',
               value: attendance.addressIn!,
               icon: Icons.location_on_outlined,
-              color: AppColors.infoColor,
+              color: Colors.blue,
             ),
           ],
           
@@ -434,7 +434,7 @@ class AttendanceDetailModal extends StatelessWidget {
             title: 'Out Time',
             value: attendance.checkoutStatusText,
             icon: Icons.logout_outlined,
-            color: isAutoCheckout ? AppColors.warningColor : (hasCheckedOut ? AppColors.errorColor : AppColors.textSecondary),
+            color: isAutoCheckout ? Colors.orange : (hasCheckedOut ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           
           if (attendance.addressOut != null && attendance.addressOut!.isNotEmpty) ...[
@@ -451,7 +451,7 @@ class AttendanceDetailModal extends StatelessWidget {
               title: 'Out Address',
               value: attendance.addressOut!,
               icon: Icons.location_on_outlined,
-              color: AppColors.infoColor,
+              color: Colors.blue,
             ),
           ],
         ],
@@ -524,7 +524,7 @@ class AttendanceDetailModal extends StatelessWidget {
                     tablet: 12,
                     desktop: 14,
                   ),
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(
@@ -544,7 +544,7 @@ class AttendanceDetailModal extends StatelessWidget {
                     tablet: 14,
                     desktop: 16,
                   ),
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                 ),
                 maxLines: 2,

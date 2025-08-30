@@ -13,6 +13,7 @@ import 'site_category_screen.dart';
 import 'site_manpower_screen.dart';
 import 'site_qc_category_screen.dart';
 import 'site_vendor_screen.dart';
+import 'site_agency_screen.dart';
 import 'meeting_screen.dart';
 
 
@@ -118,6 +119,11 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
               'icon': Icons.business_outlined,
               'color': AppColors.infoColor,
             },
+            {
+              'title': 'Agency',
+              'icon': Icons.account_balance_outlined,
+              'color': AppColors.warningColor,
+            },
           ]),
         ],
       ),
@@ -143,7 +149,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
             tablet: 20,
             desktop: 22,
           ),
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -175,7 +181,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -187,7 +193,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
           border: Border.all(color: AppColors.borderColor, width: 1),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textLight.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -248,7 +254,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -306,6 +312,9 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         break;
       case 'Vendors':
         NavigationUtils.push(context, SiteVendorScreen(site: widget.site));
+        break;
+      case 'Agency':
+        NavigationUtils.push(context, SiteAgencyScreen(site: widget.site));
         break;
       case 'Meetings':
         NavigationUtils.push(context, MeetingScreen(site: widget.site));

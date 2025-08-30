@@ -58,7 +58,7 @@ class _PaymentTermsPickerBottomSheetState extends State<PaymentTermsPickerBottom
     return Container(
       height: MediaQuery.of(context).size.height * 0.6,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -69,7 +69,7 @@ class _PaymentTermsPickerBottomSheetState extends State<PaymentTermsPickerBottom
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -83,12 +83,16 @@ class _PaymentTermsPickerBottomSheetState extends State<PaymentTermsPickerBottom
                 Text(
                   'Select Payment Terms',
                   style: AppTypography.titleMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -104,7 +108,7 @@ class _PaymentTermsPickerBottomSheetState extends State<PaymentTermsPickerBottom
                 
                 return ListTile(
                   title: Text(terms),
-                  trailing: isSelected ? Icon(Icons.check, color: AppColors.primaryColor) : null,
+                  trailing: isSelected ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary) : null,
                   onTap: () {
                     setState(() {
                       _selectedTerms = terms;

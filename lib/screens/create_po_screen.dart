@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/utils/navigation_utils.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../models/site_model.dart';
 import '../models/material_model.dart';
 import '../models/billing_address_model.dart';
+
 import '../models/site_vendor_model.dart';
 import '../models/terms_and_condition_model.dart';
 import '../services/api_service.dart';
@@ -16,14 +18,12 @@ import '../widgets/custom_text_field.dart';
 import '../core/utils/state_picker_utils.dart';
 import '../core/utils/payment_terms_picker_utils.dart';
 import '../services/auth_service.dart';
+import 'add_material_screen.dart';
 
 class CreatePOScreen extends StatefulWidget {
   final SiteModel site;
 
-  const CreatePOScreen({
-    super.key,
-    required this.site,
-  });
+  const CreatePOScreen({super.key, required this.site});
 
   @override
   State<CreatePOScreen> createState() => _CreatePOScreenState();
@@ -48,6 +48,8 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
 
   // Step 3: Delivery & Terms
   final _purchaseOrderIdController = TextEditingController();
+  bool _isCustomOrderId = false;
+  bool _isLoadingOrderId = false;
   SiteVendorModel? _selectedVendor;
   DateTime? _expectedDeliveryDate;
   BillingAddressModel? _selectedDeliveryAddress;
@@ -55,7 +57,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
   TermsAndConditionModel? _selectedTermsAndCondition;
   String? _selectedPaymentTerms;
   final _remarksController = TextEditingController();
-  
+
   // Data for pickers
   List<SiteVendorModel> _vendors = [];
   List<BillingAddressModel> _billingAddresses = [];
@@ -68,6 +70,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
   void initState() {
     super.initState();
     _loadMaterials();
+    _generateAutoOrderId();
   }
 
   @override
@@ -75,13 +78,13 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     _materialSearchController.dispose();
     _purchaseOrderIdController.dispose();
     _remarksController.dispose();
-    
+
     // Dispose all dynamic controllers
     _quantityControllers.values.forEach((controller) => controller.dispose());
     _unitPriceControllers.values.forEach((controller) => controller.dispose());
     _discountControllers.values.forEach((controller) => controller.dispose());
     _taxControllers.values.forEach((controller) => controller.dispose());
-    
+
     super.dispose();
   }
 
@@ -92,7 +95,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
 
     try {
       final response = await ApiService.getMaterials(page: 1);
-      
+
       if (response != null && response.status == 1) {
         setState(() {
           _materials = response.data;
@@ -124,8 +127,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         } else {
           _filteredMaterials = _materials.where((material) {
             return material.name.toLowerCase().contains(query.toLowerCase()) ||
-                   material.sku.toLowerCase().contains(query.toLowerCase()) ||
-                   material.brandName?.toLowerCase().contains(query.toLowerCase()) == true;
+                material.sku.toLowerCase().contains(query.toLowerCase()) ||
+                material.brandName?.toLowerCase().contains(
+                      query.toLowerCase(),
+                    ) ==
+                    true;
           }).toList();
         }
       });
@@ -150,10 +156,12 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         // Create controllers for selected material
         final material = _materials.firstWhere((m) => m.id == materialId);
         _quantityControllers[materialId] = TextEditingController();
-        _unitPriceControllers[materialId] = TextEditingController(text: material.unitPrice);
+        _unitPriceControllers[materialId] = TextEditingController(
+          text: material.unitPrice,
+        );
         _discountControllers[materialId] = TextEditingController();
         _taxControllers[materialId] = TextEditingController();
-        
+
         // Add listeners for real-time calculations
         _quantityControllers[materialId]!.addListener(() => setState(() {}));
         _unitPriceControllers[materialId]!.addListener(() => setState(() {}));
@@ -171,7 +179,9 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         // Check if all selected materials have valid quantities
         for (final materialId in _selectedMaterialIds) {
           final quantity = _quantityControllers[materialId]?.text.trim();
-          if (quantity == null || quantity.isEmpty || double.tryParse(quantity) == null) {
+          if (quantity == null ||
+              quantity.isEmpty ||
+              double.tryParse(quantity) == null) {
             return false;
           }
         }
@@ -200,10 +210,17 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
   }
 
   double _calculateTotalPrice(int materialId) {
-    final quantity = double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final unitPrice = double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final discount = double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final tax = double.tryParse(_taxControllers[materialId]?.text.trim() ?? '') ?? 0;
+    final quantity =
+        double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final unitPrice =
+        double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final discount =
+        double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final tax =
+        double.tryParse(_taxControllers[materialId]?.text.trim() ?? '') ?? 0;
 
     final subtotal = quantity * unitPrice;
     final discountAmount = subtotal * (discount / 100);
@@ -215,9 +232,15 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
   }
 
   double _calculateTotalTaxableValue(int materialId) {
-    final quantity = double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final unitPrice = double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final discount = double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ?? 0;
+    final quantity =
+        double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final unitPrice =
+        double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final discount =
+        double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ??
+        0;
 
     final subtotal = quantity * unitPrice;
     final discountAmount = subtotal * (discount / 100);
@@ -226,17 +249,32 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
 
   double _calculateTaxAmount(int materialId) {
     final taxableValue = _calculateTotalTaxableValue(materialId);
-    final tax = double.tryParse(_taxControllers[materialId]?.text.trim() ?? '') ?? 0;
+    final tax =
+        double.tryParse(_taxControllers[materialId]?.text.trim() ?? '') ?? 0;
     return taxableValue * (tax / 100);
   }
 
   double _calculateDiscountAmount(int materialId) {
-    final quantity = double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final unitPrice = double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ?? 0;
-    final discount = double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ?? 0;
+    final quantity =
+        double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final unitPrice =
+        double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '') ??
+        0;
+    final discount =
+        double.tryParse(_discountControllers[materialId]?.text.trim() ?? '') ??
+        0;
 
     final subtotal = quantity * unitPrice;
     return subtotal * (discount / 100);
+  }
+
+  double _calculateTotalOrderAmount() {
+    double total = 0;
+    for (final materialId in _selectedMaterialIds) {
+      total += _calculateTotalPrice(materialId);
+    }
+    return total;
   }
 
   @override
@@ -244,6 +282,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Create Purchase Order',
+        showDrawer: false,
         showBackButton: true,
       ),
       body: Column(
@@ -256,7 +295,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               children: List.generate(_numSteps, (index) {
                 final isActive = index == _currentStep;
                 final isCompleted = index < _currentStep;
-                
+
                 return Expanded(
                   child: Row(
                     children: [
@@ -265,11 +304,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: isCompleted 
-                              ? AppColors.primaryColor 
-                              : isActive 
-                                  ? AppColors.primaryColor 
-                                  : AppColors.borderColor,
+                          color: isCompleted
+                              ? AppColors.primaryColor
+                              : isActive
+                              ? AppColors.primaryColor
+                              : AppColors.borderColor,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -284,7 +323,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                                 ),
                         ),
                       ),
-                      
+
                       // Step Title
                       Expanded(
                         child: Padding(
@@ -292,8 +331,12 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           child: Text(
                             _getStepTitle(index),
                             style: AppTypography.bodySmall.copyWith(
-                              color: isActive ? AppColors.primaryColor : AppColors.textSecondary,
-                              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                              color: isActive
+                                  ? AppColors.primaryColor
+                                  : AppColors.textSecondary,
+                              fontWeight: isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
@@ -301,13 +344,15 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           ),
                         ),
                       ),
-                      
+
                       // Connector Line
                       if (index < _numSteps - 1)
                         Expanded(
                           child: Container(
                             height: 2,
-                            color: isCompleted ? AppColors.primaryColor : AppColors.borderColor,
+                            color: isCompleted
+                                ? AppColors.primaryColor
+                                : AppColors.borderColor,
                           ),
                         ),
                     ],
@@ -318,9 +363,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
           ),
 
           // Step Content
-          Expanded(
-            child: _buildStepContent(),
-          ),
+          Expanded(child: _buildStepContent()),
 
           // Navigation Buttons
           Container(
@@ -341,8 +384,10 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                 Expanded(
                   child: CustomButton(
                     text: _currentStep == _numSteps - 1 ? 'Create PO' : 'Next',
-                    onPressed: _canProceedToNextStep() 
-                        ? (_currentStep == _numSteps - 1 ? _createPO : _nextStep)
+                    onPressed: _canProceedToNextStep()
+                        ? (_currentStep == _numSteps - 1
+                              ? _createPO
+                              : _nextStep)
                         : null,
                   ),
                 ),
@@ -388,7 +433,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
       },
       child: Column(
         children: [
-          SizedBox(height: 8,),
+          SizedBox(height: 8),
           Padding(
             padding: ResponsiveUtils.horizontalPadding(context),
             child: CustomSearchBar(
@@ -397,55 +442,102 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               controller: _materialSearchController,
             ),
           ),
+          SizedBox(height: 12),
+          // Add Material Button
+          Padding(
+            padding: ResponsiveUtils.horizontalPadding(context),
+            child: SizedBox(
+              width: double.infinity,
+              child: CustomButton(
+                text: 'Add Material',
+                onPressed: () async {
+                  // Navigate to create material screen using NavigationUtils
+                  final result = await NavigationUtils.push(
+                    context,
+                    AddMaterialScreen(site: widget.site,),
+                  );
+                  // Reload materials when returning from create material screen
+                  if (result != null) {
+                    _loadMaterials();
+                  }
+                },
+                backgroundColor: AppColors.primaryColor,
+                textColor: Colors.white,
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
           Expanded(
-          child: _isLoadingMaterials
-              ? Center(child: CircularProgressIndicator())
-              : _filteredMaterials.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No materials found',
-                        style: AppTypography.bodyMedium.copyWith(
+            child: _isLoadingMaterials
+                ? Center(child: CircularProgressIndicator())
+                : _filteredMaterials.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 64,
                           color: AppColors.textSecondary,
                         ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: ResponsiveUtils.responsivePadding(context),
-                      itemCount: _filteredMaterials.length,
-                      itemBuilder: (context, index) {
-                        final material = _filteredMaterials[index];
-                        final isSelected = _selectedMaterialIds.contains(material.id);
-                        
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Checkbox(
-                              value: isSelected,
-                              onChanged: (value) => _toggleMaterialSelection(material.id),
-                              activeColor: AppColors.primaryColor,
-                            ),
-                            title: Text(
-                              material.name,
-                              style: AppTypography.titleSmall.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('SKU: ${material.sku}'),
-                                Text('${material.specification}'),
-                                Text('In Stock: ${material.currentStock}'),
-                              ],
-                            ),
-                            isThreeLine: true,
+                        SizedBox(height: 16),
+                        Text(
+                          'No materials found',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textSecondary,
                           ),
-                        );
-                      },
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Add your first material to get started',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-        ),
-      ],
-    ));
+                  )
+                : ListView.builder(
+                    padding: ResponsiveUtils.responsivePadding(context),
+                    itemCount: _filteredMaterials.length,
+                    itemBuilder: (context, index) {
+                      final material = _filteredMaterials[index];
+                      final isSelected = _selectedMaterialIds.contains(
+                        material.id,
+                      );
+
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: Checkbox(
+                            value: isSelected,
+                            onChanged: (value) =>
+                                _toggleMaterialSelection(material.id),
+                            activeColor: AppColors.primaryColor,
+                          ),
+                          title: Text(
+                            material.name,
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('SKU: ${material.sku}'),
+                              Text('${material.specification}'),
+                              Text('In Stock: ${material.currentStock}'),
+                            ],
+                          ),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildQuantitiesRatesStep() {
@@ -466,103 +558,129 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         FocusScope.of(context).unfocus();
       },
       child: ListView.builder(
-      padding: ResponsiveUtils.responsivePadding(context),
-      itemCount: _selectedMaterialIds.length,
-      itemBuilder: (context, index) {
-        final materialId = _selectedMaterialIds.elementAt(index);
-        final material = _materials.firstWhere((m) => m.id == materialId);
-        
-        return Card(
-          margin: EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Material Header
-                Text(
-                  material.name,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'SKU: ${material.sku} | UOM: ${material.unitOfMeasurement}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                SizedBox(height: 16),
+        padding: ResponsiveUtils.responsivePadding(context),
+        itemCount: _selectedMaterialIds.length,
+        itemBuilder: (context, index) {
+          final materialId = _selectedMaterialIds.elementAt(index);
+          final material = _materials.firstWhere((m) => m.id == materialId);
 
-                // Input Fields
-                Row(
-                  children: [
-                                         Expanded(
-                       child: CustomTextField(
-                         label: 'Ordered Quantity (${material.unitOfMeasurement})',
-                         controller: _quantityControllers[materialId]!,
-                         keyboardType: TextInputType.number,
-                       ),
-                     ),
-                     SizedBox(width: 12),
-                     Expanded(
-                       child: CustomTextField(
-                         label: 'Unit Price (₹)',
-                         controller: _unitPriceControllers[materialId]!,
-                         keyboardType: TextInputType.number,
-                       ),
-                     ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                                         Expanded(
-                       child: CustomTextField(
-                         label: 'Discount (%)',
-                         controller: _discountControllers[materialId]!,
-                         keyboardType: TextInputType.number,
-                       ),
-                     ),
-                     SizedBox(width: 12),
-                     Expanded(
-                       child: CustomTextField(
-                         label: 'Tax (%)',
-                         controller: _taxControllers[materialId]!,
-                         keyboardType: TextInputType.number,
-                       ),
-                     ),
-                  ],
-                ),
-                SizedBox(height: 16),
+          return Card(
+            margin: EdgeInsets.only(bottom: 16),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Material Header
+                  Text(
+                    material.name,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'SKU: ${material.sku} | UOM: ${material.unitOfMeasurement}',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: 16),
 
-                // Calculations
-                                 Container(
-                   padding: EdgeInsets.all(12),
-                   decoration: BoxDecoration(
-                     color: AppColors.backgroundColor,
-                     borderRadius: BorderRadius.circular(8),
-                   ),
-                  child: Column(
+                  // Input Fields
+                  Row(
                     children: [
-                      _buildCalculationRow('Subtotal', '₹${(double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '0') ?? 0) * (double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '0') ?? 0)}'),
-                      _buildCalculationRow('Discount', '-₹${_calculateDiscountAmount(materialId).toStringAsFixed(2)}'),
-                      _buildCalculationRow('Taxable Value', '₹${_calculateTotalTaxableValue(materialId).toStringAsFixed(2)}'),
-                      _buildCalculationRow('Tax', '₹${_calculateTaxAmount(materialId).toStringAsFixed(2)}'),
-                      Divider(),
-                      _buildCalculationRow('Total Price', '₹${_calculateTotalPrice(materialId).toStringAsFixed(2)}', isTotal: true),
+                      Expanded(
+                        child: CustomTextField(
+                          label:
+                              'Ordered Quantity (${material.unitOfMeasurement})',
+                          controller: _quantityControllers[materialId]!,
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: CustomTextField(
+                          label: 'Unit Price (₹)',
+                          controller: _unitPriceControllers[materialId]!,
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomTextField(
+                          label: 'Discount (%)',
+                          controller: _discountControllers[materialId]!,
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: CustomTextField(
+                          label: 'Tax (%)',
+                          controller: _taxControllers[materialId]!,
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+
+                  // Calculations
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildCalculationRow(
+                          'Subtotal',
+                          '₹${(double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '0') ?? 0) * (double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '0') ?? 0)}',
+                        ),
+                        _buildCalculationRow(
+                          'Discount',
+                          '-₹${_calculateDiscountAmount(materialId).toStringAsFixed(2)}',
+                        ),
+                        _buildCalculationRow(
+                          'Taxable Value',
+                          '₹${_calculateTotalTaxableValue(materialId).toStringAsFixed(2)}',
+                        ),
+                                                 _buildCalculationRow(
+                           'CGST (${(double.tryParse(_taxControllers[materialId]?.text.trim() ?? '0') ?? 0) / 2}%)',
+                           '₹${(_calculateTaxAmount(materialId) / 2).toStringAsFixed(2)}',
+                         ),
+                         _buildCalculationRow(
+                           'SGST (${(double.tryParse(_taxControllers[materialId]?.text.trim() ?? '0') ?? 0) / 2}%)',
+                           '₹${(_calculateTaxAmount(materialId) / 2).toStringAsFixed(2)}',
+                         ),
+                        Divider(),
+                        _buildCalculationRow(
+                          'Total Price',
+                          '₹${_calculateTotalPrice(materialId).toStringAsFixed(2)}',
+                          isTotal: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    ));
+          );
+        },
+      ),
+    );
   }
 
-  Widget _buildCalculationRow(String label, String value, {bool isTotal = false}) {
+  Widget _buildCalculationRow(
+    String label,
+    String value, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -587,7 +705,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     );
   }
 
-    Widget _buildDeliveryTermsStep() {
+  Widget _buildDeliveryTermsStep() {
     return GestureDetector(
       onTap: () {
         // Close keyboard when tapping outside
@@ -599,10 +717,91 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Purchase Order ID
-            CustomTextField(
-              label: 'Purchase Order ID*',
-              controller: _purchaseOrderIdController,
-              hintText: 'Enter purchase order ID',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        label: 'Purchase Order ID*',
+                        controller: _purchaseOrderIdController,
+                        hintText: _isLoadingOrderId
+                            ? 'Generating...'
+                            : 'Enter purchase order ID',
+                        readOnly: !_isCustomOrderId && !_isLoadingOrderId,
+                      ),
+                    ),
+                    if (!_isCustomOrderId && !_isLoadingOrderId) ...[
+                      SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _showCustomOrderIdDialog,
+                        icon: Icon(Icons.edit, color: AppColors.primaryColor),
+                        tooltip: 'Use Custom ID',
+                      ),
+                    ],
+                    if (_isCustomOrderId) ...[
+                      SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _regenerateOrderId,
+                        icon: Icon(
+                          Icons.refresh,
+                          color: AppColors.primaryColor,
+                        ),
+                        tooltip: 'Regenerate Auto ID',
+                      ),
+                    ],
+                  ],
+                ),
+                if (!_isCustomOrderId && !_isLoadingOrderId)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Auto-generated ID. Tap edit icon to use custom ID.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (_isCustomOrderId)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Custom ID mode. Tap refresh icon to use auto-generated ID.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (_isLoadingOrderId)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primaryColor,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Generating order ID...',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
             SizedBox(height: 16),
 
@@ -631,8 +830,8 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           Text(
                             _selectedVendor?.name ?? 'Select vendor',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _selectedVendor != null 
-                                  ? AppColors.textPrimary 
+                              color: _selectedVendor != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                           ),
@@ -669,12 +868,12 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            _expectedDeliveryDate != null 
+                            _expectedDeliveryDate != null
                                 ? '${_expectedDeliveryDate!.day}/${_expectedDeliveryDate!.month}/${_expectedDeliveryDate!.year}'
                                 : 'Select delivery date',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _expectedDeliveryDate != null 
-                                  ? AppColors.textPrimary 
+                              color: _expectedDeliveryDate != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                           ),
@@ -711,10 +910,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            _selectedDeliveryAddress?.address ?? 'Select delivery address',
+                            _selectedDeliveryAddress?.address ??
+                                'Select delivery address',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _selectedDeliveryAddress != null 
-                                  ? AppColors.textPrimary 
+                              color: _selectedDeliveryAddress != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                             maxLines: 2,
@@ -753,10 +953,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            _selectedBillingAddress?.address ?? 'Select billing address',
+                            _selectedBillingAddress?.address ??
+                                'Select billing address',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _selectedBillingAddress != null 
-                                  ? AppColors.textPrimary 
+                              color: _selectedBillingAddress != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                             maxLines: 2,
@@ -795,10 +996,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            _selectedTermsAndCondition?.termAndCondition ?? 'Select terms and condition',
+                            _selectedTermsAndCondition?.termAndCondition ??
+                                'Select terms and condition',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _selectedTermsAndCondition != null 
-                                  ? AppColors.textPrimary 
+                              color: _selectedTermsAndCondition != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                             maxLines: 2,
@@ -839,8 +1041,8 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                           Text(
                             _selectedPaymentTerms ?? 'Select payment terms',
                             style: AppTypography.bodyLarge.copyWith(
-                              color: _selectedPaymentTerms != null 
-                                  ? AppColors.textPrimary 
+                              color: _selectedPaymentTerms != null
+                                  ? AppColors.textPrimary
                                   : AppColors.textSecondary,
                             ),
                           ),
@@ -861,15 +1063,279 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               maxLines: 3,
               hintText: 'Additional notes or special instructions',
             ),
+            SizedBox(height: 24),
+
+            // Order Summary
+            if (_selectedMaterialIds.isNotEmpty) ...[
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order Summary',
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    _buildCalculationRow('Total Items', '${_selectedMaterialIds.length}'),
+                    _buildCalculationRow('Total Amount', '₹${_calculateTotalOrderAmount().toStringAsFixed(2)}'),
+                    Divider(height: 16),
+                    Text(
+                      'Ready to create purchase order',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.successColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  void _createPO() {
-    SnackBarUtils.showSuccess(context, message: "Purchase Order created successfully!");
-    Navigator.of(context).pop();
+  void _createPO() async {
+    // Validate required fields
+    if (_purchaseOrderIdController.text.trim().isEmpty) {
+      SnackBarUtils.showError(context, message: 'Purchase Order ID is required');
+      return;
+    }
+
+    if (_selectedVendor == null) {
+      SnackBarUtils.showError(context, message: 'Please select a vendor');
+      return;
+    }
+
+    if (_expectedDeliveryDate == null) {
+      SnackBarUtils.showError(context, message: 'Please select delivery date');
+      return;
+    }
+
+    if (_selectedDeliveryAddress == null) {
+      SnackBarUtils.showError(context, message: 'Please select delivery address');
+      return;
+    }
+
+    if (_selectedBillingAddress == null) {
+      SnackBarUtils.showError(context, message: 'Please select billing address');
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        Navigator.of(context).pop(); // Close loading dialog
+        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        return;
+      }
+
+      // Prepare materials data
+      List<Map<String, dynamic>> materialsData = [];
+      for (final materialId in _selectedMaterialIds) {
+        final material = _materials.firstWhere((m) => m.id == materialId);
+        final quantity = _quantityControllers[materialId]?.text.trim() ?? '0';
+        final unitPrice = _unitPriceControllers[materialId]?.text.trim() ?? '0';
+        final discount = _discountControllers[materialId]?.text.trim() ?? '0';
+        final tax = _taxControllers[materialId]?.text.trim() ?? '0';
+
+        // Validate required fields
+        if (quantity.isEmpty || unitPrice.isEmpty) {
+          Navigator.of(context).pop(); // Close loading dialog
+          SnackBarUtils.showError(
+            context,
+            message: 'Please fill all required fields for material: ${material.name}',
+          );
+          return;
+        }
+
+        // Calculate CGST and SGST (divide tax by 2)
+        final taxValue = double.tryParse(tax.isEmpty ? '0' : tax) ?? 0;
+        final cgst = (taxValue / 2).toString();
+        final sgst = (taxValue / 2).toString();
+        final igst = '0'; // IGST is 0 for same state
+
+        materialsData.add({
+          'material_id': materialId.toString(),
+          'unit_price': unitPrice,
+          'discount_value': discount.isEmpty ? '0' : discount, // Ensure it's a number, not empty string
+          'discount_type': 'percentage',
+          'quantity_for_delivery': quantity,
+          'sgst': sgst,
+          'cgst': cgst,
+          'igst': igst,
+        });
+      }
+
+      // Validate materials data
+      if (materialsData.isEmpty) {
+        Navigator.of(context).pop(); // Close loading dialog
+        SnackBarUtils.showError(
+          context,
+          message: 'Please select at least one material',
+        );
+        return;
+      }
+
+      // Calculate total CGST and SGST for the order
+      double totalTax = 0;
+      for (final materialId in _selectedMaterialIds) {
+        final taxText = _taxControllers[materialId]?.text.trim() ?? '0';
+        final tax = double.tryParse(taxText.isEmpty ? '0' : taxText) ?? 0;
+        totalTax += tax;
+      }
+      
+      final totalCgst = (totalTax / 2).toString();
+      final totalSgst = (totalTax / 2).toString();
+      final totalIgst = '0';
+
+      // Debug: Print request data
+      print('Creating PO with data:');
+      print('Site ID: ${widget.site.id}');
+      print('PO ID: ${_purchaseOrderIdController.text.trim()}');
+      print('Vendor ID: ${_selectedVendor!.id}');
+      print('Delivery Date: ${_expectedDeliveryDate!.year}-${_expectedDeliveryDate!.month.toString().padLeft(2, '0')}-${_expectedDeliveryDate!.day.toString().padLeft(2, '0')}');
+      print('Billing Address ID: ${_selectedBillingAddress!.id}');
+      print('Delivery Address: ${_selectedDeliveryAddress!.address}');
+      print('Materials: ${materialsData.length} items');
+      print('Total CGST: $totalCgst, SGST: $totalSgst, IGST: $totalIgst');
+
+      // Call API
+      final response = await ApiService.createPurchaseOrder(
+        apiToken: token,
+        siteId: widget.site.id.toString(),
+        purchaseOrderId: _purchaseOrderIdController.text.trim(),
+        vendorId: _selectedVendor!.id.toString(),
+        expectedDeliveryDate: '${_expectedDeliveryDate!.year}-${_expectedDeliveryDate!.month.toString().padLeft(2, '0')}-${_expectedDeliveryDate!.day.toString().padLeft(2, '0')}',
+        billingAddressId: _selectedBillingAddress!.id.toString(),
+        deliveryAddress: _selectedDeliveryAddress!.address,
+        deliveryState: _selectedDeliveryAddress!.state,
+        deliveryContactName: _selectedDeliveryAddress!.companyName,
+        deliveryContactNo: '9737018701', // You might want to add this field to the address model
+        materials: materialsData,
+        cgst: totalCgst,
+        sgst: totalSgst,
+        igst: totalIgst,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Debug: Print response
+      print('API Response:');
+      print('Status: ${response.status}');
+      print('Message: ${response.message}');
+      print('Data: ${response.data}');
+
+      if (response.status == 1) {
+        SnackBarUtils.showSuccess(
+          context,
+          message: response.message.isNotEmpty ? response.message : "Purchase Order created successfully!",
+        );
+        Navigator.of(context).pop(); // Close the screen
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response.message.isNotEmpty ? response.message : "Failed to create purchase order",
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      SnackBarUtils.showError(
+        context,
+        message: "Error creating purchase order: $e",
+      );
+    }
+  }
+
+  // Generate auto order ID
+  Future<void> _generateAutoOrderId() async {
+    setState(() {
+      _isLoadingOrderId = true;
+    });
+
+    try {
+      final token = await AuthService.currentToken;
+      if (token != null) {
+        final response = await ApiService.generateOrderId(
+          apiToken: token,
+          type: 'po',
+        );
+
+        if (response.status == 1 && response.data != null) {
+          final orderId = response.data!['order_id'] as String?;
+          if (orderId != null) {
+            setState(() {
+              _purchaseOrderIdController.text = orderId;
+              _isCustomOrderId = false;
+            });
+          }
+        } else {
+          print('Failed to generate order ID: ${response.message}');
+        }
+      }
+    } catch (e) {
+      print('Error generating order ID: $e');
+    } finally {
+      setState(() {
+        _isLoadingOrderId = false;
+      });
+    }
+  }
+
+  // Show custom order ID dialog
+  void _showCustomOrderIdDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Custom Purchase Order ID'),
+        content: Text(
+          'Do you want to use a custom purchase order ID instead of the auto-generated one?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _isCustomOrderId = true;
+                _purchaseOrderIdController.clear();
+              });
+            },
+            child: Text('Yes, Use Custom ID'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Regenerate order ID
+  void _regenerateOrderId() {
+    setState(() {
+      _isCustomOrderId = false;
+    });
+    _generateAutoOrderId();
   }
 
   // Picker Methods
@@ -877,14 +1343,14 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     if (_vendors.isEmpty) {
       await _loadVendors();
     }
-    
+
     final selectedVendor = await showModalBottomSheet<SiteVendorModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildVendorPickerBottomSheet(),
     );
-    
+
     if (selectedVendor != null) {
       setState(() {
         _selectedVendor = selectedVendor;
@@ -910,14 +1376,14 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     if (_billingAddresses.isEmpty) {
       await _loadBillingAddresses();
     }
-    
+
     final selectedAddress = await showModalBottomSheet<BillingAddressModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildAddressPickerBottomSheet('Delivery'),
     );
-    
+
     if (selectedAddress != null) {
       setState(() {
         _selectedDeliveryAddress = selectedAddress;
@@ -929,14 +1395,14 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     if (_billingAddresses.isEmpty) {
       await _loadBillingAddresses();
     }
-    
+
     final selectedAddress = await showModalBottomSheet<BillingAddressModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildAddressPickerBottomSheet('Billing'),
     );
-    
+
     if (selectedAddress != null) {
       setState(() {
         _selectedBillingAddress = selectedAddress;
@@ -948,14 +1414,14 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     if (_termsAndConditions.isEmpty) {
       await _loadTermsAndConditions();
     }
-    
+
     final selectedTerms = await showModalBottomSheet<TermsAndConditionModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildTermsAndConditionPickerBottomSheet(),
     );
-    
+
     if (selectedTerms != null) {
       setState(() {
         _selectedTermsAndCondition = selectedTerms;
@@ -968,7 +1434,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
       context: context,
       selectedTerms: _selectedPaymentTerms,
     );
-    
+
     if (selectedTerms != null) {
       setState(() {
         _selectedPaymentTerms = selectedTerms;
@@ -983,10 +1449,8 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     });
 
     try {
-      final response = await ApiService.getSiteVendors(
-        siteId: widget.site.id,
-      );
-      
+      final response = await ApiService.getSiteVendors(siteId: widget.site.id);
+
       if (response != null && response.status == 'success') {
         setState(() {
           _vendors = response.data;
@@ -1012,10 +1476,8 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     try {
       final token = await AuthService.currentToken;
       if (token != null) {
-        final response = await ApiService.getBillingAddresses(
-          apiToken: token,
-        );
-        
+        final response = await ApiService.getBillingAddresses(apiToken: token);
+
         if (response != null && response.status == 1) {
           setState(() {
             _billingAddresses = response.data;
@@ -1042,7 +1504,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         final response = await ApiService.getTermsAndConditions(
           apiToken: token,
         );
-        
+
         if (response != null && response.status == 1) {
           setState(() {
             _termsAndConditions = response.data;
@@ -1078,7 +1540,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: EdgeInsets.all(16),
@@ -1103,19 +1565,80 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
           Expanded(
             child: _isLoadingVendors
                 ? Center(child: CircularProgressIndicator())
-                : _vendors.isEmpty
-                    ? Center(child: Text('No vendors found'))
-                    : ListView.builder(
-                        itemCount: _vendors.length,
-                        itemBuilder: (context, index) {
-                          final vendor = _vendors[index];
-                          return ListTile(
+                : ListView(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      // Add New Vendor Option - Always shown at top
+                      Container(
+                        margin: EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primaryColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.add,
+                            color: AppColors.primaryColor,
+                          ),
+                          title: Text(
+                            'Add new vendor',
+                            style: AppTypography.titleMedium.copyWith(
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).pop(); // Close vendor picker
+                            _showAddVendorDialog();
+                          },
+                        ),
+                      ),
+                      
+                      // Existing Vendors
+                      if (_vendors.isNotEmpty) ...[
+                        ..._vendors.map((vendor) => Card(
+                          margin: EdgeInsets.only(bottom: 12),
+                          child: ListTile(
                             title: Text(vendor.name),
                             subtitle: Text(vendor.mobile),
                             onTap: () => Navigator.of(context).pop(vendor),
-                          );
-                        },
-                      ),
+                          ),
+                        )),
+                      ] else ...[
+                        // Empty state when no vendors found
+                        Container(
+                          margin: EdgeInsets.only(top: 20),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.business_outlined,
+                                size: 64,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No vendors found',
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add your first vendor to get started',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
           ),
         ],
       ),
@@ -1141,7 +1664,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: EdgeInsets.all(16),
@@ -1176,128 +1699,147 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
             child: _isLoadingAddresses
                 ? Center(child: CircularProgressIndicator())
                 : _billingAddresses.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_off, size: 64, color: AppColors.textSecondary),
-                            SizedBox(height: 16),
-                            Text(
-                              'No addresses found',
-                              style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Add your first address to get started',
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () => _showAddAddressDialog(type),
-                              icon: Icon(Icons.add),
-                              label: Text('Add Address'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryColor,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.location_off,
+                          size: 64,
+                          color: AppColors.textSecondary,
                         ),
-                      )
-                    : ListView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _billingAddresses.length,
-                        itemBuilder: (context, index) {
-                          final address = _billingAddresses[index];
-                          return Card(
-                            margin: EdgeInsets.only(bottom: 12),
-                            child: InkWell(
-                              onTap: () => Navigator.of(context).pop(address),
-                              child: Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                        SizedBox(height: 16),
+                        Text(
+                          'No addresses found',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Add your first address to get started',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => _showAddAddressDialog(type),
+                          icon: Icon(Icons.add),
+                          label: Text('Add Address'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _billingAddresses.length,
+                    itemBuilder: (context, index) {
+                      final address = _billingAddresses[index];
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 12),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(address),
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            address.companyName,
-                                            style: AppTypography.titleSmall.copyWith(
+                                    Expanded(
+                                      child: Text(
+                                        address.companyName,
+                                        style: AppTypography.titleSmall
+                                            .copyWith(
                                               fontWeight: FontWeight.bold,
                                             ),
-                                          ),
-                                        ),
-                                        PopupMenuButton<String>(
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              _showEditAddressDialog(address);
-                                            }
-                                          },
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.edit, size: 16),
-                                                  SizedBox(width: 8),
-                                                  Text('Edit'),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                    Divider(height: 16),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on, size: 16, color: AppColors.textSecondary),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            address.address,
-                                            style: AppTypography.bodyMedium,
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _showEditAddressDialog(address);
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.edit, size: 16),
+                                              SizedBox(width: 8),
+                                              Text('Edit'),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.map, size: 16, color: AppColors.textSecondary),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          address.state,
-                                          style: AppTypography.bodyMedium.copyWith(
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                        if (address.gstin.isNotEmpty && address.gstin != 'NA') ...[
-                                          SizedBox(width: 16),
-                                          Icon(Icons.receipt, size: 16, color: AppColors.textSecondary),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'GSTIN: ${address.gstin}',
-                                            style: AppTypography.bodySmall.copyWith(
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
                                       ],
                                     ),
                                   ],
                                 ),
-                              ),
+                                Divider(height: 16),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        address.address,
+                                        style: AppTypography.bodyMedium,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.map,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      address.state,
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    if (address.gstin.isNotEmpty &&
+                                        address.gstin != 'NA') ...[
+                                      SizedBox(width: 16),
+                                      Icon(
+                                        Icons.receipt,
+                                        size: 16,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'GSTIN: ${address.gstin}',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -1323,7 +1865,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: EdgeInsets.all(16),
@@ -1336,9 +1878,18 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _showAddTermsDialog(),
+                      icon: Icon(Icons.add, color: AppColors.primaryColor),
+                      tooltip: 'Add New Terms',
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1349,18 +1900,222 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
             child: _isLoadingTerms
                 ? Center(child: CircularProgressIndicator())
                 : _termsAndConditions.isEmpty
-                    ? Center(child: Text('No terms found'))
-                    : ListView.builder(
-                        itemCount: _termsAndConditions.length,
-                        itemBuilder: (context, index) {
-                          final terms = _termsAndConditions[index];
-                          return ListTile(
-                            title: Text(terms.termAndCondition),
-                            subtitle: Text('ID: ${terms.id}'),
-                            onTap: () => Navigator.of(context).pop(terms),
-                          );
-                        },
-                      ),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.description_outlined,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No terms found',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Add your first terms to get started',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => _showAddTermsDialog(),
+                          icon: Icon(Icons.add),
+                          label: Text('Add Terms'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _termsAndConditions.length,
+                    itemBuilder: (context, index) {
+                      final terms = _termsAndConditions[index];
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 12),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(terms),
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Terms #${terms.id}',
+                                        style: AppTypography.titleSmall
+                                            .copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+
+                                    IconButton(
+                                      onPressed: () {
+                                        _showEditTermsDialog(terms);
+                                      },
+                                      icon: Icon(Icons.edit),
+                                    ),
+                                  ],
+                                ),
+                                Divider(height: 16),
+                                Text(
+                                  terms.termAndCondition,
+                                  style: AppTypography.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Terms Dialog Methods
+  void _showAddTermsDialog() {
+    final termsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Terms and Condition'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                label: 'Terms and Condition',
+                controller: termsController,
+                hintText: 'Enter terms and condition',
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (termsController.text.trim().isEmpty) {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Please enter terms and condition',
+                );
+                return;
+              }
+
+              final token = await AuthService.currentToken;
+              if (token != null) {
+                final response =
+                    await ApiService.storeAndUpdateTermsAndCondition(
+                      apiToken: token,
+                      termAndCondition: termsController.text.trim(),
+                    );
+
+                if (response != null && response['status'] == 1) {
+                  SnackBarUtils.showSuccess(
+                    context,
+                    message: 'Terms added successfully',
+                  );
+                  Navigator.of(context).pop();
+                  await _loadTermsAndConditions();
+                } else {
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Failed to add terms',
+                  );
+                }
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTermsDialog(TermsAndConditionModel terms) {
+    final termsController = TextEditingController(text: terms.termAndCondition);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Terms and Condition'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                label: 'Terms and Condition',
+                controller: termsController,
+                hintText: 'Enter terms and condition',
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (termsController.text.trim().isEmpty) {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Please enter terms and condition',
+                );
+                return;
+              }
+
+              final token = await AuthService.currentToken;
+              if (token != null) {
+                final response =
+                    await ApiService.storeAndUpdateTermsAndCondition(
+                      apiToken: token,
+                      termAndCondition: termsController.text.trim(),
+                      termId: terms.id,
+                    );
+
+                if (response != null && response['status'] == 1) {
+                  SnackBarUtils.showSuccess(
+                    context,
+                    message: 'Terms updated successfully',
+                  );
+                  Navigator.of(context).pop();
+                  await _loadTermsAndConditions();
+                } else {
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Failed to update terms',
+                  );
+                }
+              }
+            },
+            child: Text('Update'),
           ),
         ],
       ),
@@ -1430,15 +2185,18 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                               Text(
                                 selectedState ?? 'Select state',
                                 style: AppTypography.bodyLarge.copyWith(
-                                  color: selectedState != null 
-                                      ? AppColors.textPrimary 
+                                  color: selectedState != null
+                                      ? AppColors.textPrimary
                                       : AppColors.textSecondary,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
@@ -1452,50 +2210,64 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               ],
             ),
           ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (companyController.text.isEmpty || 
-                  addressController.text.isEmpty || 
-                  selectedState == null) {
-                SnackBarUtils.showError(context, message: 'Please fill all required fields');
-                return;
-              }
-
-              final token = await AuthService.currentToken;
-              if (token != null) {
-                final response = await ApiService.storeBillingAddress(
-                  apiToken: token,
-                  companyName: companyController.text,
-                  address: addressController.text,
-                  state: selectedState!,
-                  gstin: gstinController.text.isEmpty ? 'NA' : gstinController.text,
-                );
-
-                if (response != null && response.status == 1) {
-                  SnackBarUtils.showSuccess(context, message: 'Address added successfully');
-                  Navigator.of(context).pop();
-                  await _loadBillingAddresses();
-                } else {
-                  SnackBarUtils.showError(context, message: 'Failed to add address');
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (companyController.text.isEmpty ||
+                    addressController.text.isEmpty ||
+                    selectedState == null) {
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Please fill all required fields',
+                  );
+                  return;
                 }
-              }
-            },
-            child: Text('Add'),
-          ),
-        ],
+
+                final token = await AuthService.currentToken;
+                if (token != null) {
+                  final response = await ApiService.storeBillingAddress(
+                    apiToken: token,
+                    companyName: companyController.text,
+                    address: addressController.text,
+                    state: selectedState!,
+                    gstin: gstinController.text.isEmpty
+                        ? 'NA'
+                        : gstinController.text,
+                  );
+
+                  if (response != null && response.status == 1) {
+                    SnackBarUtils.showSuccess(
+                      context,
+                      message: 'Address added successfully',
+                    );
+                    Navigator.of(context).pop();
+                    await _loadBillingAddresses();
+                  } else {
+                    SnackBarUtils.showError(
+                      context,
+                      message: 'Failed to add address',
+                    );
+                  }
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   void _showEditAddressDialog(BillingAddressModel address) {
     final companyController = TextEditingController(text: address.companyName);
     final addressController = TextEditingController(text: address.address);
-    final gstinController = TextEditingController(text: address.gstin == 'NA' ? '' : address.gstin);
+    final gstinController = TextEditingController(
+      text: address.gstin == 'NA' ? '' : address.gstin,
+    );
     String? selectedState = address.state;
 
     showDialog(
@@ -1554,15 +2326,18 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                               Text(
                                 selectedState ?? 'Select state',
                                 style: AppTypography.bodyLarge.copyWith(
-                                  color: selectedState != null 
-                                      ? AppColors.textPrimary 
+                                  color: selectedState != null
+                                      ? AppColors.textPrimary
                                       : AppColors.textSecondary,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
@@ -1576,6 +2351,102 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
               ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (companyController.text.isEmpty ||
+                    addressController.text.isEmpty ||
+                    selectedState == null) {
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Please fill all required fields',
+                  );
+                  return;
+                }
+
+                final token = await AuthService.currentToken;
+                if (token != null) {
+                  final response = await ApiService.updateBillingAddress(
+                    apiToken: token,
+                    addressId: address.id,
+                    companyName: companyController.text,
+                    address: addressController.text,
+                    state: selectedState!,
+                    gstin: gstinController.text.isEmpty
+                        ? 'NA'
+                        : gstinController.text,
+                  );
+
+                  if (response != null && response.status == 1) {
+                    SnackBarUtils.showSuccess(
+                      context,
+                      message: 'Address updated successfully',
+                    );
+                    Navigator.of(context).pop();
+                    await _loadBillingAddresses();
+                  } else {
+                    SnackBarUtils.showError(
+                      context,
+                      message: 'Failed to update address',
+                    );
+                  }
+                }
+              },
+              child: Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Vendor Dialog Methods
+  void _showAddVendorDialog() {
+    final nameController = TextEditingController();
+    final mobileController = TextEditingController();
+    final emailController = TextEditingController();
+    final gstController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New Vendor'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                label: 'Name *',
+                controller: nameController,
+                hintText: 'Enter vendor name',
+              ),
+              SizedBox(height: 16),
+              CustomTextField(
+                label: 'Mobile *',
+                controller: mobileController,
+                hintText: 'Enter mobile number',
+                keyboardType: TextInputType.phone,
+              ),
+              SizedBox(height: 16),
+              CustomTextField(
+                label: 'Email',
+                controller: emailController,
+                hintText: 'Enter email address (optional)',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              SizedBox(height: 16),
+              CustomTextField(
+                label: 'GST Number',
+                controller: gstController,
+                hintText: 'Enter GST number (optional)',
+              ),
+            ],
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1583,37 +2454,65 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (companyController.text.isEmpty || 
-                  addressController.text.isEmpty || 
-                  selectedState == null) {
-                SnackBarUtils.showError(context, message: 'Please fill all required fields');
+              if (nameController.text.trim().isEmpty ||
+                  mobileController.text.trim().isEmpty) {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Please fill all required fields',
+                );
                 return;
               }
 
-              final token = await AuthService.currentToken;
-              if (token != null) {
-                final response = await ApiService.updateBillingAddress(
-                  apiToken: token,
-                  addressId: address.id,
-                  companyName: companyController.text,
-                  address: addressController.text,
-                  state: selectedState!,
-                  gstin: gstinController.text.isEmpty ? 'NA' : gstinController.text,
+              // Show loading
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+
+              try {
+                final result = await ApiService.saveSiteVendor(
+                  siteId: widget.site.id,
+                  name: nameController.text.trim(),
+                  mobile: mobileController.text.trim(),
+                  email: emailController.text.trim().isEmpty ? '' : emailController.text.trim(),
+                  gstNo: gstController.text.trim().isEmpty ? null : gstController.text.trim(),
                 );
 
-                if (response != null && response.status == 1) {
-                  SnackBarUtils.showSuccess(context, message: 'Address updated successfully');
-                  Navigator.of(context).pop();
-                  await _loadBillingAddresses();
+                Navigator.of(context).pop(); // Close loading dialog
+
+                if (result != null) {
+                  SnackBarUtils.showSuccess(
+                    context,
+                    message: 'Vendor added successfully',
+                  );
+                  Navigator.of(context).pop(); // Close add vendor dialog
+                  
+                  // Reload vendors and select the new vendor
+                  await _loadVendors();
+                  setState(() {
+                    _selectedVendor = result;
+                  });
                 } else {
-                  SnackBarUtils.showError(context, message: 'Failed to update address');
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Failed to add vendor',
+                  );
                 }
+              } catch (e) {
+                Navigator.of(context).pop(); // Close loading dialog
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Error adding vendor: ${e.toString()}',
+                );
               }
             },
-            child: Text('Update'),
+            child: Text('Add'),
           ),
         ],
       ),
-    ));
+    );
   }
 }

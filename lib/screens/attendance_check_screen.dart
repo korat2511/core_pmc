@@ -281,21 +281,21 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
                 Text(
                   'Choose a site to punch in:',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(height: 12),
                             // Search Bar
             Container(
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search sites...',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                  prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
@@ -311,25 +311,25 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
               child: ListTile(
                 leading: Icon(
                   Icons.location_on_outlined,
-                  color: Colors.blue[600],
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 title: Text(
                   'Want to checkin from somewhere else?',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: Colors.blue[700],
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 trailing: Icon(
                   Icons.arrow_forward_ios,
-                  color: Colors.blue[600],
+                  color: Theme.of(context).colorScheme.primary,
                   size: 16,
                 ),
                 onTap: () {
@@ -345,7 +345,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
                           child: Text(
                             'No sites found',
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         )
@@ -409,6 +409,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
               site.name,
               style: AppTypography.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             subtitle: Column(
@@ -417,7 +418,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
                 Text(
                   site.clientName ?? 'No client',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(height: 4),
@@ -598,7 +599,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
             Text(
               'Please provide a remark for checking in from a different location:',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 16),
@@ -809,14 +810,14 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: CustomAppBar(
         title: 'Attendance',
         showBackButton: false,
         showDrawer: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.home, color: Colors.white),
+            icon: Icon(Icons.home, color: Theme.of(context).colorScheme.onPrimary),
             onPressed: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
@@ -830,7 +831,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       ),
       drawer: CustomDrawer(),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : SingleChildScrollView(
               padding: ResponsiveUtils.responsivePadding(context),
               child: Column(
@@ -861,11 +862,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
             blurRadius: 10,
             offset: Offset(0, 2),
           ),
@@ -878,7 +879,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
             'Punch Out',
             style: AppTypography.titleLarge.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           
@@ -887,7 +888,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           Text(
             'You are currently checked in. Tap the button below to punch out.',
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           
@@ -897,8 +898,8 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
             text: 'Punch Out',
             onPressed: _isLoading ? null : _handlePunchOut,
             isLoading: _isLoading,
-            backgroundColor: AppColors.errorColor,
-            textColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.error,
+            textColor: Theme.of(context).colorScheme.onError,
           ),
         ],
       ),

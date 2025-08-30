@@ -29,7 +29,7 @@ class UnitPickerUtils {
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
@@ -40,7 +40,7 @@ class UnitPickerUtils {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.borderColor,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -53,7 +53,7 @@ class UnitPickerUtils {
                           Text(
                             'Select Unit',
                             style: AppTypography.titleLarge.copyWith(
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -62,7 +62,7 @@ class UnitPickerUtils {
                             onTap: () => Navigator.of(context).pop(),
                             child: Icon(
                               Icons.close,
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               size: 24,
                             ),
                           ),
@@ -102,12 +102,12 @@ class UnitPickerUtils {
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: isSelected 
-                                    ? AppColors.primaryColor.withOpacity(0.1)
-                                    : AppColors.surfaceColor,
+                                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                                    : Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isSelected 
-                                      ? AppColors.primaryColor
+                                      ? Theme.of(context).colorScheme.primary
                                       : AppColors.borderColor,
                                   width: 1,
                                 ),
@@ -121,7 +121,7 @@ class UnitPickerUtils {
                                         Text(
                                           unit.name,
                                           style: AppTypography.bodyMedium.copyWith(
-                                            color: AppColors.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -129,7 +129,7 @@ class UnitPickerUtils {
                                         Text(
                                           'Symbol: ${unit.symbol}',
                                           style: AppTypography.bodySmall.copyWith(
-                                            color: AppColors.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                             fontWeight: FontWeight.w400,
                                           ),
                                         ),
@@ -139,7 +139,7 @@ class UnitPickerUtils {
                                   if (isSelected)
                                     Icon(
                                       Icons.check_circle,
-                                      color: AppColors.primaryColor,
+                                      color: Theme.of(context).colorScheme.primary,
                                       size: 20,
                                     ),
                                 ],

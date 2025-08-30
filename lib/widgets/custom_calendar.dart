@@ -26,8 +26,8 @@ class CustomCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
       );
     }
 
@@ -38,7 +38,7 @@ class CustomCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: AppColors.borderColor,
@@ -47,15 +47,15 @@ class CustomCalendar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildWeekHeader(),
+          _buildWeekHeader(context),
           const SizedBox(height: 8),
-          _buildCalendarGrid(daysInMonth, firstWeekday),
+                      _buildCalendarGrid(context, daysInMonth, firstWeekday),
         ],
       ),
     );
   }
 
-  Widget _buildWeekHeader() {
+  Widget _buildWeekHeader(BuildContext context) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
     return Row(
@@ -68,7 +68,7 @@ class CustomCalendar extends StatelessWidget {
                 day,
                 style: AppTypography.bodySmall.copyWith(
                   fontSize: 10,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -79,7 +79,7 @@ class CustomCalendar extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendarGrid(int daysInMonth, int firstWeekday) {
+  Widget _buildCalendarGrid(BuildContext context, int daysInMonth, int firstWeekday) {
     final List<Widget> calendarDays = [];
     
     // Add empty cells for days before the first day of the month
@@ -109,12 +109,12 @@ class CustomCalendar extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: isSelected 
-                      ? AppColors.primaryColor 
-                      : (isToday ? AppColors.primaryColor.withOpacity(0.8) : getDayColor(date)),
+                      ? Theme.of(context).colorScheme.primary 
+                      : (isToday ? Theme.of(context).colorScheme.primary.withOpacity(0.8) : getDayColor(date)),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
                     color: isSelected 
-                        ? AppColors.primaryColor 
+                        ? Theme.of(context).colorScheme.primary 
                         : AppColors.borderColor,
                     width: isSelected ? 1 : 0.5,
                   ),
@@ -125,9 +125,9 @@ class CustomCalendar extends StatelessWidget {
                     style: AppTypography.bodySmall.copyWith(
                       fontSize: 10,
 
-                      color: (isSelected || isToday || getDayColor(date) != AppColors.textSecondary.withOpacity(0.2)) 
-                          ? AppColors.textWhite 
-                          : AppColors.textPrimary,
+                      color: (isSelected || isToday || getDayColor(date) != Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.2)) 
+                          ? Colors.white 
+                          : Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

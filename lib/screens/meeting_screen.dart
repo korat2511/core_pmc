@@ -140,11 +140,14 @@ class _MeetingScreenState extends State<MeetingScreen> {
             // Meetings List
             Expanded(
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                    ))
                   : _filteredMeetings.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
                           onRefresh: _refreshMeetings,
+                          color: Theme.of(context).colorScheme.primary,
                           child: ListView.builder(
                             padding: ResponsiveUtils.responsivePadding(context),
                             itemCount: _filteredMeetings.length,
@@ -160,7 +163,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createMeeting,
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         icon: Icon(Icons.add),
         label: Text('Create Meeting'),
@@ -181,7 +184,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
               tablet: 80,
               desktop: 96,
             ),
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
@@ -200,7 +203,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                 tablet: 20,
                 desktop: 22,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -215,7 +218,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                 tablet: 16,
                 desktop: 18,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -225,7 +228,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
             icon: Icon(Icons.add),
             label: Text('Create Meeting'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
@@ -240,6 +243,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   Widget _buildMeetingCard(MeetingModel meeting) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () {
@@ -266,29 +270,29 @@ class _MeetingScreenState extends State<MeetingScreen> {
                           'Meeting #${meeting.id}',
                           style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.calendar_today, size: 16, color: AppColors.textSecondary),
+                            Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             SizedBox(width: 8),
                             Text(
                               meeting.formattedDate,
                               style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             SizedBox(width: 16),
-                            Icon(Icons.access_time, size: 16, color: AppColors.textSecondary),
+                            Icon(Icons.access_time, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             SizedBox(width: 8),
-                            Text(
-                              meeting.formattedTime,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
+                                                          Text(
+                                meeting.formattedTime,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ],
@@ -300,27 +304,33 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         // TODO: Open PDF report
                         SnackBarUtils.showInfo(context, message: 'PDF report opening coming soon');
                       },
-                      icon: Icon(Icons.picture_as_pdf, color: AppColors.errorColor),
+                      icon: Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.error),
                       tooltip: 'View PDF Report',
                     ),
                 ],
               ),
 
               SizedBox(height: 12),
-              Divider(height: 1),
+
+
+              Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outline,
+              ),
 
               SizedBox(height: 12),
 
               // Architect Company
               Row(
                 children: [
-                  Icon(Icons.business, size: 16, color: AppColors.textSecondary),
+                  Icon(Icons.business, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       meeting.architectCompany,
                       style: AppTypography.bodyMedium.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -332,13 +342,13 @@ class _MeetingScreenState extends State<MeetingScreen> {
               // Participants
               Row(
                 children: [
-                  Icon(Icons.people, size: 16, color: AppColors.textSecondary),
+                  Icon(Icons.people, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       meeting.participantsSummary,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -353,13 +363,13 @@ class _MeetingScreenState extends State<MeetingScreen> {
               if (meeting.meetingPlace != null && meeting.meetingPlace!.isNotEmpty)
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: AppColors.textSecondary),
+                    Icon(Icons.location_on, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         meeting.meetingPlace!,
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -373,19 +383,19 @@ class _MeetingScreenState extends State<MeetingScreen> {
               // Discussions count
               Row(
                 children: [
-                  Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.textSecondary),
+                  Icon(Icons.chat_bubble_outline, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   SizedBox(width: 8),
                   Text(
                     '${meeting.meetingDiscussions.length} discussion${meeting.meetingDiscussions.length != 1 ? 's' : ''}',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Spacer(),
                   Text(
                     'Tap to view details',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),

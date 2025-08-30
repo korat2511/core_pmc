@@ -76,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Home',
         actions: [
           IconButton(
-            icon: Icon(Icons.fingerprint, color: Colors.white),
+            icon: Icon(Icons.fingerprint, color: Theme.of(context).colorScheme.onPrimary),
             onPressed: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
@@ -88,14 +88,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      drawer: const CustomDrawer(),
+      drawer: CustomDrawer(),
       floatingActionButton: ValidationUtils.canCreateSite(context)
           ? FloatingActionButton.extended(
               onPressed: () {
                 Navigator.of(context).pushNamed('/create-site');
               },
-              backgroundColor: AppColors.primaryColor,
-              foregroundColor: AppColors.textWhite,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               icon: Icon(Icons.add),
               label: Text('Create Site'),
             )
@@ -103,441 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
       body: DismissKeyboard(
         child: RefreshIndicator(
           onRefresh: _loadSites,
-          color: AppColors.primaryColor,
+          color: Theme.of(context).colorScheme.primary,
           child: CustomScrollView(
           slivers: [
-            // Sliver App Bar with Search and Status Dropdown
-            // SliverAppBar(
-            //   expandedHeight: ResponsiveUtils.responsiveFontSize(
-            //     context,
-            //     mobile: 140,
-            //     tablet: 160,
-            //     desktop: 180,
-            //   ),
-            //   floating: true,
-            //   pinned: true,
-            //   backgroundColor: AppColors.surfaceColor,
-            //   elevation: 0,
-            //   title: Row(
-            //     children: [
-            //       // Search Bar in App Bar (Collapsed State)
-            //       Expanded(
-            //         flex: 2,
-            //         child: Container(
-            //           height: ResponsiveUtils.responsiveFontSize(
-            //             context,
-            //             mobile: 35,
-            //             tablet: 40,
-            //             desktop: 45,
-            //           ),
-            //           padding: EdgeInsets.symmetric(
-            //             horizontal: ResponsiveUtils.responsiveSpacing(
-            //               context,
-            //               mobile: 8,
-            //               tablet: 12,
-            //               desktop: 16,
-            //             ),
-            //           ),
-            //           decoration: BoxDecoration(
-            //             color: AppColors.textWhite,
-            //             borderRadius: BorderRadius.circular(
-            //               ResponsiveUtils.responsiveSpacing(
-            //                 context,
-            //                 mobile: 6,
-            //                 tablet: 8,
-            //                 desktop: 10,
-            //               ),
-            //             ),
-            //             border: Border.all(
-            //               color: AppColors.borderColor,
-            //               width: 1,
-            //             ),
-            //           ),
-            //           child: TextField(
-            //             onChanged: (value) {
-            //               setState(() {
-            //                 _searchQuery = value;
-            //               });
-            //             },
-            //             decoration: InputDecoration(
-            //               hintText: 'Search sites...',
-            //               prefixIcon: Icon(
-            //                 Icons.search,
-            //                 color: AppColors.textSecondary,
-            //                 size: ResponsiveUtils.responsiveFontSize(
-            //                   context,
-            //                   mobile: 16,
-            //                   tablet: 18,
-            //                   desktop: 20,
-            //                 ),
-            //               ),
-            //               border: InputBorder.none,
-            //               contentPadding: EdgeInsets.zero,
-            //             ),
-            //           ),
-            //         ),
-            //       ),
-            //       SizedBox(
-            //         width: ResponsiveUtils.responsiveSpacing(
-            //           context,
-            //           mobile: 8,
-            //           tablet: 12,
-            //           desktop: 16,
-            //         ),
-            //       ),
-            //       // Status Dropdown in App Bar (Collapsed State)
-            //       Expanded(
-            //         flex: 1,
-            //         child: Container(
-            //           height: ResponsiveUtils.responsiveFontSize(
-            //             context,
-            //             mobile: 35,
-            //             tablet: 40,
-            //             desktop: 45,
-            //           ),
-            //           padding: EdgeInsets.symmetric(
-            //             horizontal: ResponsiveUtils.responsiveSpacing(
-            //               context,
-            //               mobile: 6,
-            //               tablet: 8,
-            //               desktop: 10,
-            //             ),
-            //           ),
-            //           decoration: BoxDecoration(
-            //             color: AppColors.textWhite,
-            //             borderRadius: BorderRadius.circular(
-            //               ResponsiveUtils.responsiveSpacing(
-            //                 context,
-            //                 mobile: 6,
-            //                 tablet: 8,
-            //                 desktop: 10,
-            //               ),
-            //             ),
-            //             border: Border.all(
-            //               color: AppColors.borderColor,
-            //               width: 1,
-            //             ),
-            //           ),
-            //           child: DropdownButtonHideUnderline(
-            //             child: DropdownButton<String>(
-            //               value: _selectedStatus.isEmpty ? 'All' : _selectedStatus,
-            //               isExpanded: true,
-            //               icon: Icon(
-            //                 Icons.keyboard_arrow_down,
-            //                 color: AppColors.textSecondary,
-            //                 size: ResponsiveUtils.responsiveFontSize(
-            //                   context,
-            //                   mobile: 14,
-            //                   tablet: 16,
-            //                   desktop: 18,
-            //                 ),
-            //               ),
-            //               items: [
-            //                 DropdownMenuItem(
-            //                   value: 'All',
-            //                   child: Text(
-            //                     'All',
-            //                     style: AppTypography.bodyMedium.copyWith(
-            //                       fontSize: ResponsiveUtils.responsiveFontSize(
-            //                         context,
-            //                         mobile: 10,
-            //                         tablet: 12,
-            //                         desktop: 14,
-            //                       ),
-            //                       color: AppColors.textPrimary,
-            //                     ),
-            //                     overflow: TextOverflow.ellipsis,
-            //                   ),
-            //                 ),
-            //                 DropdownMenuItem(
-            //                   value: 'Active',
-            //                   child: Text(
-            //                     'Active',
-            //                     style: AppTypography.bodyMedium.copyWith(
-            //                       fontSize: ResponsiveUtils.responsiveFontSize(
-            //                         context,
-            //                         mobile: 10,
-            //                         tablet: 12,
-            //                         desktop: 14,
-            //                       ),
-            //                       color: AppColors.textPrimary,
-            //                     ),
-            //                     overflow: TextOverflow.ellipsis,
-            //                   ),
-            //                 ),
-            //                 DropdownMenuItem(
-            //                   value: 'Pending',
-            //                   child: Text(
-            //                     'Pending',
-            //                     style: AppTypography.bodyMedium.copyWith(
-            //                       fontSize: ResponsiveUtils.responsiveFontSize(
-            //                         context,
-            //                         mobile: 10,
-            //                         tablet: 12,
-            //                         desktop: 14,
-            //                       ),
-            //                       color: AppColors.textPrimary,
-            //                     ),
-            //                     overflow: TextOverflow.ellipsis,
-            //                   ),
-            //                 ),
-            //                 DropdownMenuItem(
-            //                   value: 'Complete',
-            //                   child: Text(
-            //                     'Complete',
-            //                     style: AppTypography.bodyMedium.copyWith(
-            //                       fontSize: ResponsiveUtils.responsiveFontSize(
-            //                         context,
-            //                         mobile: 10,
-            //                         tablet: 12,
-            //                         desktop: 14,
-            //                       ),
-            //                       color: AppColors.textPrimary,
-            //                     ),
-            //                     overflow: TextOverflow.ellipsis,
-            //                   ),
-            //                 ),
-            //                 DropdownMenuItem(
-            //                   value: 'Overdue',
-            //                   child: Text(
-            //                     'Overdue',
-            //                     style: AppTypography.bodyMedium.copyWith(
-            //                       fontSize: ResponsiveUtils.responsiveFontSize(
-            //                         context,
-            //                         mobile: 10,
-            //                         tablet: 12,
-            //                         desktop: 14,
-            //                       ),
-            //                       color: AppColors.textPrimary,
-            //                     ),
-            //                     overflow: TextOverflow.ellipsis,
-            //                   ),
-            //                 ),
-            //               ],
-            //               onChanged: (String? newValue) {
-            //                 setState(() {
-            //                   _selectedStatus = newValue == 'All' ? '' : (newValue ?? '');
-            //                 });
-            //                 _loadSites();
-            //               },
-            //             ),
-            //           ),
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            //   flexibleSpace: FlexibleSpaceBar(
-            //     background: Container(
-            //       padding: ResponsiveUtils.responsivePadding(context),
-            //       child: Column(
-            //         mainAxisAlignment: MainAxisAlignment.center,
-            //         children: [
-            //           // Search Bar (Expanded State)
-            //           Container(
-            //             width: double.infinity,
-            //             height: ResponsiveUtils.responsiveFontSize(
-            //               context,
-            //               mobile: 45,
-            //               tablet: 50,
-            //               desktop: 55,
-            //             ),
-            //             padding: EdgeInsets.symmetric(
-            //               horizontal: ResponsiveUtils.responsiveSpacing(
-            //                 context,
-            //                 mobile: 12,
-            //                 tablet: 16,
-            //                 desktop: 20,
-            //               ),
-            //             ),
-            //             decoration: BoxDecoration(
-            //               color: AppColors.textWhite,
-            //               borderRadius: BorderRadius.circular(
-            //                 ResponsiveUtils.responsiveSpacing(
-            //                   context,
-            //                   mobile: 8,
-            //                   tablet: 12,
-            //                   desktop: 16,
-            //                 ),
-            //               ),
-            //               border: Border.all(
-            //                 color: AppColors.borderColor,
-            //                 width: 1,
-            //               ),
-            //             ),
-            //             child: TextField(
-            //               onChanged: (value) {
-            //                 setState(() {
-            //                   _searchQuery = value;
-            //                 });
-            //               },
-            //               decoration: InputDecoration(
-            //                 hintText: 'Search sites...',
-            //                 prefixIcon: Icon(
-            //                   Icons.search,
-            //                   color: AppColors.textSecondary,
-            //                   size: ResponsiveUtils.responsiveFontSize(
-            //                     context,
-            //                     mobile: 18,
-            //                     tablet: 20,
-            //                     desktop: 22,
-            //                   ),
-            //                 ),
-            //                 border: InputBorder.none,
-            //                 contentPadding: EdgeInsets.zero,
-            //               ),
-            //             ),
-            //           ),
-            //           SizedBox(
-            //             height: ResponsiveUtils.responsiveSpacing(
-            //               context,
-            //               mobile: 12,
-            //               tablet: 16,
-            //               desktop: 20,
-            //             ),
-            //           ),
-            //           // Status Dropdown (Expanded State)
-            //           Container(
-            //             width: double.infinity,
-            //             height: ResponsiveUtils.responsiveFontSize(
-            //               context,
-            //               mobile: 45,
-            //               tablet: 50,
-            //               desktop: 55,
-            //             ),
-            //             padding: EdgeInsets.symmetric(
-            //               horizontal: ResponsiveUtils.responsiveSpacing(
-            //                 context,
-            //                 mobile: 12,
-            //                 tablet: 16,
-            //                 desktop: 20,
-            //               ),
-            //             ),
-            //             decoration: BoxDecoration(
-            //               color: AppColors.textWhite,
-            //               borderRadius: BorderRadius.circular(
-            //                 ResponsiveUtils.responsiveSpacing(
-            //                   context,
-            //                   mobile: 8,
-            //                   tablet: 12,
-            //                   desktop: 16,
-            //                 ),
-            //               ),
-            //               border: Border.all(
-            //                 color: AppColors.borderColor,
-            //                 width: 1,
-            //               ),
-            //             ),
-            //             child: DropdownButtonHideUnderline(
-            //               child: DropdownButton<String>(
-            //                 value: _selectedStatus.isEmpty ? 'All' : _selectedStatus,
-            //                 isExpanded: true,
-            //                 icon: Icon(
-            //                   Icons.keyboard_arrow_down,
-            //                   color: AppColors.textSecondary,
-            //                   size: ResponsiveUtils.responsiveFontSize(
-            //                     context,
-            //                     mobile: 16,
-            //                     tablet: 18,
-            //                     desktop: 20,
-            //                   ),
-            //                 ),
-            //                 items: [
-            //                   DropdownMenuItem(
-            //                     value: 'All',
-            //                     child: Text(
-            //                       'All',
-            //                       style: AppTypography.bodyMedium.copyWith(
-            //                         fontSize: ResponsiveUtils.responsiveFontSize(
-            //                           context,
-            //                           mobile: 12,
-            //                           tablet: 14,
-            //                           desktop: 16,
-            //                         ),
-            //                         color: AppColors.textPrimary,
-            //                       ),
-            //                       overflow: TextOverflow.ellipsis,
-            //                     ),
-            //                   ),
-            //                   DropdownMenuItem(
-            //                     value: 'Active',
-            //                     child: Text(
-            //                       'Active',
-            //                       style: AppTypography.bodyMedium.copyWith(
-            //                         fontSize: ResponsiveUtils.responsiveFontSize(
-            //                           context,
-            //                           mobile: 12,
-            //                           tablet: 14,
-            //                           desktop: 16,
-            //                         ),
-            //                         color: AppColors.textPrimary,
-            //                       ),
-            //                       overflow: TextOverflow.ellipsis,
-            //                     ),
-            //                   ),
-            //                   DropdownMenuItem(
-            //                     value: 'Pending',
-            //                     child: Text(
-            //                       'Pending',
-            //                       style: AppTypography.bodyMedium.copyWith(
-            //                         fontSize: ResponsiveUtils.responsiveFontSize(
-            //                           context,
-            //                           mobile: 12,
-            //                           tablet: 14,
-            //                           desktop: 16,
-            //                         ),
-            //                         color: AppColors.textPrimary,
-            //                       ),
-            //                       overflow: TextOverflow.ellipsis,
-            //                     ),
-            //                   ),
-            //                   DropdownMenuItem(
-            //                     value: 'Complete',
-            //                     child: Text(
-            //                       'Complete',
-            //                       style: AppTypography.bodyMedium.copyWith(
-            //                         fontSize: ResponsiveUtils.responsiveFontSize(
-            //                           context,
-            //                           mobile: 12,
-            //                           tablet: 14,
-            //                           desktop: 16,
-            //                         ),
-            //                         color: AppColors.textPrimary,
-            //                       ),
-            //                       overflow: TextOverflow.ellipsis,
-            //                     ),
-            //                   ),
-            //                   DropdownMenuItem(
-            //                     value: 'Overdue',
-            //                     child: Text(
-            //                       'Overdue',
-            //                       style: AppTypography.bodyMedium.copyWith(
-            //                         fontSize: ResponsiveUtils.responsiveFontSize(
-            //                           context,
-            //                           mobile: 12,
-            //                           tablet: 14,
-            //                           desktop: 16,
-            //                         ),
-            //                         color: AppColors.textPrimary,
-            //                       ),
-            //                       overflow: TextOverflow.ellipsis,
-            //                     ),
-            //                   ),
-            //                 ],
-            //                 onChanged: (String? newValue) {
-            //                   setState(() {
-            //                     _selectedStatus = newValue == 'All' ? '' : (newValue ?? '');
-            //                   });
-            //                   _loadSites();
-            //                 },
-            //               ),
-            //             ),
-            //           ),
-            //         ],
-            //       ),
-            //     ),
-            //   ),
-            // ),
-                        // Search Bar
+
             SliverToBoxAdapter(
               child: Padding(
                 padding: ResponsiveUtils.responsivePadding(context),
@@ -661,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         child: CircularProgressIndicator(
-                          color: AppColors.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     )
@@ -686,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 tablet: 80,
                                 desktop: 100,
                               ),
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             SizedBox(
                               height: ResponsiveUtils.responsiveSpacing(
@@ -705,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   tablet: 18,
                                   desktop: 20,
                                 ),
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -783,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor : AppColors.surfaceColor,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -806,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
               tablet: 14,
               desktop: 16,
             ),
-            color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+            color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -827,8 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         _loadSites();
       },
-      backgroundColor: AppColors.surfaceColor,
-      selectedColor: AppColors.primaryColor.withOpacity(0.2),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
       labelStyle: AppTypography.bodyMedium.copyWith(
         fontSize: ResponsiveUtils.responsiveFontSize(
           context,
@@ -836,11 +405,11 @@ class _HomeScreenState extends State<HomeScreen> {
           tablet: 14,
           desktop: 16,
         ),
-        color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
       side: BorderSide(
-        color: isSelected ? AppColors.primaryColor : AppColors.borderColor,
+        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
         width: 1,
       ),
     );

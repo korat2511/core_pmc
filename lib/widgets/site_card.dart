@@ -9,7 +9,6 @@ import '../services/site_service.dart';
 import '../screens/manage_user_screen.dart';
 import '../screens/site_details_screen.dart';
 import '../screens/site_details_with_bottom_nav.dart';
-import 'dismiss_keyboard.dart';
 
 class SiteCard extends StatefulWidget {
   final SiteModel site;
@@ -35,18 +34,17 @@ class _SiteCardState extends State<SiteCard> {
   Color _getStatusColor() {
     switch (widget.site.status.toLowerCase()) {
       case 'active':
-        return AppColors.successColor;
+        return Colors.green;
       case 'pending':
-        return AppColors.warningColor;
+        return Colors.orange;
       case 'complete':
-        return AppColors.infoColor;
+        return Colors.blue;
       case 'overdue':
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       default:
-        return AppColors.textSecondary;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
-
 
   void _handleMenuAction(BuildContext context, String action) {
     switch (action) {
@@ -69,19 +67,13 @@ class _SiteCardState extends State<SiteCard> {
         break;
       case 'team':
         // Navigate to manage team screen
-        NavigationUtils.push(
-          context,
-          ManageUserScreen(site: widget.site),
-        );
+        NavigationUtils.push(context, ManageUserScreen(site: widget.site));
         break;
       case 'albums':
         // Navigate to site albums screen
         Navigator.of(context).pushNamed(
           '/site-albums',
-          arguments: {
-            'siteId': widget.site.id,
-            'siteName': widget.site.name,
-          },
+          arguments: {'siteId': widget.site.id, 'siteName': widget.site.name},
         );
         break;
     }
@@ -95,7 +87,10 @@ class _SiteCardState extends State<SiteCard> {
     });
     
     try {
-      final success = await SiteService.pinSite(widget.site.id, currentStatus: widget.currentStatus);
+      final success = await SiteService.pinSite(
+        widget.site.id,
+        currentStatus: widget.currentStatus,
+      );
       
       if (success) {
         // Update the local site object
@@ -109,14 +104,13 @@ class _SiteCardState extends State<SiteCard> {
         // Show success message
         SnackBarUtils.showSuccess(
           context,
-          message: widget.site.isPinned == 1 ? 'Site unpinned successfully' : 'Site pinned successfully',
+          message: widget.site.isPinned == 1
+              ? 'Site unpinned successfully'
+              : 'Site pinned successfully',
         );
       } else {
         // Show error message
-        SnackBarUtils.showError(
-          context,
-          message: SiteService.errorMessage,
-        );
+        SnackBarUtils.showError(context, message: SiteService.errorMessage);
       }
     } catch (e) {
       SnackBarUtils.showError(
@@ -137,60 +131,13 @@ class _SiteCardState extends State<SiteCard> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(
-            ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 16,
-              tablet: 20,
-              desktop: 24,
-            ),
-          ),
-          topRight: Radius.circular(
-            ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 16,
-              tablet: 20,
-              desktop: 24,
-            ),
-          ),
-        ),
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
+      child: Icon(
             Icons.business,
-            color: AppColors.textSecondary,
-            size: ResponsiveUtils.responsiveFontSize(
-              context,
-              mobile: 40,
-              tablet: 50,
-              desktop: 60,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 8,
-              tablet: 12,
-              desktop: 16,
-            ),
-          ),
-          Text(
-            'No Image',
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 12,
-                tablet: 14,
-                desktop: 16,
-              ),
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        size: 24,
       ),
     );
   }
@@ -216,70 +163,98 @@ class _SiteCardState extends State<SiteCard> {
           ),
         ),
         decoration: BoxDecoration(
-          color: AppColors.textWhite,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: AppColors.borderColor,
-            width: 1,
-          ),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderColor, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
         child: Column(
+            children: [
+              Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Site Image
-            Container(
-              width: double.infinity,
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
+                  // Site Image (Square thumbnail) - Click to open SiteDetailsScreen
+            GestureDetector(
+              onTap: () {
+                // Navigate to site details screen (without bottom nav)
+                NavigationUtils.push(
+                  context,
+                  SiteDetailsScreen(
+                    site: widget.site,
+                    onSiteUpdated: widget.onSiteUpdated,
+                  ),
+                );
+              },
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: widget.site.hasImages
+                      ? Image.network(
+                          widget.site.firstImagePath!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildImagePlaceholder(context);
+                          },
+                        )
+                      : _buildImagePlaceholder(context),
                 ),
-                child: widget.site.hasImages
-                    ? Image.network(
-                        widget.site.firstImagePath!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildImagePlaceholder(context);
-                        },
-                      )
-                    : _buildImagePlaceholder(context),
               ),
             ),
 
-            // Site Content
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Header Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               widget.site.name,
-                              style: AppTypography.titleMedium.copyWith(
+                              style: AppTypography.bodyMedium.copyWith(
                                 fontSize: 16,
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
                               ),
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-
+                            SizedBox(height: 2),
+                            Text(
+                              'Core PMC',
+                              style: AppTypography.bodySmall.copyWith(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ),
-                      ),
+                        Row(
+                          children: [
+                            if (widget.site.isPinned == 1) ...[
+                              SizedBox(width: 8),
+                              Icon(
+                                Icons.push_pin,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 16,
+                              ),
+                            ],
+                            SizedBox(width: 5),
                       Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: 8,
@@ -287,7 +262,7 @@ class _SiteCardState extends State<SiteCard> {
                         ),
                         decoration: BoxDecoration(
                           color: _getStatusColor().withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           widget.site.status.toUpperCase(),
@@ -298,239 +273,196 @@ class _SiteCardState extends State<SiteCard> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 10,),
-                      if (widget.site.isPinned == 1)
-                        Icon(
-                          Icons.push_pin,
-                          color: AppColors.primaryColor,
-                          size: 16,
+                          ],
                         ),
-
-
-                    ],
+                      ],
+                    ),
                   ),
 
-                  SizedBox(height: 12),
+                  // Menu icon moved back to bottom right
+                ],
+              ),
 
-                                     // Progress and Dates Section
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Divider(color: AppColors.primaryLight),
+              ),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                      children: [
-                       // Progress Row
                        Row(
                          children: [
-                           Text(
-                             'Progress',
-                             style: AppTypography.bodyMedium.copyWith(
-                               fontSize: 12,
-                               color: AppColors.textSecondary,
-                               fontWeight: FontWeight.w500,
-                             ),
-                           ),
-                           const Spacer(),
+                          Icon(
+                            Icons.refresh,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          SizedBox(width: 4),
+                          // color: Theme.of(
+                          //   context,
+                          // ).colorScheme.onSurfaceVariant,
+
+
                            Text(
                              '${widget.site.progress}%',
                              style: AppTypography.bodyMedium.copyWith(
-                               fontSize: 14,
-                               color: AppColors.textPrimary,
-                               fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+
                              ),
                            ),
                          ],
                        ),
-                       SizedBox(height: 8),
-                       LinearProgressIndicator(
-                         value: widget.site.progress / 100,
-                         backgroundColor: AppColors.surfaceColor,
-                         valueColor: AlwaysStoppedAnimation<Color>(
-                           _getStatusColor(),
-                         ),
-                         minHeight: 4,
-                       ),
-                       SizedBox(height: 12),
-                       // Dates Row
+                      SizedBox(width: 20,),
                        Row(
                          children: [
-                           Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          SizedBox(width: 6),
                                  Text(
-                                   'Start Date',
+                            '${widget.site.startDate ?? 'Not set'} - ${widget.site.endDate ?? 'End Date'}',
                                    style: AppTypography.bodySmall.copyWith(
-                                     fontSize: 10,
-                                     color: AppColors.textSecondary,
-                                   ),
-                                 ),
-                                 SizedBox(height: 2),
-                                 Text(
-                                   widget.site.startDate ?? 'Not set',
-                                   style: AppTypography.bodyMedium.copyWith(
                                      fontSize: 12,
-                                     color: AppColors.textPrimary,
-                                     fontWeight: FontWeight.w500,
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           ),
-                           Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text(
-                                   'End Date',
-                                   style: AppTypography.bodySmall.copyWith(
-                                     fontSize: 10,
-                                     color: AppColors.textSecondary,
-                                   ),
-                                 ),
-                                 SizedBox(height: 2),
-                                 Text(
-                                   widget.site.endDate ?? 'Not set',
-                                   style: AppTypography.bodyMedium.copyWith(
-                                     fontSize: 12,
-                                     color: AppColors.textPrimary,
-                                     fontWeight: FontWeight.w500,
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           ),
-                           PopupMenuButton<String>(
-                             icon: Icon(
-                               Icons.more_vert,
-                               color: AppColors.textSecondary,
-                               size: ResponsiveUtils.responsiveFontSize(
-                                 context,
-                                 mobile: 20,
-                                 tablet: 22,
-                                 desktop: 24,
-                               ),
-                             ),
-                             onSelected: (value) {
-                               _handleMenuAction(context, value);
-                             },
-                             itemBuilder: (BuildContext context) => [
-                               PopupMenuItem<String>(
-                                 value: 'details',
-                                 child: Row(
-                                   children: [
-                                     Icon(
-                                       Icons.info_outline,
-                                       color: AppColors.textSecondary,
-                                       size: 18,
-                                     ),
-                                     SizedBox(width: 12),
-                                     Text(
-                                       'Site Details',
-                                       style: AppTypography.bodyMedium.copyWith(
-                                         color: AppColors.textPrimary,
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                               PopupMenuItem<String>(
-                                 value: 'pin',
-                                 child: Row(
-                                   children: [
-                                     if (_isPinning)
-                                       SizedBox(
-                                         width: 18,
-                                         height: 18,
-                                         child: CircularProgressIndicator(
-                                           strokeWidth: 2,
-                                           color: AppColors.primaryColor,
-                                         ),
-                                       )
-                                     else
-                                       Icon(
-                                         widget.site.isPinned == 1 ? Icons.push_pin : Icons.push_pin_outlined,
-                                         color: AppColors.primaryColor,
-                                         size: 18,
-                                       ),
-                                     SizedBox(width: 12),
-                                     Text(
-                                       _isPinning 
-                                         ? 'Processing...' 
-                                         : (widget.site.isPinned == 1 ? 'Unpin Site' : 'Pin Site'),
-                                       style: AppTypography.bodyMedium.copyWith(
-                                         color: AppColors.textPrimary,
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                               if (widget.site.progress == 100)
-                                 PopupMenuItem<String>(
-                                   value: 'complete',
-                                   child: Row(
-                                     children: [
-                                       Icon(
-                                         Icons.check_circle_outline,
-                                         color: AppColors.successColor,
-                                         size: 18,
-                                       ),
-                                       SizedBox(width: 12),
-                                       Text(
-                                         'Mark as Complete',
-                                         style: AppTypography.bodyMedium.copyWith(
-                                           color: AppColors.textPrimary,
-                                         ),
-                                       ),
-                                     ],
-                                   ),
-                                 ),
-                               PopupMenuItem<String>(
-                                 value: 'team',
-                                 child: Row(
-                                   children: [
-                                     Icon(
-                                       Icons.people_outline,
-                                       color: AppColors.infoColor,
-                                       size: 18,
-                                     ),
-                                     SizedBox(width: 12),
-                                     Text(
-                                       'Manage Team',
-                                       style: AppTypography.bodyMedium.copyWith(
-                                         color: AppColors.textPrimary,
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                               PopupMenuItem<String>(
-                                 value: 'albums',
-                                 child: Row(
-                                   children: [
-                                     Icon(
-                                       Icons.folder_outlined,
-                                       color: AppColors.warningColor,
-                                       size: 18,
-                                     ),
-                                     SizedBox(width: 12),
-                                     Text(
-                                       'View Albums',
-                                       style: AppTypography.bodyMedium.copyWith(
-                                         color: AppColors.textPrimary,
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                             ],
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                            ),
                          ],
                        ),
                      ],
                    ),
 
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: AppColors.primaryLight,
+                      size: 20,
+                    ),
+                    onSelected: (value) {
+                      _handleMenuAction(context, value);
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'details',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              size: 18,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Site Details',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'pin',
+                        child: Row(
+                          children: [
+                            if (_isPinning)
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              )
+                            else
+                              Icon(
+                                widget.site.isPinned == 1 ? Icons.push_pin : Icons.push_pin_outlined,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 18,
+                              ),
+                            SizedBox(width: 12),
+                            Text(
+                              _isPinning
+                                ? 'Processing...'
+                                : (widget.site.isPinned == 1 ? 'Unpin Site' : 'Pin Site'),
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.site.progress == 100)
+                        PopupMenuItem<String>(
+                          value: 'complete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 18,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Mark as Complete',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      PopupMenuItem<String>(
+                        value: 'team',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 18,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Manage Team',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'albums',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              color: Colors.orange,
+                              size: 18,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'View Albums',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
+            ],
             ),
-          ],
         ),
       ),
     );

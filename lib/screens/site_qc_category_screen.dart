@@ -95,8 +95,8 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
 
   Widget _buildAddQcCategoryModal() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -111,7 +111,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -123,7 +123,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
               children: [
                 Icon(
                   Icons.verified_outlined,
-                  color: AppColors.successColor,
+                  color: Colors.green,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -152,7 +152,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -165,7 +165,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -180,12 +180,12 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.textLight.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
+                                          child: Icon(
+                        Icons.close,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -221,8 +221,8 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                   child: ElevatedButton(
                     onPressed: _addQcCategory,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                                              foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: ResponsiveUtils.responsiveSpacing(
                           context,
@@ -251,7 +251,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                           tablet: 16,
                           desktop: 18,
                         ),
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -339,7 +339,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         tablet: 16,
                         desktop: 18,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -362,7 +362,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         ),
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(
                           ResponsiveUtils.responsiveSpacing(
                             context,
@@ -377,7 +377,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         children: [
                           Icon(
                             Icons.add,
-                            color: AppColors.textWhite,
+                            color: Colors.white,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 16,
@@ -402,7 +402,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                                 tablet: 14,
                                 desktop: 16,
                               ),
-                              color: AppColors.textWhite,
+                              color: Colors.white,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -428,7 +428,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
               child: _qcCategoryService.isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : _filteredQcCategories.isEmpty
@@ -444,7 +444,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                                   tablet: 80,
                                   desktop: 100,
                                 ),
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               SizedBox(
                                 height: ResponsiveUtils.responsiveSpacing(
@@ -465,7 +465,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                                     tablet: 18,
                                     desktop: 20,
                                   ),
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -488,7 +488,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                                       tablet: 16,
                                       desktop: 18,
                                     ),
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -497,7 +497,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         )
                       : RefreshIndicator(
                           onRefresh: _loadQcCategories,
-                          color: AppColors.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           child: ListView.builder(
                             padding: ResponsiveUtils.horizontalPadding(context),
                             itemCount: _filteredQcCategories.length,
@@ -535,7 +535,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
           ),
         ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -548,13 +548,13 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
           color: AppColors.borderColor,
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+                  boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
       ),
       child: Padding(
         padding: ResponsiveUtils.responsivePadding(context),
@@ -575,7 +575,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                 desktop: 56,
               ),
               decoration: BoxDecoration(
-                color: AppColors.successColor.withOpacity(0.1),
+                color: Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(
                   ResponsiveUtils.responsiveFontSize(
                     context,
@@ -587,7 +587,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
               ),
               child: Icon(
                 Icons.verified_outlined,
-                color: AppColors.successColor,
+                color: Colors.green,
                 size: ResponsiveUtils.responsiveFontSize(
                   context,
                   mobile: 20,
@@ -620,7 +620,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -641,7 +641,7 @@ class _SiteQcCategoryScreenState extends State<SiteQcCategoryScreen> {
                         tablet: 14,
                         desktop: 16,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

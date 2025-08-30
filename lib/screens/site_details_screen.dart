@@ -324,19 +324,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 12,
-                tablet: 14,
-                desktop: 16,
+                      Text(
+              label,
+              style: AppTypography.bodyMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 14,
+                  desktop: 16,
+                ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
             ),
-          ),
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
               context,
@@ -354,7 +354,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                 tablet: 16,
                 desktop: 18,
               ),
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -368,7 +368,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       title: Text(
         'Select Location',
         style: AppTypography.titleMedium.copyWith(
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -390,7 +390,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             Text(
               'Tap on the map to select a location, or enter coordinates manually:',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 16),
@@ -438,7 +438,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           child: Text(
             'Cancel',
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -453,16 +453,16 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                 }
               : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryColor,
-            foregroundColor: AppColors.textWhite,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Colors.white,
           ),
-          child: Text(
-            'Select',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textWhite,
-              fontWeight: FontWeight.w600,
+                      child: Text(
+              'Select',
+              style: AppTypography.bodyMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
         ),
       ],
     );
@@ -843,15 +843,15 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   Color _getStatusColor() {
     switch (_currentSite.status.toLowerCase()) {
       case 'active':
-        return AppColors.successColor;
+        return Colors.green;
       case 'pending':
-        return AppColors.warningColor;
+        return Colors.orange;
       case 'complete':
-        return AppColors.infoColor;
+        return Colors.blue;
       case 'overdue':
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       default:
-        return AppColors.textSecondary;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 
@@ -860,7 +860,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -875,7 +875,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         children: [
           Icon(
             Icons.business,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             size: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 60,
@@ -900,7 +900,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                 tablet: 18,
                 desktop: 20,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -923,7 +923,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           ),
         ),
         decoration: BoxDecoration(
-          color: AppColors.surfaceColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -943,7 +943,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           children: [
             Icon(
               Icons.add_photo_alternate,
-              color: AppColors.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
               size: ResponsiveUtils.responsiveFontSize(
                 context,
                 mobile: 60,
@@ -968,7 +968,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   tablet: 18,
                   desktop: 20,
                 ),
-                color: AppColors.primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -989,7 +989,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   tablet: 14,
                   desktop: 16,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -1010,22 +1010,22 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           desktop: 16,
         ),
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20,
+              decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.responsiveSpacing(
+              context,
+              mobile: 12,
+              tablet: 16,
+              desktop: 20,
+            ),
+          ),
+          border: Border.all(
+            color: AppColors.primaryColor.withOpacity(0.3),
+            width: 2,
+            style: BorderStyle.solid,
           ),
         ),
-        border: Border.all(
-          color: AppColors.primaryColor.withOpacity(0.3),
-          width: 2,
-          style: BorderStyle.solid,
-        ),
-      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1045,7 +1045,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             ),
             child: CircularProgressIndicator(
               strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
             ),
           ),
           SizedBox(
@@ -1056,19 +1056,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
               desktop: 24,
             ),
           ),
-          Text(
-            'Uploading Images...',
-            style: AppTypography.bodyLarge.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 16,
-                tablet: 18,
-                desktop: 20,
+                      Text(
+              'Uploading Images...',
+              style: AppTypography.bodyLarge.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 16,
+                  tablet: 18,
+                  desktop: 20,
+                ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
-              color: AppColors.primaryColor,
-              fontWeight: FontWeight.w600,
             ),
-          ),
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
               context,
@@ -1077,19 +1077,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
               desktop: 16,
             ),
           ),
-          Text(
-            'Please wait while your images are being uploaded',
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 12,
-                tablet: 14,
-                desktop: 16,
+                      Text(
+              'Please wait while your images are being uploaded',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 14,
+                  desktop: 16,
+                ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              color: AppColors.textSecondary,
             ),
-          ),
         ],
       ),
     );
@@ -1116,7 +1116,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1177,7 +1177,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                       child: Icon(
                         Icons.edit,
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         size: ResponsiveUtils.responsiveFontSize(
                           context,
                           mobile: 16,
@@ -1213,7 +1213,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                       child: Icon(
                         Icons.delete,
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         size: ResponsiveUtils.responsiveFontSize(
                           context,
                           mobile: 16,
@@ -1266,7 +1266,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   tablet: 16,
                   desktop: 18,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1322,8 +1322,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                         tablet: 16,
                         desktop: 18,
                       ),
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
                     ),
                   ),
           ),
@@ -1359,7 +1359,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                 tablet: 16,
                 desktop: 18,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1419,7 +1419,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   tablet: 16,
                   desktop: 18,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1528,7 +1528,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       width: double.infinity,
       padding:EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: AppColors.textWhite,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -1539,7 +1539,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1723,7 +1723,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
               width: double.infinity,
               prefixIcon: Icon(
                 Icons.location_on,
-                color: AppColors.textWhite,
+                color: Colors.white,
                 size: ResponsiveUtils.responsiveFontSize(
                   context,
                   mobile: 18,
@@ -1836,7 +1836,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                     },
                     child: Icon(
                       Icons.add,
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       size: ResponsiveUtils.responsiveFontSize(
                         context,
                         mobile: 20,
@@ -1907,7 +1907,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                     },
                     child: Icon(
                       Icons.remove,
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       size: ResponsiveUtils.responsiveFontSize(
                         context,
                         mobile: 20,
@@ -1987,7 +1987,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                 },
                 child: Icon(
                   Icons.my_location,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 20,
@@ -2008,7 +2008,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       width: double.infinity,
       padding: ResponsiveUtils.responsivePadding(context),
       decoration: BoxDecoration(
-        color: AppColors.textWhite,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -2019,7 +2019,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -2028,19 +2028,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Site Images',
-            style: AppTypography.titleMedium.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 18,
-                tablet: 20,
-                desktop: 22,
+                      Text(
+              'Site Images',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 18,
+                  tablet: 20,
+                  desktop: 22,
+                ),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
               ),
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
             ),
-          ),
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
               context,
@@ -2165,7 +2165,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                           tablet: 14,
                           desktop: 16,
                         ),
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -2187,7 +2187,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                         tablet: 24,
                         desktop: 28,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2230,7 +2230,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                                   tablet: 18,
                                   desktop: 20,
                                 ),
-                                color: AppColors.primaryColor,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2244,7 +2244,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                                   tablet: 18,
                                   desktop: 20,
                                 ),
-                                color: AppColors.primaryColor,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2260,9 +2260,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                         ),
                         LinearProgressIndicator(
                           value: _currentSite.progress / 100,
-                          backgroundColor: AppColors.surfaceColor,
+                          backgroundColor: Theme.of(context).colorScheme.surface,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryColor,
+                            Theme.of(context).colorScheme.primary,
                           ),
                           minHeight: ResponsiveUtils.responsiveFontSize(
                             context,
@@ -2288,19 +2288,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Site Information',
-                        style: AppTypography.titleMedium.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 18,
-                            tablet: 20,
-                            desktop: 22,
+                                              Text(
+                          'Site Information',
+                          style: AppTypography.titleMedium.copyWith(
+                            fontSize: ResponsiveUtils.responsiveFontSize(
+                              context,
+                              mobile: 18,
+                              tablet: 20,
+                              desktop: 22,
+                            ),
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.bold,
                           ),
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
                       TextButton(onPressed: _toggleEditMode, child: Text(_isEditMode ? 'Cancel' : 'Edit Info',)),
 
                     ],
@@ -2310,7 +2310,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                     width: double.infinity,
                     padding: ResponsiveUtils.responsivePadding(context),
                     decoration: BoxDecoration(
-                      color: AppColors.textWhite,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(
                         ResponsiveUtils.responsiveSpacing(
                           context,
@@ -2321,7 +2321,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.shadowColor.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -2426,19 +2426,19 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Location',
-                        style: AppTypography.titleMedium.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 18,
-                            tablet: 20,
-                            desktop: 22,
+                                              Text(
+                          'Location',
+                          style: AppTypography.titleMedium.copyWith(
+                            fontSize: ResponsiveUtils.responsiveFontSize(
+                              context,
+                              mobile: 18,
+                              tablet: 20,
+                              desktop: 22,
+                            ),
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.bold,
                           ),
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
                       TextButton(onPressed: _toggleLocationEditMode, child: Text(_isLocationEditMode ? 'Cancel' : 'Edit Location',)),
 
                     ],

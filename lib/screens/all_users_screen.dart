@@ -106,7 +106,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
   void _showFilterOptions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -122,7 +122,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textLight,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -135,7 +135,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                   tablet: 20,
                   desktop: 22,
                 ),
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -183,7 +183,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
     return ListTile(
       leading: Icon(
         isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       title: Text(
         label,
@@ -194,7 +194,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
             tablet: 18,
             desktop: 20,
           ),
-          color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -267,7 +267,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                         ),
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceColor,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(
                           ResponsiveUtils.responsiveSpacing(
                             context,
@@ -286,7 +286,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                         children: [
                           Icon(
                             Icons.filter_list,
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 16,
@@ -311,7 +311,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                                 tablet: 14,
                                 desktop: 16,
                               ),
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -336,7 +336,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -349,7 +349,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : filteredUsers.isEmpty
@@ -365,7 +365,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                               tablet: 80,
                               desktop: 100,
                             ),
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           SizedBox(
                             height: ResponsiveUtils.responsiveSpacing(
@@ -384,7 +384,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                                 tablet: 18,
                                 desktop: 20,
                               ),
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -392,7 +392,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadUsers,
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       child: ListView.builder(
                         padding: ResponsiveUtils.responsivePadding(context),
                         itemCount: filteredUsers.length,

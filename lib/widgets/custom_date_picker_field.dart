@@ -65,20 +65,20 @@ class CustomDatePickerField extends StatelessWidget {
       onTap: onTap ?? () => _selectDate(context),
       onChanged: onChanged,
       style: AppTypography.bodyLarge.copyWith(
-        color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
+        color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: AppTypography.bodySmall.copyWith(
-          color: AppColors.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         hintText: hintText ?? 'Select $label',
         hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.textSecondary,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         suffixIcon: Icon(
           Icons.calendar_today,
-          color: enabled ? AppColors.primaryColor : AppColors.textSecondary,
+          color: enabled ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
           size: ResponsiveUtils.responsiveFontSize(
             context,
             mobile: 20,
@@ -117,7 +117,7 @@ class CustomDatePickerField extends StatelessWidget {
               desktop: 16,
             ),
           ),
-          borderSide: BorderSide(color: AppColors.primaryColor, width: 2),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
@@ -128,7 +128,7 @@ class CustomDatePickerField extends StatelessWidget {
               desktop: 16,
             ),
           ),
-          borderSide: BorderSide(color: AppColors.errorColor),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
@@ -139,7 +139,7 @@ class CustomDatePickerField extends StatelessWidget {
               desktop: 16,
             ),
           ),
-          borderSide: BorderSide(color: AppColors.errorColor, width: 2),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: 2),
         ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.responsiveSpacing(
@@ -156,7 +156,7 @@ class CustomDatePickerField extends StatelessWidget {
           ),
         ),
         filled: !enabled,
-        fillColor: !enabled ? AppColors.surfaceColor : null,
+        fillColor: !enabled ? Theme.of(context).colorScheme.surface : null,
       ),
     );
   }

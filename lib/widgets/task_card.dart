@@ -35,7 +35,7 @@ class TaskCard extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.textWhite,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: AppColors.borderColor,
@@ -43,7 +43,7 @@ class TaskCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -88,7 +88,7 @@ class TaskCard extends StatelessWidget {
                           task.name,
                           style: AppTypography.titleMedium.copyWith(
                             fontSize: 16,
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -99,7 +99,7 @@ class TaskCard extends StatelessWidget {
                           task.categoryName,
                           style: AppTypography.bodyMedium.copyWith(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -114,8 +114,8 @@ class TaskCard extends StatelessWidget {
                           _handleUpdateAction(context);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor,
-                          foregroundColor: AppColors.textWhite,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           minimumSize: Size(0, 0),
                           shape: RoundedRectangleBorder(
@@ -126,7 +126,7 @@ class TaskCard extends StatelessWidget {
                           'Update',
                           style: AppTypography.bodySmall.copyWith(
                             fontSize: 10,
-                            color: AppColors.surfaceColor,
+                            color: Theme.of(context).colorScheme.surface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -144,7 +144,7 @@ class TaskCard extends StatelessWidget {
                           'View Details >',
                           style: AppTypography.bodySmall.copyWith(
                             fontSize: 10,
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -157,7 +157,7 @@ class TaskCard extends StatelessWidget {
               Container(
                 margin: EdgeInsets.symmetric(vertical: 12),
                 height: 1,
-                color: AppColors.primaryColor.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
               ),
 
               // Assignment status and dates
@@ -170,14 +170,14 @@ class TaskCard extends StatelessWidget {
                       Icon(
                         Icons.person_outline,
                         size: 16,
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       SizedBox(width: 6),
                       Text(
                         _getAssignDisplayText(),
                         style: AppTypography.bodyMedium.copyWith(
                           fontSize: 11,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -194,7 +194,7 @@ class TaskCard extends StatelessWidget {
                             Icon(
                               Icons.calendar_today,
                               size: 14,
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             SizedBox(width: 4),
                             Expanded(
@@ -202,7 +202,7 @@ class TaskCard extends StatelessWidget {
                                 '${_getStartDateLabel()}: ${task.startDate ?? 'NA'}',
                                 style: AppTypography.bodySmall.copyWith(
                                   fontSize: 11,
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -219,7 +219,7 @@ class TaskCard extends StatelessWidget {
                               Icon(
                                 Icons.event,
                                 size: 14,
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               SizedBox(width: 4),
                               Expanded(
@@ -227,7 +227,7 @@ class TaskCard extends StatelessWidget {
                                   '${_getEndDateLabel()}: ${task.endDate ?? 'NA'}',
                                   style: AppTypography.bodySmall.copyWith(
                                     fontSize: 11,
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),

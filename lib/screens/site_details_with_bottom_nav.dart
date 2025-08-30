@@ -1,3 +1,4 @@
+import 'package:core_pmc/screens/site_album_screen.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -14,13 +15,11 @@ import 'site_more_screen.dart';
 class SiteDetailsWithBottomNav extends StatefulWidget {
   final SiteModel site;
 
-  const SiteDetailsWithBottomNav({
-    super.key,
-    required this.site,
-  });
+  const SiteDetailsWithBottomNav({super.key, required this.site});
 
   @override
-  State<SiteDetailsWithBottomNav> createState() => _SiteDetailsWithBottomNavState();
+  State<SiteDetailsWithBottomNav> createState() =>
+      _SiteDetailsWithBottomNavState();
 }
 
 class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
@@ -30,6 +29,12 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
+        onProfilePressed: () {
+          NavigationUtils.push(
+            context,
+            SiteAlbumScreen(siteId: widget.site.id, siteName: widget.site.name),
+          );
+        },
         title: widget.site.name,
         showDrawer: false,
       ),
@@ -55,8 +60,6 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
     }
   }
 
-
-
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
@@ -69,38 +72,31 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
           ),
         ],
       ),
-      child: SafeArea(
-        child: Container(
-          height: ResponsiveUtils.responsiveFontSize(
+      padding: EdgeInsets.only(bottom: 10),
+      child: Container(
+        height: ResponsiveUtils.responsiveFontSize(
+          context,
+          mobile: 70,
+          tablet: 80,
+          desktop: 90,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 70,
-            tablet: 80,
-            desktop: 90,
+            mobile: 8,
+            tablet: 12,
+            desktop: 16,
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 8,
-              tablet: 12,
-              desktop: 16,
-            ),
-            vertical: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 8,
-              tablet: 12,
-              desktop: 16,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildBottomNavItem(0, Icons.chat_bubble_outline, 'Chat'),
-              _buildBottomNavItem(1, Icons.assessment_outlined, 'Report'),
-              _buildBottomNavItem(2, Icons.task_outlined, 'Tasks'),
-              _buildBottomNavItem(3, Icons.inventory_2_outlined, 'Material'),
-              _buildBottomNavItem(4, Icons.more_horiz, 'More'),
-            ],
-          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildBottomNavItem(0, Icons.chat_bubble_outline, 'Chat'),
+            _buildBottomNavItem(1, Icons.assessment_outlined, 'Report'),
+            _buildBottomNavItem(2, Icons.task_outlined, 'Tasks'),
+            _buildBottomNavItem(3, Icons.inventory_2_outlined, 'Material'),
+            _buildBottomNavItem(4, Icons.more_horiz, 'More'),
+          ],
         ),
       ),
     );
@@ -108,7 +104,7 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
 
   Widget _buildBottomNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -131,7 +127,9 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
           ),
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor.withOpacity(0.1) : Colors.transparent,
+          color: isSelected
+              ? AppColors.primaryColor.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -146,7 +144,9 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.primaryColor
+                  : AppColors.textSecondary,
               size: ResponsiveUtils.responsiveFontSize(
                 context,
                 mobile: 20,
@@ -171,7 +171,9 @@ class _SiteDetailsWithBottomNavState extends State<SiteDetailsWithBottomNav> {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.primaryColor
+                    : AppColors.textSecondary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

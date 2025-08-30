@@ -240,7 +240,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                   'Select duration',
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(height: 12),
@@ -265,12 +265,12 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppColors.primaryColor
-                              : Colors.white,
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isSelected
-                                ? AppColors.primaryColor
+                                ? Theme.of(context).colorScheme.primary
                                 : AppColors.borderColor,
                           ),
                         ),
@@ -280,9 +280,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                             Text(
                               duration,
                               style: AppTypography.bodySmall.copyWith(
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.textPrimary,
+                                                              color: isSelected
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface,
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -343,6 +343,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Row(
@@ -370,7 +371,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                               });
                             });
                           },
-                          activeColor: AppColors.primaryColor,
+                          activeColor: Theme.of(context).colorScheme.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -378,7 +379,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                         Text(
                           'Select All',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 13,
                           ),
                         ),
@@ -492,7 +493,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
           label,
           style: AppTypography.bodySmall.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 13,
           ),
         ),
@@ -513,24 +514,24 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.borderColor),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    _formatDate(date),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                    ),
+                                  child: Text(
+                  _formatDate(date),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 13,
                   ),
+                ),
                 ),
                 Icon(
                   Icons.calendar_today,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
               ],
@@ -556,7 +557,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderColor),
       ),
@@ -579,16 +580,16 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                         title,
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
+                                                  color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 14,
                         ),
                       ),
                       SizedBox(height: 2),
                       Text(
                         description,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                         ),
                       ),
                     ],
@@ -598,7 +599,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                 if (subParts.isNotEmpty) ...[
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                   SizedBox(width: 8),
@@ -611,7 +612,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                   child: Checkbox(
                     value: isSelected,
                     onChanged: onChanged,
-                    activeColor: AppColors.primaryColor,
+                    activeColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -637,8 +638,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                           child: Text(
                             subPart,
                             style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textPrimary,
-                              fontSize: 12,
+                                                          color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 12,
                             ),
                           ),
                         ),
@@ -646,7 +647,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                           value: isSubPartSelected,
                           onChanged: (value) =>
                               onSubPartChanged(subPart, value ?? false),
-                          activeColor: AppColors.primaryColor,
+                          activeColor: Theme.of(context).colorScheme.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),

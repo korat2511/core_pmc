@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "400934075728",
+    "project_id": "core-pmc-7a16e",
+    "storage_bucket": "core-pmc-7a16e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400934075728:android:478e39aa446a63a207c055",
+        "android_client_info": {
+          "package_name": "com.corepmc.core_pmc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAShwHbv7WYrxJXW4cLKJvnsUPUcZ8d1LA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

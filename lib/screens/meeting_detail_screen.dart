@@ -103,7 +103,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorColor,
+              backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Colors.white,
             ),
             child: Text('Delete'),
@@ -172,8 +172,10 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return const Center(
-            child: CircularProgressIndicator(),
+          return Center(
+            child: CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary,
+            ),
           );
         },
       );
@@ -227,7 +229,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorColor,
+              backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Colors.white,
             ),
             child: Text('Delete'),
@@ -298,11 +300,14 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       ),
 
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary,
+            ))
           : _meeting == null
           ? Center(child: Text('Meeting not found'))
           : RefreshIndicator(
               onRefresh: _refreshMeetingDetail,
+              color: Theme.of(context).colorScheme.primary,
                              child: SingleChildScrollView(
                  padding: ResponsiveUtils.responsivePadding(context),
                  child: Column(
@@ -323,7 +328,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addDiscussionPoint,
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         icon: Icon(Icons.add),
         label: Text('Add Discussion'),
@@ -333,6 +338,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Widget _buildMeetingHeader() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -346,21 +352,21 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                     'Meeting #${_meeting!.id}',
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.successColor.withOpacity(0.1),
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.successColor),
+                    border: Border.all(color: Colors.green),
                   ),
                   child: Text(
                     'Completed',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.successColor,
+                      color: Colors.green,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -373,26 +379,28 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 Icon(
                   Icons.calendar_today,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 SizedBox(width: 8),
                 Text(
                   _meeting!.formattedDate,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(width: 24),
                 Icon(
                   Icons.access_time,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 SizedBox(width: 8),
                 Text(
                   _meeting!.formattedTime,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -405,6 +413,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Widget _buildMeetingInfo() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -414,6 +423,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               'Meeting Information',
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 12),
@@ -460,7 +470,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
         SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -469,7 +479,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               Text(
                 label,
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(height: 2),
@@ -477,6 +487,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 value,
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -488,6 +499,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Widget _buildParticipantsSection() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -497,6 +509,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               'Participants',
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 12),
@@ -532,17 +545,19 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           SizedBox(
             width: 80,
             child: Text(
-              '$title:',
-              style: AppTypography.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
+                              '$title:',
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
             ),
           ),
           Expanded(
             child: Text(
               participants.join(', '),
-              style: AppTypography.bodyMedium,
+              style: AppTypography.bodyMedium.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ),
         ],
@@ -552,6 +567,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Widget _buildDiscussionsSection() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -564,12 +580,13 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   'Discussion Points',
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   '${_meeting!.meetingDiscussions.length} points',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -583,20 +600,20 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                     Icon(
                       Icons.chat_bubble_outline,
                       size: 48,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     SizedBox(height: 8),
                     Text(
                       'No discussion points yet',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Tap the + button to add a discussion point',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -623,7 +640,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderColor),
       ),
@@ -643,6 +660,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                       discussion.discussionAction,
                       style: AppTypography.bodyMedium.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 5),
@@ -651,14 +669,14 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                         Icon(
                           Icons.person,
                           size: 14,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(width: 6),
                         Text(
                           discussion.actionBy,
                           style: AppTypography.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ],
@@ -667,7 +685,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 ),
                                  IconButton(
                    onPressed: () => _deleteDiscussionPoint(discussion.id),
-                   icon: Icon(Icons.delete, color: AppColors.errorColor),
+                   icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                    tooltip: 'Delete Discussion',
                    padding: EdgeInsets.zero,
                    constraints: BoxConstraints(),
@@ -682,7 +700,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               Text(
                 discussion.remarks,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
 
@@ -701,12 +719,12 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   Widget _buildAttachmentSection(MeetingDiscussionModel discussion) {
     return Row(
       children: [
-        Icon(Icons.attach_file, size: 14, color: AppColors.textSecondary),
+        Icon(Icons.attach_file, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
         SizedBox(width: 4),
         Text(
           'Attachment:',
           style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -719,14 +737,14 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 Icon(
                   Icons.description,
                   size: 14,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     discussion.meetingAttachment!.file.split('/').last,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -749,7 +767,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   icon: Icon(
                     Icons.open_in_new,
                     size: 14,
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   tooltip: 'Open Attachment',
                   padding: EdgeInsets.zero,
@@ -761,7 +779,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   icon: Icon(
                     Icons.delete,
                     size: 14,
-                    color: AppColors.errorColor,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                   tooltip: 'Delete Attachment',
                   padding: EdgeInsets.zero,
@@ -777,12 +795,12 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               onTap: () => _addAttachment(discussion.id),
               child: Row(
                 children: [
-                  Icon(Icons.add, size: 14, color: AppColors.textSecondary),
+                  Icon(Icons.add, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   SizedBox(width: 4),
                   Text(
                     'Add Attachment',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

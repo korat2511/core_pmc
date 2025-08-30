@@ -48,10 +48,10 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: (isEnabled && !isLoading) ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _getBackgroundColor(),
-          foregroundColor: _getTextColor(),
+          backgroundColor: _getBackgroundColor(context),
+          foregroundColor: _getTextColor(context),
           elevation: _getElevation(),
-          shadowColor: AppColors.shadowColor,
+          shadowColor: Theme.of(context).colorScheme.shadow,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius ?? 12),
           ),
@@ -94,7 +94,7 @@ class CustomButton extends StatelessWidget {
               desktop: 28,
             ),
             child: CircularProgressIndicator(
-              color: _getTextColor(),
+              color: _getTextColor(context),
               strokeWidth: 2,
             ),
           ),
@@ -151,33 +151,33 @@ class CustomButton extends StatelessWidget {
     );
   }
 
-  Color _getBackgroundColor() {
+  Color _getBackgroundColor(BuildContext context) {
     if (backgroundColor != null) return backgroundColor!;
     
-    if (!isEnabled) return AppColors.textLight;
+    if (!isEnabled) return Theme.of(context).colorScheme.onSurfaceVariant;
     
     switch (buttonType) {
       case ButtonType.primary:
-        return AppColors.primary;
+        return Theme.of(context).colorScheme.primary;
       case ButtonType.secondary:
-        return AppColors.secondaryColor;
+        return Theme.of(context).colorScheme.secondary;
       case ButtonType.success:
-        return AppColors.successColor;
+        return Colors.green;
       case ButtonType.error:
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       case ButtonType.warning:
-        return AppColors.warningColor;
+        return Colors.orange;
       case ButtonType.info:
-        return AppColors.infoColor;
+        return Colors.blue;
       case ButtonType.outline:
         return Colors.transparent;
     }
   }
 
-  Color _getTextColor() {
+  Color _getTextColor(BuildContext context) {
     if (textColor != null) return textColor!;
     
-    if (!isEnabled) return AppColors.textSecondary;
+    if (!isEnabled) return Theme.of(context).colorScheme.onSurfaceVariant;
     
     switch (buttonType) {
       case ButtonType.primary:
@@ -186,9 +186,9 @@ class CustomButton extends StatelessWidget {
       case ButtonType.error:
       case ButtonType.warning:
       case ButtonType.info:
-        return AppColors.textWhite;
+        return Colors.white;
       case ButtonType.outline:
-        return AppColors.primaryColor;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -216,7 +216,7 @@ class CustomButton extends StatelessWidget {
         tablet: 18,
         desktop: 20,
       ),
-      color: _getTextColor(),
+      color: _getTextColor(context),
       fontWeight: FontWeight.w600,
     );
   }

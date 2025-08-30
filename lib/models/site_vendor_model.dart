@@ -1,47 +1,37 @@
-import '../models/category_model.dart';
-
 class SiteVendorModel {
   final int id;
   final int siteId;
-  final String? categoryName;
-  final int categoryId;
+  final String? gstNo;
   final String name;
   final String mobile;
   final String email;
-  final String createdAt;
-  final String updatedAt;
   final String? deletedAt;
-  final CategoryModel? category;
+  final String? createdAt;
+  final String? updatedAt;
 
   SiteVendorModel({
     required this.id,
     required this.siteId,
-    this.categoryName,
-    required this.categoryId,
+    this.gstNo,
     required this.name,
     required this.mobile,
     required this.email,
-    required this.createdAt,
-    required this.updatedAt,
     this.deletedAt,
-    this.category,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory SiteVendorModel.fromJson(Map<String, dynamic> json) {
     return SiteVendorModel(
       id: json['id'] ?? 0,
       siteId: json['site_id'] ?? 0,
-      categoryName: json['category_name'],
-      categoryId: json['category_id'] ?? 0,
+      gstNo: json['gst_no'],
       name: json['name'] ?? '',
       mobile: json['mobile'] ?? '',
       email: json['email'] ?? '',
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
       deletedAt: json['deleted_at'],
-      category: json['category'] != null 
-          ? CategoryModel.fromJson(json['category']) 
-          : null,
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
     );
   }
 
@@ -49,20 +39,40 @@ class SiteVendorModel {
     return {
       'id': id,
       'site_id': siteId,
-      'category_name': categoryName,
-      'category_id': categoryId,
+      'gst_no': gstNo,
       'name': name,
       'mobile': mobile,
       'email': email,
+      'deleted_at': deletedAt,
       'created_at': createdAt,
       'updated_at': updatedAt,
-      'deleted_at': deletedAt,
-      'category': category?.toJson(),
     };
   }
+
+  SiteVendorModel copyWith({
+    int? id,
+    int? siteId,
+    String? gstNo,
+    String? name,
+    String? mobile,
+    String? email,
+    String? deletedAt,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return SiteVendorModel(
+      id: id ?? this.id,
+      siteId: siteId ?? this.siteId,
+      gstNo: gstNo ?? this.gstNo,
+      name: name ?? this.name,
+      mobile: mobile ?? this.mobile,
+      email: email ?? this.email,
+      deletedAt: deletedAt ?? this.deletedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
-
-
 
 class SiteVendorResponse {
   final String status;
@@ -80,8 +90,9 @@ class SiteVendorResponse {
       status: json['status'] ?? '',
       message: json['message'] ?? '',
       data: (json['data'] as List<dynamic>?)
-          ?.map((item) => SiteVendorModel.fromJson(item))
-          .toList() ?? [],
+              ?.map((item) => SiteVendorModel.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 }

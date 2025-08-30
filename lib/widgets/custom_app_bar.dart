@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../models/user_model.dart';
+import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -31,58 +33,53 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final UserModel? user = AuthService.currentUser;
-    
+
     return AppBar(
-      backgroundColor: AppColors.primaryColor,
-      foregroundColor: AppColors.textWhite,
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
       elevation: 0,
       leading: showBackButton
           ? IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: onBackPressed ?? () {
-                Navigator.of(context).pop();
-              },
+              onPressed:
+                  onBackPressed ??
+                  () {
+                    Navigator.of(context).pop();
+                  },
             )
           : showDrawer
-              ? IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: onDrawerPressed ?? () {
+          ? IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed:
+                  onDrawerPressed ??
+                  () {
                     Scaffold.of(context).openDrawer();
                   },
-                )
-              : null,
+            )
+          : null,
       title: showDrawer
           ? Row(
-        children: [
-          // User Profile Icon
-          GestureDetector(
-            onTap: onProfilePressed,
-            child: Container(
-              width: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 40,
-                tablet: 45,
-                desktop: 50,
-              ),
-              height: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 40,
-                tablet: 45,
-                desktop: 50,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.textWhite.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 20,
-                    tablet: 22,
-                    desktop: 25,
-                  ),
-                ),
-              ),
-              child: user?.imageUrl != null
-                  ? ClipRRect(
+              children: [
+                // User Profile Icon
+                GestureDetector(
+                  onTap: onProfilePressed,
+                  child: Container(
+                    width: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 40,
+                      tablet: 45,
+                      desktop: 50,
+                    ),
+                    height: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 40,
+                      tablet: 45,
+                      desktop: 50,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(
                         ResponsiveUtils.responsiveFontSize(
                           context,
@@ -91,100 +88,132 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           desktop: 25,
                         ),
                       ),
-                      child: Image.network(
-                        user!.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
+                    ),
+                    child: user?.imageUrl != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              ResponsiveUtils.responsiveFontSize(
+                                context,
+                                mobile: 20,
+                                tablet: 22,
+                                desktop: 25,
+                              ),
+                            ),
+                            child: Image.network(
+                              user!.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.person,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  size: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 20,
+                                    tablet: 22,
+                                    desktop: 25,
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        : Icon(
                             Icons.person,
-                            color: AppColors.textWhite,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 20,
                               tablet: 22,
                               desktop: 25,
                             ),
-                          );
-                        },
-                      ),
-                    )
-                  : Icon(
-                      Icons.person,
-                      color: AppColors.textWhite,
-                      size: ResponsiveUtils.responsiveFontSize(
-                        context,
-                        mobile: 20,
-                        tablet: 22,
-                        desktop: 25,
-                      ),
-                    ),
-            ),
-          ),
-          SizedBox(
-            width: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 12,
-              tablet: 16,
-              desktop: 20,
-            ),
-          ),
-          // User Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // User Name
-                Text(
-                  user?.displayName ?? 'User',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 14,
-                      tablet: 16,
-                      desktop: 18,
-                    ),
-                    color: AppColors.textWhite,
-                    fontWeight: FontWeight.w600,
+                          ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                // User Designation
-                Text(
-                  UserTypes.getUserTypeName(user?.userType),
-                  style: AppTypography.bodySmall.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 12,
-                      tablet: 14,
-                      desktop: 16,
-                    ),
-                    color: AppColors.textWhite.withOpacity(0.8),
+                SizedBox(
+                  width: ResponsiveUtils.responsiveSpacing(
+                    context,
+                    mobile: 12,
+                    tablet: 16,
+                    desktop: 20,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                ),
+                // User Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // User Name
+                      Text(
+                        user?.displayName ?? 'User',
+                        style: AppTypography.titleMedium.copyWith(
+                          fontSize: ResponsiveUtils.responsiveFontSize(
+                            context,
+                            mobile: 14,
+                            tablet: 16,
+                            desktop: 18,
+                          ),
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      // User Designation
+                      Text(
+                        UserTypes.getUserTypeName(user?.userType),
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: ResponsiveUtils.responsiveFontSize(
+                            context,
+                            mobile: 12,
+                            tablet: 14,
+                            desktop: 16,
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary.withOpacity(0.8),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-          ),
-        ],
-      )
-          : Text(
-              title,
-              style: AppTypography.titleLarge.copyWith(
-                color: AppColors.textWhite,
-                fontWeight: FontWeight.bold,
+            )
+          : GestureDetector(
+        onTap: onProfilePressed,
+            child: Text(
+                title,
+                style: AppTypography.titleLarge.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-      actions: [
-
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: onNotificationPressed ?? () {
-              // Handle notification press
-            },
           ),
+      actions: [
+        Consumer<ThemeProvider>(
+          builder: (context, themeProvider, child) {
+            return IconButton(
+              onPressed: () {
+                themeProvider.toggleTheme();
+              },
+              icon:Icon(themeProvider.isDarkMode
+                  ? Icons.light_mode
+                  : Icons.dark_mode),
+            );
+          },
+        ),
+
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed:
+              onNotificationPressed ??
+              () {
+                // Handle notification press
+              },
+        ),
         // App Version (optional)
         if (actions != null) ...actions!,
       ],
@@ -193,4 +222,4 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(60);
-} 
+}

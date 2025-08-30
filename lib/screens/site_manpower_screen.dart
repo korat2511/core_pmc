@@ -256,7 +256,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                     tablet: 18,
                     desktop: 20,
                   ),
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -276,7 +276,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : _buildEditMode(),
@@ -313,10 +313,10 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primaryColor
+                  ? Theme.of(context).colorScheme.primary
                   : isToday
-                      ? AppColors.primaryColor.withOpacity(0.1)
-                      : AppColors.surfaceColor,
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isSelected
@@ -328,37 +328,37 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  DateFormat('MMM').format(date),
-                  style: AppTypography.bodySmall.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 8,
-                      tablet: 10,
-                      desktop: 12,
+                                  Text(
+                    DateFormat('MMM').format(date),
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                      color: isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
-                    color: isSelected
-                        ? AppColors.textWhite
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
                   ),
-                ),
                 SizedBox(height: 2),
-                Text(
-                  DateFormat('E').format(date),
-                  style: AppTypography.bodySmall.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 8,
-                      tablet: 10,
-                      desktop: 12,
+                                  Text(
+                    DateFormat('E').format(date),
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                      color: isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
-                    color: isSelected
-                        ? AppColors.textWhite
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
                   ),
-                ),
                 SizedBox(height: 2),
                 Text(
                   date.day.toString(),
@@ -370,8 +370,8 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                       desktop: 20,
                     ),
                     color: isSelected
-                        ? AppColors.textWhite
-                        : AppColors.textPrimary,
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -397,7 +397,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                 tablet: 80,
                 desktop: 100,
               ),
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             SizedBox(
               height: ResponsiveUtils.responsiveSpacing(
@@ -416,7 +416,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                   tablet: 18,
                   desktop: 20,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -437,7 +437,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                   tablet: 16,
                   desktop: 18,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -448,7 +448,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _loadManpowerForDate(_selectedDate),
-      color: AppColors.primaryColor,
+      color: Theme.of(context).colorScheme.primary,
       child: ListView.builder(
         padding: ResponsiveUtils.horizontalPadding(context),
         itemCount: _manpowerList.length,
@@ -546,7 +546,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                   onPressed: _addNewEntry,
                   icon: Icon(
                     Icons.add,
-                    color: AppColors.textWhite,
+                    color: Colors.white,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 16,
@@ -563,12 +563,12 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                         tablet: 16,
                         desktop: 18,
                       ),
-                      color: AppColors.textWhite,
+                      color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondaryColor,
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
                     foregroundColor: AppColors.textWhite,
                     padding: EdgeInsets.symmetric(
                       vertical: ResponsiveUtils.responsiveSpacing(
@@ -607,7 +607,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveManpower,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: AppColors.textWhite,
                     padding: EdgeInsets.symmetric(
                       vertical: ResponsiveUtils.responsiveSpacing(
@@ -644,7 +644,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                           ),
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.textWhite),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : Text(
@@ -656,7 +656,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                               tablet: 18,
                               desktop: 20,
                             ),
-                            color: AppColors.textWhite,
+                            color: Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -680,7 +680,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -695,7 +695,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -721,7 +721,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -751,7 +751,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                               ),
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryColor.withOpacity(0.1),
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(
                                 ResponsiveUtils.responsiveSpacing(
                                   context,
@@ -770,7 +770,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                                   tablet: 12,
                                   desktop: 14,
                                 ),
-                                color: AppColors.primaryColor,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -792,7 +792,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                                 tablet: 12,
                                 desktop: 14,
                               ),
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -910,17 +910,17 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
               desktop: 6,
             ),
           ),
-          Text(
-            title,
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 10,
-                tablet: 12,
-                desktop: 14,
+                      Text(
+              title,
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 10,
+                  tablet: 12,
+                  desktop: 14,
+                ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              color: AppColors.textSecondary,
-            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -947,7 +947,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -962,7 +962,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1013,9 +1013,9 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.category_outlined,
-                            color: AppColors.textSecondary,
+                                                  Icon(
+                          Icons.category_outlined,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 18,
@@ -1041,15 +1041,15 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                                   tablet: 16,
                                   desktop: 18,
                                 ),
-                                color: entry.categoryId == 0
-                                    ? AppColors.textSecondary
-                                    : AppColors.textPrimary,
+                                                        color: entry.categoryId == 0
+                            ? Theme.of(context).colorScheme.onSurfaceVariant
+                            : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ),
-                          Icon(
-                            Icons.arrow_drop_down,
-                            color: AppColors.textSecondary,
+                                                  Icon(
+                          Icons.arrow_drop_down,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                             size: ResponsiveUtils.responsiveFontSize(
                               context,
                               mobile: 20,
@@ -1069,12 +1069,12 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                     child: Container(
                       padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.errorColor.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.error.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.delete,
-                        color: AppColors.errorColor,
+                        color: Theme.of(context).colorScheme.error,
                         size: 20,
                       ),
                     ),
@@ -1215,8 +1215,8 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         ),
         decoration: BoxDecoration(
           color: isSelected 
-              ? AppColors.primaryColor.withOpacity(0.1)
-              : AppColors.textWhite,
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -1237,8 +1237,8 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             Icon(
               icon,
               color: isSelected 
-                  ? AppColors.primaryColor
-                  : AppColors.textSecondary,
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
               size: ResponsiveUtils.responsiveFontSize(
                 context,
                 mobile: 16,
@@ -1263,9 +1263,9 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                   tablet: 10,
                   desktop: 12,
                 ),
-                color: isSelected 
-                    ? AppColors.primaryColor
-                    : AppColors.textSecondary,
+                              color: isSelected 
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
               ),
               textAlign: TextAlign.center,

@@ -81,7 +81,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         desktop: 55,
       ),
       decoration: BoxDecoration(
-        color: widget.backgroundColor ?? AppColors.textWhite,
+        color: widget.backgroundColor ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           widget.borderRadius ?? ResponsiveUtils.responsiveSpacing(
             context,
@@ -99,7 +99,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         controller: _controller,
         onChanged: widget.onChanged,
         style: TextStyle(
-          color: widget.textColor ?? AppColors.textPrimary,
+          color: widget.textColor ?? Theme.of(context).colorScheme.onSurface,
           fontSize: ResponsiveUtils.responsiveFontSize(
             context,
             mobile: 14,
@@ -110,7 +110,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: TextStyle(
-            color: widget.hintColor ?? AppColors.textSecondary,
+            color: widget.hintColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 14,
@@ -120,7 +120,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
           ),
           prefixIcon: Icon(
             Icons.search,
-            color: widget.iconColor ?? AppColors.textSecondary,
+            color: widget.iconColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
             size: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 18,
@@ -132,7 +132,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
               ? IconButton(
                   icon: Icon(
                     Icons.clear,
-                    color: widget.iconColor ?? AppColors.textSecondary,
+                    color: widget.iconColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 18,

@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
+
+import 'material_model.dart';
 import 'user_model.dart';
 import 'unified_image_model.dart';
 import 'unified_attachment_model.dart';
@@ -91,65 +94,6 @@ class TaskDetailModel {
     required this.qualityChecks,
   });
 
-  static List<TagModel> _parseTagsFromJson(dynamic tagsData) {
-    if (tagsData == null) {
-      return [];
-    }
-    
-    try {
-      if (tagsData is List) {
-        return tagsData.map((tag) {
-          if (tag is Map<String, dynamic>) {
-            return TagModel.fromJson(tag);
-          } else if (tag is String) {
-            // If tag is just a string, create a TagModel with the string as name
-            return TagModel(
-              id: 0,
-              name: tag,
-              createdAt: DateTime.now().toIso8601String(),
-              updatedAt: DateTime.now().toIso8601String(),
-            );
-          } else {
-            return TagModel(
-              id: 0,
-              name: tag.toString(),
-              createdAt: DateTime.now().toIso8601String(),
-              updatedAt: DateTime.now().toIso8601String(),
-            );
-          }
-        }).toList();
-      } else if (tagsData is String) {
-        // If tagsData is a string, try to parse it as JSON
-        try {
-          final List<dynamic> tagsList = jsonDecode(tagsData);
-          return tagsList.map((tag) {
-            if (tag is Map<String, dynamic>) {
-              return TagModel.fromJson(tag);
-            } else {
-              return TagModel(
-                id: 0,
-                name: tag.toString(),
-                createdAt: DateTime.now().toIso8601String(),
-                updatedAt: DateTime.now().toIso8601String(),
-              );
-            }
-          }).toList();
-        } catch (e) {
-          // If JSON parsing fails, treat it as a comma-separated string
-          return tagsData.split(',').map((tag) => TagModel(
-            id: 0,
-            name: tag.trim(),
-            createdAt: DateTime.now().toIso8601String(),
-            updatedAt: DateTime.now().toIso8601String(),
-          )).where((tag) => tag.name.isNotEmpty).toList();
-        }
-      }
-    } catch (e) {
-      print('Error parsing tags: $e');
-    }
-    
-    return [];
-  }
 
   factory TaskDetailModel.fromJson(Map<String, dynamic> json) {
     return TaskDetailModel(
@@ -392,6 +336,83 @@ class TaskDetailModel {
   }
 }
 
+class UsedMaterialModel {
+  final int id;
+  final int materialId;
+  final MaterialModel material;
+  final int? siteId;
+  final String type;
+  final String quantity;
+  final String? price;
+  final int userId;
+  final String? description;
+  final int progressId;
+  final String? currentStock;
+  final int? grnId;
+  final String createdAt;
+  final String updatedAt;
+  final String? deletedAt;
+
+  UsedMaterialModel({
+    required this.id,
+    required this.materialId,
+    required this.material,
+    this.siteId,
+    required this.type,
+    required this.quantity,
+    this.price,
+    required this.userId,
+    this.description,
+    required this.progressId,
+    this.currentStock,
+    this.grnId,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+
+  factory UsedMaterialModel.fromJson(Map<String, dynamic> json) {
+    return UsedMaterialModel(
+      id: json['id'] ?? 0,
+      materialId: json['material_id'] ?? 0,
+      material: MaterialModel.fromJson(json['material'] ?? {}),
+
+      siteId: json['site_id'],
+      type: json['type'] ?? '',
+      quantity: json['quantity'] ?? '',
+      price: json['price'],
+      userId: json['user_id'] ?? 0,
+      description: json['description'],
+      progressId: json['progress_id'] ?? 0,
+      currentStock: json['current_stock'],
+      grnId: json['grn_id'],
+      createdAt: json['created_at'] ?? '',
+      updatedAt: json['updated_at'] ?? '',
+      deletedAt: json['deleted_at'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'material_id': materialId,
+      'material': material.toJson(),
+      'site_id': siteId,
+      'type': type,
+      'quantity': quantity,
+      'price': price,
+      'user_id': userId,
+      'description': description,
+      'progress_id': progressId,
+      'current_stock': currentStock,
+      'grn_id': grnId,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'deleted_at': deletedAt,
+    };
+  }
+}
+
 class ProgressDetailModel {
   final int id;
   final String workDone;
@@ -411,7 +432,7 @@ class ProgressDetailModel {
   final UserModel user;
   final List<ProgressImageModel> progressImages;
   final List<TaskQuestionModel> taskQuestions;
-  final List<String> usedMaterial;
+  final List<UsedMaterialModel> usedMaterial;
 
   ProgressDetailModel({
     required this.id,
@@ -460,7 +481,7 @@ class ProgressDetailModel {
           ?.map((question) => TaskQuestionModel.fromJson(question))
           .toList() ?? [],
       usedMaterial: (json['used_material'] as List<dynamic>?)
-          ?.map((material) => material.toString())
+          ?.map((material) => UsedMaterialModel.fromJson(material))
           .toList() ?? [],
     );
   }
@@ -485,7 +506,7 @@ class ProgressDetailModel {
       'user': user.toJson(),
       'progress_images': progressImages,
       'task_questions': taskQuestions.map((question) => question.toJson()).toList(),
-      'used_material': usedMaterial,
+      'used_material': usedMaterial.map((material) => material.toJson()).toList(),
     };
   }
 }
@@ -940,7 +961,7 @@ extension TaskDetailModelExtension on TaskDetailModel {
     // Note: Currently progress details don't have attachments field
     // This is ready for when the API includes progress attachments
     
-    print('Total attachments in allAttachments: ${unifiedAttachments.length}');
+
     return unifiedAttachments;
   }
 }

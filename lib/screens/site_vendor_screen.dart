@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
-import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
-import '../core/utils/navigation_utils.dart';
 import '../models/site_model.dart';
 import '../models/site_vendor_model.dart';
-import '../models/category_model.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_drawer.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
-import '../core/utils/category_picker_utils.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 class SiteVendorScreen extends StatefulWidget {
@@ -140,7 +135,7 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorColor,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: Text('Delete'),
           ),
@@ -202,20 +197,20 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
                           Icon(
                             Icons.business_outlined,
                             size: 64,
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           SizedBox(height: 16),
                           Text(
                             'No vendors found',
                             style: AppTypography.titleMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Add your first vendor to get started',
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -232,7 +227,7 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddVendorDialog,
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -240,6 +235,7 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
 
   Widget _buildVendorCard(SiteVendorModel vendor) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: EdgeInsets.all(16),
@@ -256,15 +252,16 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
                         vendor.name,
                         style: AppTypography.titleMedium.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       SizedBox(height: 4),
-                      Text(
-                        vendor.category?.name ?? 'No Category',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                                             Text(
+                         vendor.gstNo ?? 'No GST Number',
+                         style: AppTypography.bodyMedium.copyWith(
+                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                         ),
+                       ),
                     ],
                   ),
                 ),
@@ -294,9 +291,9 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, size: 16, color: AppColors.errorColor),
+                          Icon(Icons.delete, size: 16, color: Theme.of(context).colorScheme.error),
                           SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: AppColors.errorColor)),
+                          Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
                         ],
                       ),
                     ),
@@ -307,23 +304,27 @@ class _SiteVendorScreenState extends State<SiteVendorScreen> {
             SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.phone, size: 16, color: AppColors.textSecondary),
+                Icon(Icons.phone, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(width: 8),
-                Text(
-                  vendor.mobile,
-                  style: AppTypography.bodyMedium,
-                ),
+                                  Text(
+                    vendor.mobile,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
               ],
             ),
             SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.email, size: 16, color: AppColors.textSecondary),
+                Icon(Icons.email, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(width: 8),
-                Text(
-                  vendor.email,
-                  style: AppTypography.bodyMedium,
-                ),
+                                  Text(
+                    vendor.email,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
               ],
             ),
           ],
@@ -353,8 +354,8 @@ class _VendorDialogState extends State<_VendorDialog> {
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
   final _emailController = TextEditingController();
+  final _gstController = TextEditingController();
   
-  CategoryModel? _selectedCategory;
   bool _isLoading = false;
   bool _isDialogClosing = false;
 
@@ -365,8 +366,7 @@ class _VendorDialogState extends State<_VendorDialog> {
       _nameController.text = widget.vendor!.name;
       _mobileController.text = widget.vendor!.mobile;
       _emailController.text = widget.vendor!.email;
-      // Set the category by default when editing
-      _selectedCategory = widget.vendor!.category;
+      _gstController.text = widget.vendor!.gstNo ?? '';
     }
   }
 
@@ -379,19 +379,7 @@ class _VendorDialogState extends State<_VendorDialog> {
     super.dispose();
   }
 
-  Future<void> _selectCategory() async {
-    final category = await CategoryPickerUtils.showCategoryPicker(
-      context: context,
-      siteId: widget.site.id,
-      allowedSubIds: [5], // Only show categories with cat_sub_id = 5 for vendors
-    );
-    
-    if (category != null) {
-      setState(() {
-        _selectedCategory = category;
-      });
-    }
-  }
+
 
   Future<void> _selectFromContacts() async {
     try {
@@ -503,10 +491,6 @@ class _VendorDialogState extends State<_VendorDialog> {
 
   Future<void> _saveVendor() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategory == null) {
-      SnackBarUtils.showError(context, message: 'Please select a category');
-      return;
-    }
 
     setState(() {
       _isLoading = true;
@@ -516,18 +500,18 @@ class _VendorDialogState extends State<_VendorDialog> {
       final result = widget.vendor == null
           ? await ApiService.saveSiteVendor(
               siteId: widget.site.id,
-              categoryId: _selectedCategory!.id,
               name: _nameController.text.trim(),
               mobile: _mobileController.text.trim(),
               email: _emailController.text.trim().isEmpty ? '' : _emailController.text.trim(),
+              gstNo: _gstController.text.trim().isEmpty ? null : _gstController.text.trim(),
             )
           : await ApiService.updateSiteVendor(
               vendorId: widget.vendor!.id,
               siteId: widget.site.id,
-              categoryId: _selectedCategory!.id,
               name: _nameController.text.trim(),
               mobile: _mobileController.text.trim(),
               email: _emailController.text.trim().isEmpty ? '' : _emailController.text.trim(),
+              gstNo: _gstController.text.trim().isEmpty ? null : _gstController.text.trim(),
             );
 
       if (result != null) {
@@ -560,7 +544,7 @@ class _VendorDialogState extends State<_VendorDialog> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
@@ -573,7 +557,7 @@ class _VendorDialogState extends State<_VendorDialog> {
               height: 4,
               margin: EdgeInsets.only(top: 8),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -613,34 +597,14 @@ class _VendorDialogState extends State<_VendorDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Category Selection
-                    GestureDetector(
-                      onTap: _selectCategory,
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.borderColor),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.category, color: AppColors.textSecondary),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _selectedCategory?.name ?? 'Select Category *',
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: _selectedCategory != null 
-                                      ? AppColors.textPrimary 
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
-                          ],
-                        ),
-                      ),
+                    // GST Number Field
+                    CustomTextField(
+                      controller: _gstController,
+                      label: 'GST Number',
+                      hintText: 'Enter GST number (optional)',
+                      validator: (value) {
+                        return null; // GST is optional
+                      },
                     ),
                     SizedBox(height: 16),
 
@@ -652,18 +616,18 @@ class _VendorDialogState extends State<_VendorDialog> {
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: AppColors.primaryColor),
+                            border: Border.all(color: Theme.of(context).colorScheme.primary),
                             borderRadius: BorderRadius.circular(8),
-                            color: AppColors.primaryColor.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.contacts, color: AppColors.primaryColor),
+                              Icon(Icons.contacts, color: Theme.of(context).colorScheme.primary),
                               SizedBox(width: 12),
                               Text(
                                 'Select from Contact',
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.primaryColor,
+                                  color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

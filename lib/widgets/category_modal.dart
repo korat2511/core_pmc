@@ -118,8 +118,8 @@ class _CategoryModalState extends State<CategoryModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -134,7 +134,7 @@ class _CategoryModalState extends State<CategoryModal> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -146,7 +146,7 @@ class _CategoryModalState extends State<CategoryModal> {
               children: [
                 Icon(
                   Icons.category_outlined,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -175,7 +175,7 @@ class _CategoryModalState extends State<CategoryModal> {
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -188,7 +188,7 @@ class _CategoryModalState extends State<CategoryModal> {
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -203,12 +203,12 @@ class _CategoryModalState extends State<CategoryModal> {
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.textLight.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
+                                          child: Icon(
+                        Icons.close,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -244,8 +244,8 @@ class _CategoryModalState extends State<CategoryModal> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                                              foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: ResponsiveUtils.responsiveSpacing(
                           context,
@@ -281,7 +281,7 @@ class _CategoryModalState extends State<CategoryModal> {
                             ),
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.textWhite),
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : Text(
@@ -293,7 +293,7 @@ class _CategoryModalState extends State<CategoryModal> {
                                 tablet: 16,
                                 desktop: 18,
                               ),
-                              color: AppColors.textWhite,
+                              color: Colors.white,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

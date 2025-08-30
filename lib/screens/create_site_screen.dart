@@ -434,7 +434,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   'Site Images',
                   style: AppTypography.titleMedium.copyWith(
                     fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -449,7 +449,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                       vertical: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceColor,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
                       border: Border.all(color: AppColors.borderColor, width: 1),
                     ),
@@ -457,7 +457,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                       children: [
                         Icon(
                           Icons.add_photo_alternate,
-                          color: AppColors.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           size: ResponsiveUtils.responsiveFontSize(context, mobile: 32, tablet: 36, desktop: 40),
                         ),
                         SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
@@ -465,7 +465,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                           'Add Images',
                           style: AppTypography.bodyMedium.copyWith(
                             fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -481,7 +481,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                     'Selected Images (${_selectedImages.length})',
                     style: AppTypography.bodyMedium.copyWith(
                       fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
@@ -520,12 +520,12 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                               child: Container(
                                 padding: EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.errorColor,
+                                  color: Theme.of(context).colorScheme.error,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.close,
-                                  color: AppColors.textWhite,
+                                  color: Theme.of(context).colorScheme.onError,
                                   size: 16,
                                 ),
                               ),

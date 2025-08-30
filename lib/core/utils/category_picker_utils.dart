@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/site_model.dart';
 import '../../models/category_model.dart';
 import '../../services/category_service.dart';
 import '../../widgets/category_picker_modal.dart';
@@ -85,6 +84,7 @@ class CategoryPickerUtils {
                 maxChildSize: 0.9,
                 builder: (context, scrollController) => CategoryPickerModal(
                   categories: filteredCategories,
+                  siteId: siteId,
                 ),
               ),
             ),

@@ -131,16 +131,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       
       switch (status) {
         case 'present':
-          return AppColors.successColor.withOpacity(0.65); // Light green
+          return Colors.green.withOpacity(0.65); // Light green
         case 'absent':
-          return AppColors.errorColor.withOpacity(0.65); // Light red
+          return Theme.of(context).colorScheme.error.withOpacity(0.65); // Light red
         case 'future':
-          return AppColors.textSecondary.withOpacity(0.2); // Light grey
+          return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.2); // Light grey
         default:
-          return AppColors.textSecondary.withOpacity(0.2);
+          return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.2);
       }
     } catch (e) {
-      return AppColors.textSecondary.withOpacity(0.2);
+      return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.2);
     }
   }
 
@@ -166,7 +166,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   },
                   icon: Icon(
                     Icons.chevron_left,
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 24,
@@ -184,7 +184,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       tablet: 20,
                       desktop: 22,
                     ),
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -199,8 +199,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   icon: Icon(
                     Icons.chevron_right,
                     color: _selectedMonth.isBefore(DateTime.now().add(const Duration(days: 1))) 
-                        ? AppColors.primaryColor 
-                        : AppColors.textLight,
+                        ? Theme.of(context).colorScheme.primary 
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                     size: ResponsiveUtils.responsiveFontSize(
                       context,
                       mobile: 24,
@@ -219,9 +219,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildLegendItem('Present', AppColors.successColor.withOpacity(0.65)),
-                _buildLegendItem('Absent', AppColors.errorColor.withOpacity(0.65)),
-                _buildLegendItem('Future', AppColors.textSecondary.withOpacity(0.2)),
+                _buildLegendItem('Present', Colors.green.withOpacity(0.65)),
+                _buildLegendItem('Absent', Theme.of(context).colorScheme.error.withOpacity(0.65)),
+                _buildLegendItem('Future', Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.2)),
               ],
             ),
           ),
@@ -231,11 +231,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const CircularProgressIndicator(),
+                      CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
                       SizedBox(height: 16),
                       Text(
                         'Loading attendance data...',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                       SizedBox(height: 8),
                       TextButton(
@@ -309,7 +309,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               tablet: 12,
               desktop: 14,
             ),
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],

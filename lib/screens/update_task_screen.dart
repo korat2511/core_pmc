@@ -14,6 +14,7 @@ import '../services/local_storage_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import 'select_materials_screen.dart';
 
 class UpdateTaskScreen extends StatefulWidget {
   final TaskModel task;
@@ -68,6 +69,12 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   List<File> _simpleTaskAttachments = [];
   final TextEditingController _simpleTaskRemarkController = TextEditingController();
   
+  // Material Used state
+  bool _isMaterialUsed = false;
+  List<Map<String, dynamic>> _selectedMaterials = [];
+  List<Map<String, dynamic>> _availableMaterials = [];
+  bool _isLoadingMaterials = false;
+  
   bool _isUploadingImages = false;
   bool _isUploadingAttachments = false;
 
@@ -85,6 +92,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   void initState() {
     super.initState();
     _loadTaskDetail();
+    _loadMaterials();
   }
 
   @override
@@ -160,6 +168,43 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
     
     // Initialize work done today as empty (not "0")
     _workDoneTodayController.text = '';
+  }
+
+  Future<void> _loadMaterials() async {
+    setState(() {
+      _isLoadingMaterials = true;
+    });
+
+    try {
+      final String? apiToken = await LocalStorageService.getToken();
+      if (apiToken == null) {
+        return;
+      }
+
+      final response = await ApiService.getMaterials(page: 1);
+      
+      if (response != null && response.status == 1) {
+        setState(() {
+          _availableMaterials = response.data.map((material) => {
+            'id': material.id,
+            'name': material.name,
+            'brand_name': material.brandName,
+            'unit_of_measurement': material.unitOfMeasurement,
+            'specification': material.specification,
+            'sku': material.sku,
+            'current_stock': material.currentStock ?? 0,
+            'isSelected': false,
+            'quantity': 0,
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error loading materials: $e');
+    } finally {
+      setState(() {
+        _isLoadingMaterials = false;
+      });
+    }
   }
 
   // Get current total work and work done values
@@ -320,9 +365,11 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                 _buildTotalWorkDoneDisplay(),
                 SizedBox(height: 16),
                 _buildProgressSlider(),
-                SizedBox(height: 24),
+                SizedBox(height: 10),
                 _buildWorkInputFields(),
-                SizedBox(height: 24),
+                SizedBox(height: 10),
+                _buildMaterialUsedSection(),
+                SizedBox(height: 10),
                 _buildMediaAndNotesSection(),
               ] else ...[
                 // No Progress Mode
@@ -1002,6 +1049,162 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
     );
   }
 
+  Widget _buildMaterialUsedSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Material Used Checkbox
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Is Material Used?',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Checkbox(
+              value: _isMaterialUsed,
+              onChanged: (value) {
+                setState(() {
+                  _isMaterialUsed = value ?? false;
+                  if (!_isMaterialUsed) {
+                    _selectedMaterials.clear();
+                  }
+                });
+              },
+              activeColor: AppColors.primaryColor,
+            ),
+          ],
+        ),
+        
+        if (_isMaterialUsed) ...[
+          SizedBox(height: 16),
+          
+          // Material Selection Button
+          GestureDetector(
+            onTap: () async {
+              final result = await NavigationUtils.push(
+                context,
+                SelectMaterialsScreen(
+                  preSelectedMaterials: _selectedMaterials.isNotEmpty ? _selectedMaterials : null,
+                ),
+              );
+              
+              if (result != null && result is List) {
+                setState(() {
+                  _selectedMaterials = List<Map<String, dynamic>>.from(result);
+                });
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _selectedMaterials.isNotEmpty ? AppColors.successColor : AppColors.borderColor,
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.inventory_2,
+                    color: _selectedMaterials.isNotEmpty ? AppColors.successColor : AppColors.primaryColor,
+                    size: 24,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Select Materials',
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (_selectedMaterials.isNotEmpty) ...[
+                          SizedBox(height: 4),
+                          Text(
+                            '${_selectedMaterials.length} material(s) selected',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.successColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            _buildMaterialSummary(),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _selectedMaterials.isNotEmpty ? Icons.check_circle : Icons.arrow_forward_ios,
+                    color: _selectedMaterials.isNotEmpty ? AppColors.successColor : AppColors.primaryColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _updateSelectedMaterials() {
+    _selectedMaterials = _availableMaterials
+        .where((material) => material['isSelected'] as bool)
+        .map((material) => {
+              'id': material['id'],
+              'name': material['name'],
+              'brand_name': material['brand_name'],
+              'unit_of_measurement': material['unit_of_measurement'],
+              'quantity': material['quantity'],
+            })
+        .toList();
+  }
+
+
+
+  List<Map<String, dynamic>>? _buildUsedMaterials() {
+    if (!_isMaterialUsed || _selectedMaterials.isEmpty) {
+      return null;
+    }
+    
+    return _selectedMaterials.map((material) => {
+      'material_id': material['id'],
+      'quantity': material['quantity'],
+    }).toList();
+  }
+
+  String _buildMaterialSummary() {
+    if (_selectedMaterials.isEmpty) return '';
+    
+    final summaries = _selectedMaterials.map((material) {
+      final name = material['name'] ?? '';
+      final quantity = material['quantity'] ?? 0;
+      final unit = material['unit_of_measurement'] ?? '';
+      return '$name: $quantity $unit';
+    }).toList();
+    
+    return summaries.join(', ');
+  }
+
   Widget _buildMediaActionButton({
     required IconData icon,
     required String label,
@@ -1601,6 +1804,10 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
           final skilledWorkers = int.tryParse(_skilledWorkersController.text) ?? 0;
           final unskilledWorkers = int.tryParse(_unskilledWorkersController.text) ?? 0;
 
+          final usedMaterials = _buildUsedMaterials();
+          print('=== USED MATERIALS BEING SENT ===');
+          print('Used Materials: $usedMaterials');
+          
           response = await ApiService.updateTaskProgress(
             apiToken: apiToken,
             taskId: widget.task.id,
@@ -1608,16 +1815,17 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
             workLeft: workLeft.toString(),
             skillWorkers: skilledWorkers.toString(),
             unskilledWorkers: unskilledWorkers.toString(),
-            remark: _updateProgressRemarkController.text.trim().isNotEmpty 
-                ? _updateProgressRemarkController.text.trim() 
+            remark:_updateProgressRemarkController.text.trim().isNotEmpty
+                ? _updateProgressRemarkController.text.trim()
                 : null,
-            comment: _updateProgressCommentsController.text.trim().isNotEmpty 
+            comment: _updateProgressCommentsController.text.trim().isNotEmpty
                 ? _updateProgressCommentsController.text.trim() 
                 : null,
             instruction: _updateProgressInstructionsController.text.trim().isNotEmpty 
                 ? _updateProgressInstructionsController.text.trim() 
                 : null,
             images: _updateProgressImages,
+            usedMaterials: usedMaterials,
           );
         } else {
           // No progress mode

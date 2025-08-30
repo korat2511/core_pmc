@@ -17,6 +17,103 @@ import '../screens/create_task_screen.dart';
 import '../widgets/custom_button.dart';
 import '../core/utils/navigation_utils.dart';
 
+class _FilterSearchWidget<T> extends StatefulWidget {
+  final List<T> items;
+  final List<int> selectedIds;
+  final Function(int) onToggle;
+  final String searchHint;
+  final String Function(T) itemBuilder;
+  final int Function(T) idExtractor;
+
+  const _FilterSearchWidget({
+    required this.items,
+    required this.selectedIds,
+    required this.onToggle,
+    required this.searchHint,
+    required this.itemBuilder,
+    required this.idExtractor,
+  });
+
+  @override
+  State<_FilterSearchWidget<T>> createState() => _FilterSearchWidgetState<T>();
+}
+
+class _FilterSearchWidgetState<T> extends State<_FilterSearchWidget<T>> {
+  final TextEditingController _searchController = TextEditingController();
+  List<T> _filteredItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredItems = widget.items;
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text;
+    setState(() {
+      if (query.isEmpty) {
+        _filteredItems = widget.items;
+      } else {
+        _filteredItems = widget.items.where((item) {
+          final itemText = widget.itemBuilder(item).toLowerCase();
+          return itemText.contains(query.toLowerCase());
+        }).toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search Bar
+        Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: CustomSearchBar(
+            hintText: widget.searchHint,
+            controller: _searchController,
+            onChanged: (query) {
+              // The search is handled by the controller listener
+            },
+            height: 40,
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = _filteredItems[index];
+              final isSelected = widget.selectedIds.contains(widget.idExtractor(item));
+              return CheckboxListTile(
+                title: Text(
+                  widget.itemBuilder(item),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                value: isSelected,
+                onChanged: (bool? value) {
+                  widget.onToggle(widget.idExtractor(item));
+                },
+                activeColor: AppColors.primaryColor,
+                checkColor: AppColors.textWhite,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class SiteTasksScreen extends StatefulWidget {
   final SiteModel site;
 
@@ -314,194 +411,193 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        body: Column(
+        body: Stack(
           children: [
-            // Search Bar
-            Padding(
-              padding: ResponsiveUtils.responsivePadding(context),
-              child: CustomSearchBar(
-                hintText: 'Search tasks...',
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-              ),
-            ),
-
-            // Sort and Filter Section
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  // Filter Button
-                  GestureDetector(
-                    onTap: () {
-                      FocusScope.of(context).unfocus(); // Dismiss keyboard
-                      _showFilterOptions();
+            Column(
+              children: [
+                // Search Bar
+                Padding(
+                  padding: ResponsiveUtils.responsivePadding(context),
+                  child: CustomSearchBar(
+                    hintText: 'Search tasks...',
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
                     },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveUtils.responsiveSpacing(
+                  ),
+                ),
+
+                // Sort and Filter Section
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      // Filter Button
+                      GestureDetector(
+                        onTap: () {
+                          FocusScope.of(context).unfocus(); // Dismiss keyboard
+                          _showFilterOptions();
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 12,
+                              tablet: 16,
+                              desktop: 20,
+                            ),
+                            vertical: ResponsiveUtils.responsiveSpacing(
+                              context,
+                              mobile: 8,
+                              tablet: 10,
+                              desktop: 12,
+                            ),
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(
+                              ResponsiveUtils.responsiveSpacing(
+                                context,
+                                mobile: 8,
+                                tablet: 12,
+                                desktop: 16,
+                              ),
+                            ),
+                            border: Border.all(
+                              color: AppColors.borderColor,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.filter_list,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                size: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 18,
+                                  desktop: 20,
+                                ),
+                              ),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 4,
+                                  tablet: 6,
+                                  desktop: 8,
+                                ),
+                              ),
+                                                          Text(
+                                  'Filters',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    fontSize: ResponsiveUtils.responsiveFontSize(
+                                      context,
+                                      mobile: 12,
+                                      tablet: 14,
+                                      desktop: 16,
+                                    ),
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(
+                        width: ResponsiveUtils.responsiveSpacing(
                           context,
                           mobile: 12,
                           tablet: 16,
                           desktop: 20,
                         ),
-                        vertical: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 8,
-                          tablet: 10,
-                          desktop: 12,
-                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceColor,
-                        borderRadius: BorderRadius.circular(
-                          ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        border: Border.all(
-                          color: AppColors.borderColor,
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.filter_list,
-                            color: AppColors.textSecondary,
-                            size: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 16,
-                              tablet: 18,
-                              desktop: 20,
-                            ),
-                          ),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 4,
-                              tablet: 6,
-                              desktop: 8,
-                            ),
-                          ),
-                          Text(
-                            'Filters',
-                            style: AppTypography.bodyMedium.copyWith(
-                              fontSize: ResponsiveUtils.responsiveFontSize(
-                                context,
-                                mobile: 12,
-                                tablet: 14,
-                                desktop: 16,
+
+                      // Filter Chips
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip('All', ''),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
                               ),
-                              color: AppColors.textSecondary,
-                            ),
+                              _buildFilterChip('Pending', 'pending'),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
+                              ),
+                              _buildFilterChip('In Progress', 'in_progress'),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
+                              ),
+                              _buildFilterChip('Completed', 'completed'),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
+                              ),
+                              _buildFilterChip('Overdue', 'overdue'),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
+                ),
 
-                  SizedBox(
-                    width: ResponsiveUtils.responsiveSpacing(
-                      context,
-                      mobile: 12,
-                      tablet: 16,
-                      desktop: 20,
-                    ),
-                  ),
-
-                  // Filter Chips
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildFilterChip('All', ''),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 12,
-                              desktop: 16,
-                            ),
-                          ),
-                          _buildFilterChip('Pending', 'pending'),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 12,
-                              desktop: 16,
-                            ),
-                          ),
-                          _buildFilterChip('In Progress', 'in_progress'),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 12,
-                              desktop: 16,
-                            ),
-                          ),
-                          _buildFilterChip('Completed', 'completed'),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 12,
-                              desktop: 16,
-                            ),
-                          ),
-                          _buildFilterChip('Overdue', 'overdue'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                // Task List
+                Expanded(
+                  child: _buildTaskList(),
+                ),
+              ],
             ),
-
-            // Task List
-            Expanded(
-              child: _buildTaskList(),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                padding: ResponsiveUtils.responsivePadding(context),
+                width: double.infinity,
+                child: CustomButton(
+                  onPressed: () async {
+                    final result = await NavigationUtils.push(context, CreateTaskScreen(site: widget.site));
+                    // If task was created successfully, refresh the task list
+                    if (result == true) {
+                      setState(() {
+                        _currentPage = 1;
+                        _hasMorePages = true;
+                      });
+                      await _loadTasks();
+                    }
+                  },
+                  text: 'Create Task',
+                  prefixIcon: Icon(Icons.add, color: AppColors.textWhite),
+                ),
+              ),
             ),
           ],
         ),
-        bottomNavigationBar: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.textWhite,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, -2),
-              ),]
-            ),
 
-          child: CustomButton(
-                          onPressed: () async {
-                final result = await NavigationUtils.push(context, CreateTaskScreen(site: widget.site));
-                // If task was created successfully, refresh the task list
-                if (result == true) {
-                  setState(() {
-                    _currentPage = 1;
-                    _hasMorePages = true;
-                  });
-                  await _loadTasks();
-                }
-              },
-            text: 'Create Task',
-            prefixIcon: Icon(Icons.add, color: AppColors.textWhite),
-          ),
-        ),
       ),
     );
   }
@@ -566,7 +662,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           ),
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor : AppColors.surfaceColor,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -589,7 +685,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               tablet: 14,
               desktop: 16,
             ),
-            color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+            color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -600,7 +696,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   void _showFilterOptions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
@@ -623,7 +719,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.textLight,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -639,7 +735,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           tablet: 20,
                           desktop: 22,
                         ),
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -667,7 +763,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       child: Text(
                         'Clear All',
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.errorColor,
+                          color: Theme.of(context).colorScheme.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -906,7 +1002,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         margin: EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor.withOpacity(0.1) : AppColors.surfaceColor,
+          color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primaryColor : AppColors.borderColor,
@@ -921,7 +1017,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                 title,
                 style: AppTypography.bodyMedium.copyWith(
                   fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 12, tablet: 14, desktop: 16),
-                  color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+                  color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 maxLines: 2,
@@ -935,14 +1031,14 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   color: AppColors.primaryColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  selectedCount.toString(),
-                  style: AppTypography.bodySmall.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 10, tablet: 12, desktop: 14),
-                    color: AppColors.textWhite,
-                    fontWeight: FontWeight.w600,
+                                  child: Text(
+                    selectedCount.toString(),
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 10, tablet: 12, desktop: 14),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ),
           ],
         ),
@@ -1068,14 +1164,14 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               Icon(
                 Icons.filter_list_outlined,
                 size: ResponsiveUtils.responsiveFontSize(context, mobile: 48, tablet: 56, desktop: 64),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
               Text(
                 'Select a filter from the left',
                 style: AppTypography.bodyLarge.copyWith(
                   fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1086,64 +1182,24 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   }
 
   Widget _buildUserOptions(List<int> selectedIds, Function(int) onToggle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: _users.length,
-            itemBuilder: (context, index) {
-              final user = _users[index];
-              final isSelected = selectedIds.contains(user.id);
-              return CheckboxListTile(
-                title: Text(
-                  '${user.firstName ?? ''} ${user.lastName ?? ''}',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  onToggle(user.id);
-                },
-                activeColor: AppColors.primaryColor,
-                checkColor: AppColors.textWhite,
-              );
-            },
-          ),
-        ),
-      ],
+    return _FilterSearchWidget<SiteUserModel>(
+      items: _users,
+      selectedIds: selectedIds,
+      onToggle: onToggle,
+      searchHint: 'Search users...',
+      itemBuilder: (user) => '${user.firstName ?? ''} ${user.lastName ?? ''}',
+      idExtractor: (user) => user.id,
     );
   }
 
   Widget _buildCategoryOptions(List<int> selectedIds, Function(int) onToggle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = selectedIds.contains(category.id);
-              return CheckboxListTile(
-                title: Text(
-                  category.name,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  onToggle(category.id);
-                },
-                activeColor: AppColors.primaryColor,
-                checkColor: AppColors.textWhite,
-              );
-            },
-          ),
-        ),
-      ],
+    return _FilterSearchWidget<CategoryModel>(
+      items: _categories,
+      selectedIds: selectedIds,
+      onToggle: onToggle,
+      searchHint: 'Search categories...',
+      itemBuilder: (category) => category.name,
+      idExtractor: (category) => category.id,
     );
   }
 
@@ -1167,225 +1223,178 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
         options = [];
     }
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: options.length,
-            itemBuilder: (context, index) {
-              final option = options[index];
-              final isSelected = selectedOptions.contains(option);
-              return CheckboxListTile(
-                title: Text(
-                  option,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  onToggle(option);
-                },
-                activeColor: AppColors.primaryColor,
-                checkColor: AppColors.textWhite,
-              );
-            },
-          ),
-        ),
-      ],
+    return _FilterSearchWidget<String>(
+      items: options,
+      selectedIds: selectedOptions.map((e) => e.hashCode).toList(),
+      onToggle: (id) {
+        final option = options.firstWhere((e) => e.hashCode == id);
+        onToggle(option);
+      },
+      searchHint: 'Search agencies...',
+      itemBuilder: (option) => option,
+      idExtractor: (option) => option.hashCode,
     );
   }
 
   Widget _buildTagOptions(List<int> selectedIds, Function(int) onToggle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: _tags.length,
-            itemBuilder: (context, index) {
-              final tag = _tags[index];
-              final isSelected = selectedIds.contains(tag.id);
-              return CheckboxListTile(
-                title: Text(
-                  tag.name,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  onToggle(tag.id);
-                },
-                activeColor: AppColors.primaryColor,
-                checkColor: AppColors.textWhite,
-              );
-            },
-          ),
-        ),
-      ],
+    return _FilterSearchWidget<TagModel>(
+      items: _tags,
+      selectedIds: selectedIds,
+      onToggle: onToggle,
+      searchHint: 'Search tags...',
+      itemBuilder: (tag) => tag.name,
+      idExtractor: (tag) => tag.id,
     );
   }
 
   Widget _buildQcCategoryOptions(List<int> selectedIds, Function(int) onToggle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: _qcCategories.length,
-            itemBuilder: (context, index) {
-              final qcCategory = _qcCategories[index];
-              final isSelected = selectedIds.contains(qcCategory.id);
-              return CheckboxListTile(
-                title: Text(
-                  qcCategory.name,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  onToggle(qcCategory.id);
-                },
-                activeColor: AppColors.primaryColor,
-                checkColor: AppColors.textWhite,
-              );
-            },
-          ),
-        ),
-      ],
+    return _FilterSearchWidget<QcCategoryModel>(
+      items: _qcCategories,
+      selectedIds: selectedIds,
+      onToggle: onToggle,
+      searchHint: 'Search QC categories...',
+      itemBuilder: (qcCategory) => qcCategory.name,
+      idExtractor: (qcCategory) => qcCategory.id,
     );
   }
 
   Widget _buildDateRangeOptions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Start Date
-                Text(
-                  'Start Date',
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
-                GestureDetector(
-                  onTap: () async {
-                    final DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: _startDate ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _startDate = picked;
-                      });
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.borderColor),
-                      borderRadius: BorderRadius.circular(8),
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Start Date
+                    Text(
+                      'Start Date',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _startDate != null
-                            ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                            : 'Select Start Date',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: _startDate != null ? AppColors.textPrimary : AppColors.textSecondary,
-                          ),
+                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _startDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            _startDate = picked;
+                          });
+                          setState(() {
+                            _startDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.borderColor),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Icon(
-                          Icons.calendar_today,
-                          color: AppColors.textSecondary,
-                          size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _startDate != null
+                                ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                                : 'Select Start Date',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: _startDate != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: AppColors.textSecondary,
+                              size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 24, tablet: 28, desktop: 32)),
+                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 24, tablet: 28, desktop: 32)),
 
-                // End Date
-                Text(
-                  'End Date',
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
-                GestureDetector(
-                  onTap: () async {
-                    final DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-                      firstDate: _startDate ?? DateTime(2020),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _endDate = picked;
-                      });
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.borderColor),
-                      borderRadius: BorderRadius.circular(8),
+                    // End Date
+                    Text(
+                      'End Date',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _endDate != null
-                            ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                            : 'Select End Date',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: _endDate != null ? AppColors.textPrimary : AppColors.textSecondary,
-                          ),
+                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _endDate ?? (_startDate ?? DateTime.now()),
+                          firstDate: _startDate ?? DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            _endDate = picked;
+                          });
+                          setState(() {
+                            _endDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.borderColor),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Icon(
-                          Icons.calendar_today,
-                          color: AppColors.textSecondary,
-                          size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _endDate != null
+                                ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                : 'Select End Date',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: _endDate != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: AppColors.textSecondary,
+                              size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
   void _showFilterList(String title, List<Widget> options) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
@@ -1403,7 +1412,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textLight,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1414,7 +1423,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   title,
                   style: AppTypography.titleMedium.copyWith(
                     fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 18, tablet: 20, desktop: 22),
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1425,7 +1434,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   child: Text(
                     'Done',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1453,7 +1462,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           'Date Range',
           style: AppTypography.titleSmall.copyWith(
             fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1534,7 +1543,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              color: AppColors.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
             ),
             SizedBox(
               height: ResponsiveUtils.responsiveSpacing(
@@ -1553,7 +1562,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   tablet: 18,
                   desktop: 20,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -1568,16 +1577,16 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.task_outlined,
-                size: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 64,
-                  tablet: 80,
-                  desktop: 96,
+                              Icon(
+                  Icons.task_outlined,
+                  size: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 64,
+                    tablet: 80,
+                    desktop: 96,
+                  ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                color: AppColors.textSecondary,
-              ),
               SizedBox(
                 height: ResponsiveUtils.responsiveSpacing(
                   context,
@@ -1595,7 +1604,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     tablet: 18,
                     desktop: 20,
                   ),
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1616,7 +1625,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     tablet: 12,
                     desktop: 14,
                   ),
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1651,17 +1660,17 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               desktop: 20,
             )),
             child: Text(
-              'Tasks (${filteredTasks.length}/${_totalTasks})',
-              style: AppTypography.titleMedium.copyWith(
-                fontSize: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 16,
-                  tablet: 18,
-                  desktop: 20,
+                              'Tasks (${filteredTasks.length}/${_totalTasks})',
+                style: AppTypography.titleMedium.copyWith(
+                  fontSize: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 16,
+                    tablet: 18,
+                    desktop: 20,
+                  ),
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
                 ),
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
           
@@ -1678,7 +1687,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                 await _loadTasks();
               },
               color: AppColors.primaryColor,
-              backgroundColor: AppColors.surfaceColor,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               child: ListView.builder(
                 controller: _scrollController,
                 itemCount: filteredTasks.length + (_hasMorePages ? 1 : 0),
@@ -1690,7 +1699,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                         padding: EdgeInsets.all(16),
                         child: Center(
                           child: CircularProgressIndicator(
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       );
@@ -1701,7 +1710,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           child: Text(
                             'Scroll to load more',
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),

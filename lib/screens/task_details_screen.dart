@@ -33,6 +33,11 @@ import '../models/question_model.dart';
 import 'package:flutter/foundation.dart';
 import 'update_task_screen.dart';
 
+// State holder class for question expansion
+class _QuestionStateHolder {
+  bool isRemarksExpanded = false;
+}
+
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
   final Function(TaskModel)? onTaskUpdated;
@@ -49,6 +54,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   bool _isLoading = true;
   bool _isSubmitting = false;
   TabController? _tabController;
+  
+  // Map to store state holders for each question
+  final Map<int, _QuestionStateHolder> _questionStateHolders = {};
 
   // Unit-related variables
   List<UnitModel> _units = [];
@@ -102,10 +110,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   String? _surveyErrorMessage;
   bool _isSubmittingSurvey = false;
 
+  // Get or create state holder for a question
+  _QuestionStateHolder _getQuestionStateHolder(int questionId) {
+    if (!_questionStateHolders.containsKey(questionId)) {
+      _questionStateHolders[questionId] = _QuestionStateHolder();
+    }
+    return _questionStateHolders[questionId]!;
+  }
+
   // Default survey questions for Site Survey
 
   @override
   void initState() {
+    log("Task - ${widget.task.id}");
     super.initState();
     _loadTaskDetails();
   }
@@ -598,8 +615,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
 
   Widget _buildAddDataModal(String type, String title) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -614,7 +631,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -634,7 +651,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -648,12 +665,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.textLight.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.close,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -687,12 +704,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.primaryColor),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
                     ),
                     contentPadding: EdgeInsets.all(12),
                   ),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   autofocus: true,
                 ),
@@ -712,8 +729,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   child: ElevatedButton(
                     onPressed: _isAddingData ? null : () => _addData(type),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: ResponsiveUtils.responsiveSpacing(
                           context,
@@ -740,14 +757,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.textWhite,
+                                Colors.white,
                               ),
                             ),
                           )
                         : Text(
                             'Save',
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textWhite,
+                              color: Colors.white,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1174,7 +1191,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
@@ -1185,7 +1202,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.borderColor,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1198,7 +1215,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                           Text(
                             'Select Tags',
                             style: AppTypography.titleLarge.copyWith(
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1207,7 +1224,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             onTap: () => Navigator.of(context).pop(),
                             child: Icon(
                               Icons.close,
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               size: 24,
                             ),
                           ),
@@ -1222,7 +1239,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       child: _isLoadingTags
                           ? Center(
                               child: CircularProgressIndicator(
-                                color: AppColors.primaryColor,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             )
                           : ListView.builder(
@@ -1250,14 +1267,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                     padding: EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppColors.primaryColor.withOpacity(
+                                          ? Theme.of(context).colorScheme.primary.withOpacity(
                                               0.1,
                                             )
-                                          : AppColors.surfaceColor,
+                                          : Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isSelected
-                                            ? AppColors.primaryColor
+                                            ? Theme.of(context).colorScheme.primary
                                             : AppColors.borderColor,
                                         width: 1,
                                       ),
@@ -1269,7 +1286,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                             tag.name,
                                             style: AppTypography.bodyMedium
                                                 .copyWith(
-                                                  color: AppColors.textPrimary,
+                                                  color: Theme.of(context).colorScheme.onSurface,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                           ),
@@ -1277,7 +1294,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                         if (isSelected)
                                           Icon(
                                             Icons.check_circle,
-                                            color: AppColors.primaryColor,
+                                            color: Theme.of(context).colorScheme.primary,
                                             size: 20,
                                           ),
                                       ],
@@ -1299,7 +1316,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                               child: Text(
                                 'Cancel',
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -1313,8 +1330,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                       tempSelectedTagIds,
                                     ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryColor,
-                                foregroundColor: AppColors.textWhite,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -1328,14 +1345,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              AppColors.textWhite,
+                                              Colors.white,
                                             ),
                                       ),
                                     )
                                   : Text(
                                       'Update Tags',
                                       style: AppTypography.bodyMedium.copyWith(
-                                        color: AppColors.textWhite,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1371,7 +1388,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
@@ -1382,7 +1399,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.borderColor,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1395,7 +1412,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                           Text(
                             'Assign Users to Task',
                             style: AppTypography.titleLarge.copyWith(
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1404,7 +1421,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             onTap: () => Navigator.of(context).pop(),
                             child: Icon(
                               Icons.close,
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               size: 24,
                             ),
                           ),
@@ -1419,7 +1436,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       child: _isLoadingUsers
                           ? Center(
                               child: CircularProgressIndicator(
-                                color: AppColors.primaryColor,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             )
                           : ListView.builder(
@@ -1447,14 +1464,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                     padding: EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: isAssigned
-                                          ? AppColors.primaryColor.withOpacity(
+                                          ? Theme.of(context).colorScheme.primary.withOpacity(
                                               0.1,
                                             )
-                                          : AppColors.surfaceColor,
+                                          : Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isAssigned
-                                            ? AppColors.primaryColor
+                                            ? Theme.of(context).colorScheme.primary
                                             : AppColors.borderColor,
                                         width: 1,
                                       ),
@@ -1466,7 +1483,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                           width: 40,
                                           height: 40,
                                           decoration: BoxDecoration(
-                                            color: AppColors.primaryColor
+                                            color: Theme.of(context).colorScheme.primary
                                                 .withOpacity(0.1),
                                             borderRadius: BorderRadius.circular(
                                               20,
@@ -1474,7 +1491,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                           ),
                                           child: Icon(
                                             Icons.person,
-                                            color: AppColors.primaryColor,
+                                            color: Theme.of(context).colorScheme.primary,
                                             size: 20,
                                           ),
                                         ),
@@ -1491,7 +1508,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                                 style: AppTypography.bodyMedium
                                                     .copyWith(
                                                       color:
-                                                          AppColors.textPrimary,
+                                                          Theme.of(context).colorScheme.onSurface,
                                                       fontWeight:
                                                           FontWeight.w500,
                                                     ),
@@ -1501,8 +1518,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                                 user.email,
                                                 style: AppTypography.bodySmall
                                                     .copyWith(
-                                                      color: AppColors
-                                                          .textSecondary,
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                     ),
                                               ),
                                             ],
@@ -1531,8 +1547,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                             ),
                                             decoration: BoxDecoration(
                                               color: isAssigned
-                                                  ? AppColors.errorColor
-                                                  : AppColors.primaryColor,
+                                                  ? Theme.of(context).colorScheme.error
+                                                  : Theme.of(context).colorScheme.primary,
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
@@ -1540,7 +1556,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                               isAssigned ? 'Remove' : 'Assign',
                                               style: AppTypography.bodySmall
                                                   .copyWith(
-                                                    color: AppColors.textWhite,
+                                                    color: Colors.white,
                                                     fontWeight: FontWeight.w500,
                                                     fontSize: 12,
                                                   ),
@@ -1566,7 +1582,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                               child: Text(
                                 'Cancel',
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -1580,8 +1596,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                       tempAssignedUserIds,
                                     ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryColor,
-                                foregroundColor: AppColors.textWhite,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -1595,14 +1611,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              AppColors.textWhite,
+                                              Colors.white,
                                             ),
                                       ),
                                     )
                                   : Text(
                                       'Update Assignment',
                                       style: AppTypography.bodyMedium.copyWith(
-                                        color: AppColors.textWhite,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -2277,30 +2293,30 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         ),
         body: _isLoading
             ? Center(
-                child: CircularProgressIndicator(color: AppColors.primaryColor),
+                child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
               )
             : _buildTaskContent(),
         floatingActionButton: _taskDetail?.isSiteSurvey == true
             ? FloatingActionButton.extended(
                 onPressed: _isSubmittingSurvey ? null : _submitSurvey,
                 backgroundColor: _hasSurveyChanges()
-                    ? AppColors.primaryColor
-                    : AppColors.textSecondary,
-                foregroundColor: AppColors.textWhite,
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                foregroundColor: Colors.white,
                 icon: _isSubmittingSurvey
                     ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.textWhite,
+                          color: Colors.white,
                         ),
                       )
                     : Icon(Icons.save),
                 label: Text(
                   _isSubmittingSurvey ? 'Saving...' : 'Save Survey',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textWhite,
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2316,7 +2332,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         child: Text(
           'Task details not found',
           style: AppTypography.bodyLarge.copyWith(
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       );
@@ -2345,14 +2361,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.errorColor.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.error.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.errorColor),
+                border: Border.all(color: Theme.of(context).colorScheme.error),
               ),
               child: Text(
                 _surveyErrorMessage!,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.errorColor,
+                  color: Theme.of(context).colorScheme.error,
                 ),
               ),
             ),
@@ -2366,8 +2382,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             text: _isSubmittingSurvey ? 'Submitting...' : 'Submit Survey',
             isLoading: _isSubmittingSurvey,
             backgroundColor: _hasSurveyChanges()
-                ? AppColors.primaryColor
-                : AppColors.textSecondary,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ],
       ),
@@ -2380,16 +2396,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         // Tab Bar
         Container(
           decoration: BoxDecoration(
-            color: AppColors.textWhite,
+            color: Colors.white,
             border: Border(
               bottom: BorderSide(color: AppColors.borderColor, width: 1),
             ),
           ),
           child: TabBar(
             controller: _tabController,
-            labelColor: AppColors.primaryColor,
-            unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: AppColors.primaryColor,
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            indicatorColor: Theme.of(context).colorScheme.primary,
             indicatorWeight: 2,
             isScrollable: true,
             // Make tabs swipeable
@@ -2417,7 +2433,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
       ),
@@ -2428,7 +2444,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             _taskDetail?.name ?? 'Task',
             style: AppTypography.titleLarge.copyWith(
               fontSize: 20,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2457,7 +2473,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   '${_taskDetail!.progress}% Complete',
                   style: AppTypography.bodyMedium.copyWith(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -2468,7 +2484,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
               Icon(
                 Icons.calendar_today,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               SizedBox(width: 8),
               Text(
@@ -2477,7 +2493,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     : 'Start Date: ${_taskDetail?.startDate ?? 'Not set'}',
                 style: AppTypography.bodyMedium.copyWith(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -2749,10 +2765,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     child: ElevatedButton(
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.successColor,
-                        foregroundColor: AppColors.successColor,
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.green,
                         elevation: 4,
-                        shadowColor: AppColors.shadowColor,
+                        shadowColor: Theme.of(context).colorScheme.shadow,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -2767,7 +2783,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.surfaceColor,
+                          color: Theme.of(context).colorScheme.surface,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2798,13 +2814,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '+ Update',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textWhite,
+                    color: Colors.white,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2820,7 +2836,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.borderColor, width: 1),
               ),
@@ -2840,7 +2856,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Divider(
                           height: 1,
                           thickness: 1,
-                          color: AppColors.borderColor,
+                          color: Theme.of(context).colorScheme.outline,
                           indent: 0,
                           endIndent: 0,
                         ),
@@ -2870,13 +2886,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '+ Instruction',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textWhite,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2909,13 +2925,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '+ Remark',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textWhite,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2948,13 +2964,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '+ Comment',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textWhite,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2988,8 +3004,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: _isUploadingImages
-                        ? AppColors.textSecondary
-                        : AppColors.primaryColor,
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: _isUploadingImages
@@ -3002,7 +3018,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.textWhite,
+                                  Colors.white,
                                 ),
                               ),
                             ),
@@ -3010,7 +3026,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             Text(
                               'Uploading...',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textWhite,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -3019,7 +3035,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       : Text(
                           'Add Photos',
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textWhite,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3055,8 +3071,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: _isUploadingAttachments
-                        ? AppColors.textSecondary
-                        : AppColors.primaryColor,
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: _isUploadingAttachments
@@ -3069,7 +3085,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.textWhite,
+                                  Colors.white,
                                 ),
                               ),
                             ),
@@ -3077,7 +3093,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             Text(
                               'Uploading...',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textWhite,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -3086,7 +3102,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       : Text(
                           '+ New',
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textWhite,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3119,7 +3135,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 style: AppTypography.titleMedium.copyWith(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               GestureDetector(
@@ -3129,7 +3145,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 child: Text(
                   '+ New',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -3164,7 +3180,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 style: AppTypography.titleMedium.copyWith(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               GestureDetector(
@@ -3174,7 +3190,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 child: Text(
                   '+ New',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -3204,7 +3220,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
       ),
@@ -3215,7 +3231,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             'Unit For Work Updates',
             style: AppTypography.bodyMedium.copyWith(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -3227,7 +3243,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
               width: double.infinity,
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.textWhite,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.borderColor, width: 1),
               ),
@@ -3241,7 +3257,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Text(
                           'Total Work',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -3249,7 +3265,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Text(
                           '$totalWork ${_selectedUnit?.symbol ?? _taskDetail?.unit ?? '%'}',
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3268,7 +3284,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Text(
                           'Work Done',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -3276,7 +3292,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Text(
                           '$totalWorkDone ${_selectedUnit?.symbol ?? _taskDetail?.unit ?? '%'}',
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3295,7 +3311,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         Text(
                           'Work Left',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -3304,8 +3320,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                           '$workLeft ${_selectedUnit?.symbol ?? _taskDetail?.unit ?? '%'}',
                           style: AppTypography.bodyMedium.copyWith(
                             color: workLeft > 0
-                                ? AppColors.textPrimary
-                                : AppColors.successColor,
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Colors.green,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3325,8 +3341,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: (hasProgress || isTaskCompleted)
-                      ? AppColors.textWhite.withOpacity(0.5)
-                      : AppColors.textWhite,
+                      ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: (hasProgress || isTaskCompleted)
@@ -3341,8 +3357,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       _selectedUnit?.symbol ?? _taskDetail?.unit ?? '%',
                       style: AppTypography.bodyMedium.copyWith(
                         color: (hasProgress || isTaskCompleted)
-                            ? AppColors.textSecondary
-                            : AppColors.textPrimary,
+                                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Spacer(),
@@ -3353,20 +3369,20 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryColor,
+                            Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       )
                     else if (hasProgress || isTaskCompleted)
                       Icon(
                         Icons.lock,
-                        color: AppColors.textSecondary.withOpacity(0.5),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
                         size: 16,
                       )
                     else
                       Icon(
                         Icons.keyboard_arrow_down,
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                   ],
                 ),
@@ -3383,7 +3399,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
       ),
@@ -3397,13 +3413,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 : _showDecisionSelectionModal,
             child: Row(
               children: [
-                Icon(Icons.person, color: AppColors.textSecondary, size: 16),
+                Icon(Icons.person, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
                 SizedBox(width: 8),
                 Text(
                   '${_taskDetail?.categoryName ?? 'Category'} Pending From',
                   style: AppTypography.bodyMedium.copyWith(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -3411,7 +3427,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   ' - ',
                   style: AppTypography.bodyMedium.copyWith(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 Expanded(
@@ -3425,8 +3441,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                             color: (isTaskCompleted || !ValidationUtils.canChangeDecisionPendingFrom(
                               _taskDetail!,
                             ))
-                                ? AppColors.textSecondary
-                                : AppColors.primaryColor,
+                                ? Theme.of(context).colorScheme.onSurfaceVariant
+                                : Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -3436,7 +3452,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                       ))
                         Icon(
                           Icons.edit,
-                          color: AppColors.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 16,
                         ),
                     ],
@@ -3453,7 +3469,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             children: [
               Icon(
                 Icons.calendar_today,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 16,
               ),
               SizedBox(width: 8),
@@ -3461,7 +3477,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 '${_taskDetail?.categoryName ?? 'Category'} Due From',
                 style: AppTypography.bodyMedium.copyWith(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -3469,7 +3485,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 ' - ',
                 style: AppTypography.bodyMedium.copyWith(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               Expanded(
@@ -3477,7 +3493,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   _taskDetail?.completionDate ?? 'N/A',
                   style: AppTypography.bodyMedium.copyWith(
                     fontSize: 14,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -3499,7 +3515,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
       ),
@@ -3516,14 +3532,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     Icon(
                       Icons.timeline,
                       size: 18,
-                      color: AppColors.primaryColor,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     SizedBox(width: 8),
                     Text(
                       'Timeline',
                       style: AppTypography.titleMedium.copyWith(
                         fontSize: 14,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -3536,7 +3552,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   child: Text(
                     isTaskCompleted ? 'Task is completed' : '+ Update',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: isTaskCompleted ? AppColors.textSecondary : AppColors.primaryColor,
+                      color: isTaskCompleted ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -3590,7 +3606,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     child: Text(
                       'View More',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -3610,13 +3626,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         // Header with icon and title
         Row(
           children: [
-            Icon(Icons.bar_chart, size: 20, color: AppColors.primaryColor),
+            Icon(Icons.bar_chart, size: 20, color: Theme.of(context).colorScheme.primary),
             SizedBox(width: 8),
             Text(
               'Progress update - ${progress.workDone ?? '0'}${_taskDetail?.unit ?? '%'}',
               style: AppTypography.titleMedium.copyWith(
                 fontSize: 16,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -3629,7 +3645,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           'Task updated at : ${_formatDate(progress.createdAt)}',
           style: AppTypography.bodyMedium.copyWith(
             fontSize: 13,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -3646,7 +3662,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     'Work Done',
                     style: AppTypography.bodyMedium.copyWith(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -3655,7 +3671,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     progress.workDone ?? '0',
                     style: AppTypography.titleMedium.copyWith(
                       fontSize: 16,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -3713,6 +3729,21 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           ],
         ),
         SizedBox(height: 16),
+        Text(
+          'Material Used',
+          style: AppTypography.bodySmall.copyWith(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        // Used Materials Section (if any materials were used)
+        if (progress.usedMaterial.isNotEmpty) ...[
+          SizedBox(height: 5,),
+          _buildUsedMaterialsSection(progress.usedMaterial),
+        ],
+
+        SizedBox(height: 16),
 
         // Updated by
         Text(
@@ -3736,6 +3767,36 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     );
   }
 
+  Widget _buildUsedMaterialsSection(List<UsedMaterialModel> usedMaterials) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        ...usedMaterials.map((material) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+        (material.material.specification != null) ? '${material.material.specification}' : "Material",
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              ' * ${material.quantity} ${material.material.unitOfMeasurement}',
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: 10,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        )).toList(),
+      ],
+    );
+  }
+
   Widget _buildTaskMetadataCard() {
     final catSubId = _taskDetail?.catSubId;
     final isSpecialTask = [2, 3, 4, 6].contains(catSubId);
@@ -3744,7 +3805,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
       ),
@@ -3905,7 +3966,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           label,
           style: AppTypography.bodySmall.copyWith(
             fontSize: 12,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -3914,7 +3975,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           value,
           style: AppTypography.bodyMedium.copyWith(
             fontSize: 14,
-            color: isAction ? AppColors.primaryColor : AppColors.textPrimary,
+            color: isAction ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
             fontWeight: isAction ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
@@ -3970,7 +4031,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             label,
             style: AppTypography.bodySmall.copyWith(
               fontSize: 12,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -3982,8 +4043,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 style: AppTypography.bodyMedium.copyWith(
                   fontSize: 14,
                   color: _isUpdatingDates
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
+                      ? Theme.of(context).colorScheme.onSurfaceVariant
+                      : Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -3996,7 +4057,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                     child: CircularProgressIndicator(
                       strokeWidth: 1,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryColor,
+                        Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
@@ -4092,180 +4153,222 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildQuestionItem(Question question) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 20),
+    // Create a persistent state holder for this question
+    final stateHolder = _getQuestionStateHolder(question.id);
+    
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        // Use the persistent state holder
+        bool isRemarksExpanded = stateHolder.isRemarksExpanded;
+        
+        return Container(
+      margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Question
-          Text(
-            'Question ${question.id}',
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            question.question,
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: 14,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 12),
-
-          // Answer
-          Text(
-            'Answer *',
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 4),
-          // Radio buttons for Yes/No
+          // Row: Question + Yes/No options
           Row(
             children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  title: Text(
-                    'Yes',
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
+              // Question badge
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Q${question.id}',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  value: 'Yes',
-                  groupValue: question.answer?.isEmpty == true
-                      ? null
-                      : question.answer,
-                  onChanged: (String? value) {
-                    setState(() {
-                      question.answer = value;
-                    });
-                  },
-                  activeColor: AppColors.primaryColor,
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
                 ),
               ),
+              SizedBox(width: 8),
+              // Question text
               Expanded(
-                child: RadioListTile<String>(
-                  title: Text(
-                    'No',
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontSize: 14,
-                      color: question.answer == 'No'
-                          ? Colors.red[300]
-                          : AppColors.textPrimary,
+                child: Text(
+                  question.question,
+                  style: AppTypography.labelSmall.copyWith(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              // Yes/No buttons
+              Row(
+                children: [
+                  // Yes button
+                  GestureDetector(
+                    onTap: () {
+                      setLocalState(() {
+                        question.answer = 'Yes';
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            question.answer == 'Yes' ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            color: question.answer == 'Yes' ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 15,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Yes',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 13,
+                              color: question.answer == 'Yes' ? Colors.green : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  value: 'No',
-                  groupValue: question.answer?.isEmpty == true
-                      ? null
-                      : question.answer,
-                  onChanged: (String? value) {
-                    setState(() {
-                      question.answer = value;
-                    });
-                  },
-                  activeColor: question.answer == 'No'
-                      ? Colors.red[300]
-                      : AppColors.primaryColor,
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                ),
+
+                  // No button
+                  GestureDetector(
+                    onTap: () {
+                      setLocalState(() {
+                        question.answer = 'No';
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            question.answer == 'No' ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            color: question.answer == 'No' ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 15,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'No',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 14,
+                              color: question.answer == 'No' ? Colors.red : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          SizedBox(height: 12),
 
-          // Remarks
-          Text(
-            'Remarks (Optional)',
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
+              // Expandable Remarks Section
+              SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  log("Tapped == ");
+                  setLocalState(() {
+                    stateHolder.isRemarksExpanded = !stateHolder.isRemarksExpanded;
+                  });
+                  log("Tapped == ${stateHolder.isRemarksExpanded}");
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.comment_outlined,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Remarks (Optional)',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Spacer(),
+                      Icon(
+                        isRemarksExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Expandable Remarks TextField
+              if (isRemarksExpanded) ...[
+                SizedBox(height: 8),
+                TextFormField(
+                  initialValue: question.remark,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
+                    hintText: 'Add any additional remarks...',
+                    hintStyle: AppTypography.bodyMedium.copyWith(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  onChanged: (value) {
+                    setLocalState(() {
+                      question.remark = value;
+                    });
+                  },
+                ),
+              ],
+            ],
           ),
-          SizedBox(height: 4),
-          TextFormField(
-            initialValue: question.remark,
-            maxLines: 2,
-            decoration: InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.borderColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.borderColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.primaryColor),
-              ),
-              hintText: 'Add any additional remarks...',
-              hintStyle: AppTypography.bodyMedium.copyWith(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            style: AppTypography.bodyMedium.copyWith(
-              fontSize: 14,
-              color: AppColors.textPrimary,
-            ),
-            onChanged: (value) {
-              setState(() {
-                question.remark = value;
-              });
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildPlaceholderContent() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction, size: 64, color: AppColors.textSecondary),
-          SizedBox(height: 16),
-          Text(
-            'Task Details Screen',
-            style: AppTypography.titleLarge.copyWith(
-              fontSize: 20,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Coming soon for ${_taskDetail?.categoryName ?? 'this task type'}',
-            style: AppTypography.bodyLarge.copyWith(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
 
   String _getAppBarTitle() {
     if (_taskDetail == null) return 'Task Details';
@@ -4283,15 +4386,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   Color _getStatusColor() {
     switch (_taskDetail?.status.toLowerCase()) {
       case 'pending':
-        return AppColors.warningColor;
+        return Colors.orange;
       case 'active':
-        return AppColors.primaryColor;
+        return Theme.of(context).colorScheme.primary;
       case 'complete':
-        return AppColors.successColor;
+        return Colors.green;
       case 'overdue':
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       default:
-        return AppColors.textSecondary;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 
@@ -4304,13 +4407,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             Icon(
               Icons.inbox_outlined,
               size: 48,
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
             ),
             SizedBox(height: 12),
             Text(
               message,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -4338,7 +4441,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                 'QC Check: ${qc.checkType}',
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 8),
@@ -4351,15 +4454,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                         item.isPassed ? Icons.check_circle : Icons.cancel,
                         size: 16,
                         color: item.isPassed
-                            ? AppColors.successColor
-                            : AppColors.errorColor,
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.error,
                       ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           item.description,
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -5860,7 +5963,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   _handleAcceptTask();
                 },
                 text: 'Accept Task',
-                backgroundColor: AppColors.successColor,
+                backgroundColor: Colors.green,
               ),
             ),
             SizedBox(width: 16),

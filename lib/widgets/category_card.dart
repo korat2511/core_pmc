@@ -28,7 +28,7 @@ class CategoryCard extends StatelessWidget {
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -43,7 +43,7 @@ class CategoryCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -65,7 +65,7 @@ class CategoryCard extends StatelessWidget {
             desktop: 56,
           ),
           decoration: BoxDecoration(
-            color: AppColors.primaryColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
             borderRadius: BorderRadius.circular(
               ResponsiveUtils.responsiveFontSize(
                 context,
@@ -77,7 +77,7 @@ class CategoryCard extends StatelessWidget {
           ),
           child: Icon(
             Icons.category_outlined,
-            color: AppColors.primaryColor,
+            color: Theme.of(context).colorScheme.primary,
             size: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 20,
@@ -95,7 +95,7 @@ class CategoryCard extends StatelessWidget {
               tablet: 16,
               desktop: 18,
             ),
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -112,7 +112,7 @@ class CategoryCard extends StatelessWidget {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 2),
@@ -125,7 +125,7 @@ class CategoryCard extends StatelessWidget {
                   tablet: 12,
                   desktop: 14,
                 ),
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             if (!category.isEditable) ...[
@@ -146,7 +146,7 @@ class CategoryCard extends StatelessWidget {
                   ),
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.warningColor.withOpacity(0.1),
+                  color: Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(
                     ResponsiveUtils.responsiveSpacing(
                       context,
@@ -165,7 +165,7 @@ class CategoryCard extends StatelessWidget {
                       tablet: 10,
                       desktop: 12,
                     ),
-                    color: AppColors.warningColor,
+                    color: Colors.orange,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -190,7 +190,7 @@ class CategoryCard extends StatelessWidget {
                         ),
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryColor.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(
                           ResponsiveUtils.responsiveSpacing(
                             context,
@@ -202,7 +202,7 @@ class CategoryCard extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.edit_outlined,
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         size: ResponsiveUtils.responsiveFontSize(
                           context,
                           mobile: 16,
@@ -233,7 +233,7 @@ class CategoryCard extends StatelessWidget {
                         ),
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.errorColor.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.error.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(
                           ResponsiveUtils.responsiveSpacing(
                             context,
@@ -245,7 +245,7 @@ class CategoryCard extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.delete_outline,
-                        color: AppColors.errorColor,
+                        color: Theme.of(context).colorScheme.error,
                         size: ResponsiveUtils.responsiveFontSize(
                           context,
                           mobile: 16,
@@ -273,7 +273,7 @@ class CategoryCard extends StatelessWidget {
                   ),
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.textLight.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(
                     ResponsiveUtils.responsiveSpacing(
                       context,
@@ -292,7 +292,7 @@ class CategoryCard extends StatelessWidget {
                       tablet: 12,
                       desktop: 14,
                     ),
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

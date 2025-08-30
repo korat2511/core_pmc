@@ -97,7 +97,7 @@ class _StatePickerBottomSheetState extends State<StatePickerBottomSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -108,7 +108,7 @@ class _StatePickerBottomSheetState extends State<StatePickerBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -122,12 +122,16 @@ class _StatePickerBottomSheetState extends State<StatePickerBottomSheet> {
                 Text(
                   'Select State',
                   style: AppTypography.titleMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -161,7 +165,7 @@ class _StatePickerBottomSheetState extends State<StatePickerBottomSheet> {
                 
                 return ListTile(
                   title: Text(state),
-                  trailing: isSelected ? Icon(Icons.check, color: AppColors.primaryColor) : null,
+                  trailing: isSelected ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary) : null,
                   onTap: () {
                     setState(() {
                       _selectedState = state;

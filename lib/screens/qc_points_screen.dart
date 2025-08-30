@@ -124,8 +124,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
 
   Widget _buildEditPointModal(QcPointModel point) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -140,7 +140,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -152,7 +152,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
               children: [
                 Icon(
                   Icons.edit_outlined,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -181,7 +181,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -194,7 +194,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -250,8 +250,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                   child: ElevatedButton(
                     onPressed: () => _updatePoint(point),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: ResponsiveUtils.responsiveSpacing(
                           context,
@@ -280,7 +280,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                           tablet: 16,
                           desktop: 18,
                         ),
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -361,14 +361,14 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
         title: Text(
           'Delete QC Point',
           style: AppTypography.titleMedium.copyWith(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'Are you sure you want to delete this QC point?\n\n"${point.point}"\n\nThis action cannot be undone.',
           style: AppTypography.bodyLarge.copyWith(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         actions: [
@@ -376,7 +376,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
           ElevatedButton(
@@ -384,10 +384,10 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
               Navigator.of(context).pop();
               _deletePoint(point);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorColor,
-              foregroundColor: AppColors.textWhite,
-            ),
+                          style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Colors.white,
+              ),
             child: Text('Delete'),
           ),
         ],
@@ -453,8 +453,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
     return StatefulBuilder(
       builder: (context, setModalState) {
         return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -469,7 +469,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -481,7 +481,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
               children: [
                 Icon(
                   Icons.add_circle_outline,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -510,7 +510,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                             tablet: 18,
                             desktop: 20,
                           ),
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -523,7 +523,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                             tablet: 16,
                             desktop: 18,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -543,7 +543,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                     ),
                     child: Icon(
                       Icons.close,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -584,7 +584,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                       Text(
                         'Type',
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -598,12 +598,12 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                 padding: EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   color: _selectedType == 'pre' 
-                                      ? AppColors.successColor.withOpacity(0.1)
+                                      ? Colors.green.withOpacity(0.1)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: _selectedType == 'pre' 
-                                        ? AppColors.successColor
+                                        ? Colors.green
                                         : AppColors.borderColor,
                                   ),
                                 ),
@@ -612,8 +612,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                     'Pre',
                                     style: TextStyle(
                                       color: _selectedType == 'pre' 
-                                          ? AppColors.successColor
-                                          : AppColors.textSecondary,
+                                          ? Colors.green
+                                          : Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -629,12 +629,12 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                 padding: EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   color: _selectedType == 'during' 
-                                      ? AppColors.warningColor.withOpacity(0.1)
+                                      ? Colors.orange.withOpacity(0.1)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: _selectedType == 'during' 
-                                        ? AppColors.warningColor
+                                        ? Colors.orange
                                         : AppColors.borderColor,
                                   ),
                                 ),
@@ -643,8 +643,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                     'During',
                                     style: TextStyle(
                                       color: _selectedType == 'during' 
-                                          ? AppColors.warningColor
-                                          : AppColors.textSecondary,
+                                          ? Colors.orange
+                                          : Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -660,12 +660,12 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                 padding: EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   color: _selectedType == 'after' 
-                                      ? AppColors.errorColor.withOpacity(0.1)
+                                      ? Theme.of(context).colorScheme.error.withOpacity(0.1)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: _selectedType == 'after' 
-                                        ? AppColors.errorColor
+                                        ? Theme.of(context).colorScheme.error
                                         : AppColors.borderColor,
                                   ),
                                 ),
@@ -674,8 +674,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                                     'After',
                                     style: TextStyle(
                                       color: _selectedType == 'after' 
-                                          ? AppColors.errorColor
-                                          : AppColors.textSecondary,
+                                          ? Theme.of(context).colorScheme.error
+                                          : Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -721,8 +721,8 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                   child: ElevatedButton(
                     onPressed: _addPoint,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: AppColors.textWhite,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: ResponsiveUtils.responsiveSpacing(
                           context,
@@ -751,7 +751,7 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
                           tablet: 16,
                           desktop: 18,
                         ),
-                        color: AppColors.textWhite,
+                        color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -839,12 +839,12 @@ class _QcPointsScreenState extends State<QcPointsScreen> with SingleTickerProvid
           children: [
             // Tab Bar
             Container(
-              color: AppColors.surfaceColor,
+              color: Theme.of(context).colorScheme.surface,
               child: TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primaryColor,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primaryColor,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                indicatorColor: Theme.of(context).colorScheme.primary,
                 tabs: [
                   Tab(
                     child: Row(
@@ -885,7 +885,7 @@ SizedBox(height: 10,),
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   : _errorMessage.isNotEmpty
@@ -901,7 +901,7 @@ SizedBox(height: 10,),
                                   tablet: 80,
                                   desktop: 100,
                                 ),
-                                color: AppColors.errorColor,
+                                color: Theme.of(context).colorScheme.error,
                               ),
                               SizedBox(
                                 height: ResponsiveUtils.responsiveSpacing(
@@ -920,7 +920,7 @@ SizedBox(height: 10,),
                                     tablet: 18,
                                     desktop: 20,
                                   ),
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -953,8 +953,8 @@ SizedBox(height: 10,),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddPointModal,
-        backgroundColor: AppColors.primaryColor,
-        foregroundColor: AppColors.textWhite,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
     );
@@ -963,7 +963,7 @@ SizedBox(height: 10,),
   Widget _buildPointsList(List<QcPointModel> points, String type) {
     return RefreshIndicator(
       onRefresh: _loadQcPoints,
-      color: AppColors.primaryColor,
+      color: Theme.of(context).colorScheme.primary,
       child: points.isEmpty
           ? Center(
               child: Column(
@@ -977,7 +977,7 @@ SizedBox(height: 10,),
                       tablet: 80,
                       desktop: 100,
                     ),
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                     height: ResponsiveUtils.responsiveSpacing(
@@ -996,7 +996,7 @@ SizedBox(height: 10,),
                         tablet: 18,
                         desktop: 20,
                       ),
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1025,7 +1025,7 @@ SizedBox(height: 10,),
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -1040,7 +1040,7 @@ SizedBox(height: 10,),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1066,7 +1066,7 @@ SizedBox(height: 10,),
                 desktop: 40,
               ),
               decoration: BoxDecoration(
-                color: AppColors.primaryColor.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(
                   ResponsiveUtils.responsiveFontSize(
                     context,
@@ -1077,19 +1077,19 @@ SizedBox(height: 10,),
                 ),
               ),
               child: Center(
-                child: Text(
-                  '$index',
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 14,
-                      tablet: 16,
-                      desktop: 18,
+                                  child: Text(
+                    '$index',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(
+                        context,
+                        mobile: 14,
+                        tablet: 16,
+                        desktop: 18,
+                      ),
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
                     ),
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
               ),
             ),
 
@@ -1116,7 +1116,7 @@ SizedBox(height: 10,),
                         tablet: 16,
                         desktop: 18,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1178,18 +1178,18 @@ SizedBox(height: 10,),
                           desktop: 16,
                         ),
                       ),
-                      Text(
-                        'ID: ${point.id}',
-                        style: AppTypography.bodySmall.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 10,
-                            tablet: 12,
-                            desktop: 14,
+                                              Text(
+                          'ID: ${point.id}',
+                          style: AppTypography.bodySmall.copyWith(
+                            fontSize: ResponsiveUtils.responsiveFontSize(
+                              context,
+                              mobile: 10,
+                              tablet: 12,
+                              desktop: 14,
+                            ),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
-                          color: AppColors.textSecondary,
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -1205,12 +1205,12 @@ SizedBox(height: 10,),
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.edit_outlined,
-                      color: AppColors.primaryColor,
+                                          child: Icon(
+                        Icons.edit_outlined,
+                        color: Theme.of(context).colorScheme.primary,
                       size: 20,
                     ),
                   ),
@@ -1231,12 +1231,12 @@ SizedBox(height: 10,),
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.errorColor.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.error.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.delete_outline,
-                      color: AppColors.errorColor,
+                                          child: Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error,
                       size: 20,
                     ),
                   ),
@@ -1252,13 +1252,13 @@ SizedBox(height: 10,),
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'pre':
-        return AppColors.successColor;
+        return Colors.green;
       case 'during':
-        return AppColors.warningColor;
+        return Colors.orange;
       case 'after':
-        return AppColors.errorColor;
+        return Theme.of(context).colorScheme.error;
       default:
-        return AppColors.textSecondary;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 }

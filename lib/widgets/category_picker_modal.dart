@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
+import '../core/utils/snackbar_utils.dart';
 import '../models/category_model.dart';
+import '../services/category_service.dart';
 import 'custom_search_bar.dart';
 
 class CategoryPickerModal extends StatefulWidget {
   final List<CategoryModel> categories;
+  final int siteId;
 
   const CategoryPickerModal({
     super.key,
     required this.categories,
+    required this.siteId,
   });
 
   @override
@@ -20,11 +24,19 @@ class CategoryPickerModal extends StatefulWidget {
 class _CategoryPickerModalState extends State<CategoryPickerModal> {
   String _searchQuery = '';
   List<CategoryModel> _filteredCategories = [];
+  bool _isLoading = false;
+  final _addCategoryController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _filteredCategories = widget.categories;
+  }
+
+  @override
+  void dispose() {
+    _addCategoryController.dispose();
+    super.dispose();
   }
 
   void _filterCategories(String query) {
@@ -41,11 +53,85 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
     });
   }
 
+  Future<void> _addNewCategory() async {
+    if (_addCategoryController.text.trim().isEmpty) {
+      SnackBarUtils.showError(context, message: 'Please enter category name');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final categoryService = CategoryService();
+      final success = await categoryService.createCategory(
+        siteId: widget.siteId,
+        name: _addCategoryController.text.trim(),
+      );
+
+      if (success) {
+        // Get the newly created category
+        final newCategory = categoryService.categories.last;
+        
+        // Close the modal and return the new category
+        Navigator.pop(context, newCategory);
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: categoryService.errorMessage,
+        );
+      }
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Error creating category: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showAddCategoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New Category'),
+        content: TextField(
+          controller: _addCategoryController,
+          decoration: InputDecoration(
+            hintText: 'Enter category name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _addCategoryController.clear();
+              Navigator.pop(context);
+            },
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _addNewCategory();
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -56,7 +142,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -68,7 +154,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
               children: [
                 Icon(
                   Icons.category_outlined,
-                  color: AppColors.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.responsiveFontSize(
                     context,
                     mobile: 24,
@@ -94,7 +180,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                         tablet: 22,
                         desktop: 24,
                       ),
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -104,12 +190,12 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.textLight.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
+                                          child: Icon(
+                        Icons.close,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: ResponsiveUtils.responsiveFontSize(
                         context,
                         mobile: 18,
@@ -164,7 +250,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                       tablet: 16,
                       desktop: 18,
                     ),
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -183,10 +269,81 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
 
           // Categories List
           Expanded(
-            child: _filteredCategories.isEmpty
-                ? Center(
+            child: ListView(
+              padding: ResponsiveUtils.horizontalPadding(context),
+              children: [
+                // Add New Category Option - Always shown at top
+                Container(
+                  margin: EdgeInsets.only(
+                    bottom: ResponsiveUtils.responsiveSpacing(
+                      context,
+                      mobile: 8,
+                      tablet: 12,
+                      desktop: 16,
+                    ),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 12,
+                        tablet: 16,
+                        desktop: 20,
+                      ),
+                    ),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1,
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.add,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(
+                      _searchQuery.isNotEmpty 
+                          ? 'Add "${_searchQuery}" as new category'
+                          : 'Add new category',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontSize: ResponsiveUtils.responsiveFontSize(
+                          context,
+                          mobile: 16,
+                          tablet: 18,
+                          desktop: 20,
+                        ),
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      if (_searchQuery.isNotEmpty) {
+                        _addCategoryController.text = _searchQuery;
+                        _addNewCategory();
+                      } else {
+                        // Show dialog to enter category name
+                        _showAddCategoryDialog();
+                      }
+                    },
+                  ),
+                ),
+                
+                // Existing Categories
+                if (_filteredCategories.isNotEmpty) ...[
+                  ..._filteredCategories.map((category) => _buildCategoryCard(category)),
+                ] else ...[
+                  // Empty state when no categories found
+                  Container(
+                    margin: EdgeInsets.only(
+                      top: ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 20,
+                        tablet: 24,
+                        desktop: 28,
+                      ),
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.category_outlined,
@@ -196,7 +353,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                             tablet: 80,
                             desktop: 100,
                           ),
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(
                           height: ResponsiveUtils.responsiveSpacing(
@@ -217,7 +374,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                               tablet: 18,
                               desktop: 20,
                             ),
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -240,21 +397,16 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
                                 tablet: 16,
                                 desktop: 18,
                               ),
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             textAlign: TextAlign.center,
                           ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: ResponsiveUtils.horizontalPadding(context),
-                    itemCount: _filteredCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = _filteredCategories[index];
-                      return _buildCategoryCard(category);
-                    },
                   ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -272,7 +424,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
         ),
       ),
       decoration: BoxDecoration(
-        color: AppColors.textWhite,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.responsiveSpacing(
             context,
@@ -287,7 +439,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -304,7 +456,7 @@ class _CategoryPickerModalState extends State<CategoryPickerModal> {
               tablet: 18,
               desktop: 20,
             ),
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),

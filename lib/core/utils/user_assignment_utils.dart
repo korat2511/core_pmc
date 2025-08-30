@@ -21,8 +21,10 @@ class UserAssignmentUtils {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+        builder: (context) => Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
       );
 
@@ -227,7 +229,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
@@ -238,7 +240,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.borderColor,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -251,7 +253,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                           Text(
                             'Assign Users to Task',
                             style: AppTypography.titleLarge.copyWith(
-                              color: AppColors.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -260,7 +262,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                             onTap: () => Navigator.of(context).pop(),
                             child: Icon(
                               Icons.close,
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               size: 24,
                             ),
                           ),
@@ -295,12 +297,12 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: isAssigned
-                                    ? AppColors.primaryColor.withOpacity(0.1)
-                                    : AppColors.surfaceColor,
+                                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                                    : Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isAssigned
-                                      ? AppColors.primaryColor
+                                      ? Theme.of(context).colorScheme.primary
                                       : AppColors.borderColor,
                                   width: 1,
                                 ),
@@ -312,12 +314,12 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primaryColor.withOpacity(0.1),
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Icon(
                                       Icons.person,
-                                      color: AppColors.primaryColor,
+                                      color: Theme.of(context).colorScheme.primary,
                                       size: 20,
                                     ),
                                   ),
@@ -331,7 +333,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                                         Text(
                                           user.fullName,
                                           style: AppTypography.bodyMedium.copyWith(
-                                            color: AppColors.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -339,7 +341,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                                         Text(
                                           user.email,
                                           style: AppTypography.bodySmall.copyWith(
-                                            color: AppColors.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
@@ -364,14 +366,14 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                                       ),
                                       decoration: BoxDecoration(
                                         color: isAssigned
-                                            ? AppColors.errorColor
-                                            : AppColors.primaryColor,
+                                            ? Theme.of(context).colorScheme.error
+                                            : Theme.of(context).colorScheme.primary,
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         isAssigned ? 'Remove' : 'Assign',
                                         style: AppTypography.bodySmall.copyWith(
-                                          color: AppColors.textWhite,
+                                          color: Colors.white,
                                           fontWeight: FontWeight.w500,
                                           fontSize: 12,
                                         ),
@@ -397,7 +399,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                               child: Text(
                                 'Cancel',
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -407,8 +409,8 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context, _selectedUserIds),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryColor,
-                                foregroundColor: AppColors.textWhite,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -417,7 +419,7 @@ class _SimpleUserAssignmentModalState extends State<_SimpleUserAssignmentModal> 
                               child: Text(
                                 'Update Assignment',
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.textWhite,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

@@ -42,7 +42,7 @@ class DecisionPendingFromUtils {
                 builder: (context, scrollController) {
                   return Container(
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceColor,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(20),
                       ),
@@ -55,7 +55,7 @@ class DecisionPendingFromUtils {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: AppColors.borderColor,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -68,7 +68,7 @@ class DecisionPendingFromUtils {
                               Text(
                                 'Select ${_getCategoryName(catSubId)} Pending From',
                                 style: AppTypography.titleLarge.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -77,7 +77,7 @@ class DecisionPendingFromUtils {
                                 onTap: () => Navigator.of(context).pop(),
                                 child: Icon(
                                   Icons.close,
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   size: 24,
                                 ),
                               ),
@@ -116,12 +116,12 @@ class DecisionPendingFromUtils {
                                   padding: EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? AppColors.primaryColor.withOpacity(0.1)
-                                        : AppColors.surfaceColor,
+                                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                                        : Theme.of(context).colorScheme.surface,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
-                                          ? AppColors.primaryColor
+                                          ? Theme.of(context).colorScheme.primary
                                           : AppColors.borderColor,
                                       width: 1,
                                     ),
@@ -132,7 +132,7 @@ class DecisionPendingFromUtils {
                                         child: Text(
                                           agency,
                                           style: AppTypography.bodyMedium.copyWith(
-                                            color: AppColors.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -140,7 +140,7 @@ class DecisionPendingFromUtils {
                                       if (isSelected)
                                         Icon(
                                           Icons.check_circle,
-                                          color: AppColors.primaryColor,
+                                          color: Theme.of(context).colorScheme.primary,
                                           size: 20,
                                         ),
                                     ],
@@ -161,7 +161,7 @@ class DecisionPendingFromUtils {
                                 Text(
                                   'Specify Other *',
                                   style: AppTypography.bodyMedium.copyWith(
-                                    color: AppColors.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -187,33 +187,33 @@ class DecisionPendingFromUtils {
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
                                       borderSide: BorderSide(
-                                        color: AppColors.primaryColor,
+                                        color: Theme.of(context).colorScheme.primary,
                                       ),
                                     ),
                                     errorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
                                       borderSide: BorderSide(
-                                        color: AppColors.errorColor,
+                                        color: Theme.of(context).colorScheme.error,
                                       ),
                                     ),
                                     suffixIcon: otherText != null &&
                                             otherText!.trim().isNotEmpty
                                         ? Icon(
                                             Icons.check_circle,
-                                            color: AppColors.successColor,
+                                            color: Colors.green,
                                             size: 20,
                                           )
                                         : null,
                                   ),
                                   style: AppTypography.bodyMedium.copyWith(
-                                    color: AppColors.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                                 SizedBox(height: 4),
                                 Text(
                                   'This field is required when "Other" is selected',
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -234,7 +234,7 @@ class DecisionPendingFromUtils {
                                   child: Text(
                                     'Cancel',
                                     style: AppTypography.bodyMedium.copyWith(
-                                      color: AppColors.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -276,8 +276,8 @@ class DecisionPendingFromUtils {
                                     });
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryColor,
-                                    foregroundColor: AppColors.textWhite,
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Colors.white,
                                     padding: EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -286,7 +286,7 @@ class DecisionPendingFromUtils {
                                   child: Text(
                                     selectedAgencies.isEmpty ? 'Select' : 'Select (${selectedAgencies.length})',
                                     style: AppTypography.bodyMedium.copyWith(
-                                      color: AppColors.textWhite,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -316,9 +316,9 @@ class DecisionPendingFromUtils {
         return ["PMC", "Client", "Architect", "Vendor", "Structure", "Other"];
       case 3: // Drawing
         return ["Architect", "Structure", "Other"];
-      case 4: // Selection
+      case 6: // Selection
         return ["Architect", "Client"];
-      case 6: // Quotation
+      case 4: // Quotation
         return ["Architect", "Structure", "Other"];
       default:
         return [];
@@ -333,9 +333,9 @@ class DecisionPendingFromUtils {
       case 3:
         return 'Drawing';
       case 4:
-        return 'Selection';
-      case 6:
         return 'Quotation';
+      case 6:
+        return 'Selection';
       default:
         return 'Category';
     }
