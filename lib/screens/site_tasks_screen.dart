@@ -16,6 +16,7 @@ import '../widgets/custom_search_bar.dart';
 import '../screens/create_task_screen.dart';
 import '../widgets/custom_button.dart';
 import '../core/utils/navigation_utils.dart';
+import 'dart:async';
 
 class _FilterSearchWidget<T> extends StatefulWidget {
   final List<T> items;
@@ -170,6 +171,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
 
   // Scroll controller for pagination
   late ScrollController _scrollController;
+  
+  // Search debounce timer
+  Timer? _searchDebounceTimer;
 
   @override
   void initState() {
@@ -183,6 +187,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -268,6 +273,11 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       // Build filters map
       Map<String, dynamic> filters = {};
       
+      // Add search query to filters
+      if (_searchQuery.isNotEmpty) {
+        filters['search'] = _searchQuery.trim();
+      }
+      
       if (_selectedStatus.isNotEmpty) {
         // Map UI status to API status values
         String apiStatus = '';
@@ -335,6 +345,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       print('🔍 === TASK FILTERS LOG ===');
       print('📍 Site ID: ${widget.site.id}');
       print('📄 Current Page: $_currentPage');
+      print('🔍 Search Query: "${_searchQuery}"');
       print('📊 Total Filters: ${filters.length}');
       print('📋 Filters Map:');
       filters.forEach((key, value) {
@@ -423,6 +434,17 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     onChanged: (value) {
                       setState(() {
                         _searchQuery = value;
+                      });
+                      
+                      // Cancel previous timer
+                      _searchDebounceTimer?.cancel();
+                      
+                      // Set new timer for debounced search
+                      _searchDebounceTimer = Timer(Duration(milliseconds: 500), () {
+                        // Reset pagination and reload tasks when search changes
+                        _currentPage = 1;
+                        _hasMorePages = true;
+                        _loadTasks();
                       });
                     },
                   ),
@@ -1391,150 +1413,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     );
   }
 
-  void _showFilterList(String title, List<Widget> options) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
-      ),
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        padding: ResponsiveUtils.responsivePadding(context),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 18, tablet: 20, desktop: 22),
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Done',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: options,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDateRangeFilter() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Date Range',
-          style: AppTypography.titleSmall.copyWith(
-            fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: _startDate ?? DateTime.now(),
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _startDate = picked;
-                    });
-                  }
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.borderColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _startDate != null
-                      ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                      : 'Start Date',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-                    firstDate: _startDate ?? DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _endDate = picked;
-                    });
-                  }
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.borderColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _endDate != null
-                      ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                      : 'End Date',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildTaskList() {
     if (_isLoadingTasks) {
@@ -1635,16 +1514,8 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       );
     }
 
-    // Filter tasks based on search query
+    // Use tasks directly since search is now handled server-side
     List<TaskModel> filteredTasks = _tasks;
-    if (_searchQuery.isNotEmpty) {
-      filteredTasks = _tasks.where((task) {
-        return task.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               task.categoryName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               task.createdByName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               task.assignedUsersNames.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
-    }
 
     return Container(
       padding: ResponsiveUtils.responsivePadding(context),
@@ -1660,17 +1531,19 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               desktop: 20,
             )),
             child: Text(
-                              'Tasks (${filteredTasks.length}/${_totalTasks})',
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 16,
-                    tablet: 18,
-                    desktop: 20,
-                  ),
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+              _searchQuery.isNotEmpty 
+                ? 'Search Results (${filteredTasks.length} tasks)'
+                : 'Tasks (${filteredTasks.length}/${_totalTasks})',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 16,
+                  tablet: 18,
+                  desktop: 20,
                 ),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           

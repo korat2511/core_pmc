@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:convert';
+import 'package:core_pmc/screens/qc_creation_screen.dart';
+import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants/app_colors.dart';
@@ -24,6 +27,10 @@ import '../widgets/custom_button.dart';
 import '../models/tag_model.dart';
 import '../core/utils/validation_utils.dart';
 import '../core/utils/decision_pending_from_utils.dart';
+import '../core/utils/qc_category_picker_utils.dart';
+import '../models/qc_category_model.dart';
+import '../models/qc_point_model.dart';
+import '../services/qc_category_service.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/attachment_viewer.dart';
 import '../widgets/file_viewer.dart';
@@ -100,6 +107,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   bool _isUploadingImages = false;
   bool _isUploadingAttachments = false;
 
+  // QC Category variables
+  QcCategoryModel? _selectedQcCategory;
+  bool _isLoadingQcCategories = false;
+  bool _isUpdatingQcCategory = false;
+  String _qcFilter = 'all';
+  DateTime? _qcSelectedDate;
+
+  // QC Creation variables - moved to QcCreationScreen
+
   // Decision pending from variables
   String? _selectedDecisionAgency;
   String? _otherDecisionText;
@@ -118,11 +134,60 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     return _questionStateHolders[questionId]!;
   }
 
-  // Default survey questions for Site Survey
+  int progress = 0;
+  dynamic downloadId;
+  String? status;
+  late StreamSubscription progressStream;
 
   @override
   void initState() {
     log("Task - ${widget.task.id}");
+    FlDownloader.initialize();
+    progressStream = FlDownloader.progressStream.listen((event) {
+      if (event.status == DownloadStatus.successful) {
+        debugPrint('event.progress: ${event.progress}');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+        // This is a way of auto-opening downloaded file right after a download is completed
+        FlDownloader.openFile(filePath: event.filePath);
+      } else if (event.status == DownloadStatus.running) {
+        debugPrint('event.progress: ${event.progress}');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      } else if (event.status == DownloadStatus.failed) {
+        debugPrint('event: $event');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      } else if (event.status == DownloadStatus.paused) {
+        debugPrint('Download paused');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+
+        Future.delayed(
+          const Duration(milliseconds: 250),
+              () => FlDownloader.attachDownloadProgress(event.downloadId),
+        );
+      } else if (event.status == DownloadStatus.pending) {
+        debugPrint('Download pending');
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      }
+    });
     super.initState();
     _loadTaskDetails();
   }
@@ -200,6 +265,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
 
       // Load users
       _loadUsers();
+
+      // Load QC categories
+      _loadQcCategories();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -248,6 +316,44 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         _isLoadingTags = false;
       });
       SnackBarUtils.showError(context, message: 'Failed to load tags: $e');
+    }
+  }
+
+  Future<void> _loadQcCategories() async {
+    setState(() {
+      _isLoadingQcCategories = true;
+    });
+
+    try {
+      final qcCategoryService = QcCategoryService();
+      final success = await qcCategoryService.getQcCategories();
+      
+      if (success) {
+        setState(() {
+          _isLoadingQcCategories = false;
+        });
+
+        // Set current QC category if task has one
+        if (_taskDetail?.qcCategoryId != null && _taskDetail!.qcCategoryId != 0) {
+          final currentCategory = qcCategoryService.qcCategories.firstWhere(
+            (category) => category.id == _taskDetail!.qcCategoryId,
+            orElse: () => qcCategoryService.qcCategories.first,
+          );
+          setState(() {
+            _selectedQcCategory = currentCategory;
+          });
+        }
+      } else {
+        setState(() {
+          _isLoadingQcCategories = false;
+        });
+        SnackBarUtils.showError(context, message: 'Failed to load QC categories');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingQcCategories = false;
+      });
+      SnackBarUtils.showError(context, message: 'Failed to load QC categories: $e');
     }
   }
 
@@ -567,6 +673,345 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
       backgroundColor: Colors.transparent,
       builder: (context) => _buildUserAssignmentModal(tempAssignedUserIds),
     );
+  }
+
+  Future<void> _showQcCategoryPicker() async {
+    final selectedCategory = await QcCategoryPickerUtils.showQcCategoryPicker(
+      context: context,
+      selectedCategory: _selectedQcCategory,
+    );
+
+    if (selectedCategory != null) {
+      setState(() {
+        _selectedQcCategory = selectedCategory;
+      });
+      _updateTaskQcCategory();
+    }
+  }
+
+  Future<void> _showQcTypeSelection() async {
+    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    if (isTaskCompleted) {
+      _showTaskCompletedWarning();
+      return;
+    }
+
+    // Check existing QC types to determine what can be added
+    final existingChecks = _taskDetail?.qualityChecks ?? [];
+    final hasPreCheck = existingChecks.any((check) => check.isPreCheck);
+    final hasAfterCheck = existingChecks.any((check) => check.isAfterCheck);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildQcTypeSelectionModal(hasPreCheck, hasAfterCheck),
+    );
+  }
+
+  Widget _buildQcTypeSelectionModal(bool hasPreCheck, bool hasAfterCheck) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: ResponsiveUtils.responsivePadding(context),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select QC Type',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(
+                        context,
+                        mobile: 16,
+                        tablet: 18,
+                        desktop: 20,
+                      ),
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Close button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // QC Type Options
+          Padding(
+            padding: ResponsiveUtils.horizontalPadding(context),
+            child: Column(
+              children: [
+                // Pre Check (only if not already exists)
+                if (!hasPreCheck)
+                  _buildQcTypeOption(
+                    'Pre Check',
+                    'Quality check before starting the work',
+                    Icons.play_arrow,
+                    () => _createNewQcCheck('pre'),
+                  ),
+
+                // During Check (can have multiple)
+                _buildQcTypeOption(
+                  'During Check',
+                  'Quality check during the work progress',
+                  Icons.pause,
+                  () => _createNewQcCheck('during'),
+                ),
+
+                // After Check (only if not already exists)
+                if (!hasAfterCheck)
+                  _buildQcTypeOption(
+                    'After Check',
+                    'Quality check after completing the work',
+                    Icons.stop,
+                    () => _createNewQcCheck('after'),
+                  ),
+              ],
+            ),
+          ),
+
+          // Bottom padding
+          SizedBox(
+            height: ResponsiveUtils.responsiveSpacing(
+              context,
+              mobile: 16,
+              tablet: 20,
+              desktop: 24,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQcTypeOption(String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderColor, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _createNewQcCheck(String checkType) {
+    // Check if Pre or After QC already exists
+    if (checkType == 'pre' || checkType == 'after') {
+      final existingChecks = _taskDetail?.qualityChecks.where((qc) => 
+        checkType == 'pre' ? qc.isPreCheck : qc.isAfterCheck
+      ).toList() ?? [];
+      
+      if (existingChecks.isNotEmpty) {
+        SnackBarUtils.showInfo(
+          context,
+          message: 'It is already added, you can edit it',
+        );
+        return;
+      }
+    }
+
+    // Show QC creation modal with questions
+    _showQcCreationModal(checkType);
+  }
+
+  void _showQcCreationModal(String checkType) {
+    // Get the QC category ID from the task
+    final qcCategoryId = _taskDetail?.qcCategoryId ?? 0;
+    
+    if (qcCategoryId == 0) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Please select a QC category first',
+      );
+      return;
+    }
+
+    NavigationUtils.push(
+      context,
+      QcCreationScreen(
+        checkType: checkType,
+        qcCategoryId: qcCategoryId,
+        taskId: widget.task.id,
+        onQcCreated: () {
+          _loadTaskDetails();
+        },
+      ),
+    );
+  }
+
+  void _editQcCheck(QualityCheckModel qc) {
+    NavigationUtils.push(
+      context,
+      QcCreationScreen(
+        checkType: qc.checkType,
+        qcCategoryId: _taskDetail!.qcCategoryId!,
+        taskId: widget.task.id,
+        existingQc: qc,
+        onQcCreated: () {
+          _loadTaskDetails();
+        },
+      ),
+    );
+  }
+
+  // This method is no longer needed as it's moved to QcCreationScreen
+
+  // This method is no longer needed as it's moved to QcCreationScreen
+
+  // These methods are no longer needed as they're moved to QcCreationScreen
+
+    // This method is no longer needed as it's moved to QcCreationScreen
+
+  Future<void> _updateTaskQcCategory() async {
+    if (_selectedQcCategory == null) {
+      SnackBarUtils.showError(context, message: 'Please select a QC category');
+      return;
+    }
+
+    setState(() {
+      _isUpdatingQcCategory = true;
+    });
+
+    try {
+      final String? apiToken = await LocalStorageService.getToken();
+      if (apiToken == null) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
+        return;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'task_id': widget.task.id.toString(),
+        'qc_category_id': _selectedQcCategory!.id.toString(),
+      };
+
+      final response = await ApiService.editTask(requestData);
+
+      if (response != null && response.status == 1) {
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'QC category updated successfully',
+        );
+
+        // Update the task detail object with new QC category
+        if (_taskDetail != null) {
+          setState(() {
+            _taskDetail = _taskDetail!.copyWith(
+              qcCategoryId: _selectedQcCategory!.id,
+            );
+          });
+        }
+
+        // Reload task details to get updated data
+        _loadTaskDetails();
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response?.message ?? 'Failed to update QC category',
+        );
+      }
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to update QC category: $e',
+      );
+    } finally {
+      setState(() {
+        _isUpdatingQcCategory = false;
+      });
+    }
   }
 
   Future<void> _showDecisionSelectionModal() async {
@@ -946,37 +1391,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     });
   }
 
-  void _updateTaskImagesLocally(List<File> images) {
-    if (_taskDetail == null) return;
-
-    setState(() {
-      // Get current user info
-      final currentUser = AuthService.currentUser;
-      if (currentUser == null) return;
-
-      // Create new image models from uploaded files
-      final newImages = images
-          .map(
-            (file) => TaskImageModel(
-              id: DateTime.now().millisecondsSinceEpoch + images.indexOf(file),
-              // Temporary ID
-              imagePath: file.path,
-              // Store local file path
-              taskId: _taskDetail!.id,
-              image: file.path.split('/').last,
-              // Use filename as image
-              createdAt: DateTime.now().toIso8601String(),
-              updatedAt: DateTime.now().toIso8601String(),
-            ),
-          )
-          .toList();
-
-      // Add new images to the beginning of existing images
-      _taskDetail = _taskDetail!.copyWith(
-        images: [...newImages, ..._taskDetail!.images],
-      );
-    });
-  }
 
   void _updateTaskAttachmentsLocally(List<File> attachments) {
     if (_taskDetail == null) return;
@@ -3166,45 +3580,195 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildQCTab() {
-    return SingleChildScrollView(
-      padding: ResponsiveUtils.responsivePadding(context),
+    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final hasQcCategory = _taskDetail?.qcCategoryId != null && _taskDetail!.qcCategoryId != 0;
+
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: ResponsiveUtils.responsivePadding(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // QC Category Section (only show if qc_category_id is 0)
+              if (!hasQcCategory) ...[
+                _buildQcCategorySection(),
+                SizedBox(height: 16),
+              ],
+
+              // Filter chips and + New button in one row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQcFilterChips(),
+                  ),
+                  if (hasQcCategory && !isTaskCompleted)
+                    GestureDetector(
+                      onTap: _showQcTypeSelection,
+                      child: Text(
+                        '+ New',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Date picker for During filter
+              if (_qcFilter == 'during') ...[
+                SizedBox(height: 8),
+                _buildQcDatePicker(),
+                SizedBox(height: 8),
+              ],
+
+              SizedBox(height: 8),
+
+              // QC Content
+              if (_taskDetail?.qualityChecks.isEmpty == true)
+                _buildEmptyState('No QC data available')
+              else
+                _buildQCData(),
+            ],
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            padding: ResponsiveUtils.responsivePadding(context),
+            width: double.infinity,
+            child: CustomButton(
+              text: 'Generate Report',
+              onPressed: _isLoading ? null : _generateQCReport,
+              isLoading: _isLoading,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  Future<void> _generateQCReport() async {
+
+    final pdfUrl =  _taskDetail?.qcPdf;
+
+
+    if (pdfUrl != null ) {
+      print('PDF URL: $pdfUrl');
+
+
+      // Show success message
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'Report generated successfully! Opening PDF...',
+      );
+
+      final permission = await FlDownloader.requestPermission();
+      if (permission == StoragePermissionStatus.granted) {
+        var success = await FlDownloader.download(
+          pdfUrl,
+          fileName: "${_taskDetail!.name}_QC_Report.pdf",
+        );
+
+        if (success) {
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'PDF opened successfully!',
+          );
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: 'Failed to open PDF. Please try again.',
+          );
+        }
+      }
+    } else {
+      SnackBarUtils.showError(
+        context,
+        message: 'Invalid PDF response from server.',
+      );
+    }
+  }
+
+  Widget _buildQcCategorySection() {
+    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderColor, width: 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // QC Header with Add Button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Quality Check',
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Add QC
-                },
-                child: Text(
-                  '+ New',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'QC Category',
+            style: AppTypography.bodyMedium.copyWith(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
+          SizedBox(height: 8),
 
-          SizedBox(height: 16),
-
-          // QC Content
-          if (_taskDetail?.qualityChecks.isEmpty == true)
-            _buildEmptyState('No QC data available')
-          else
-            _buildQCData(),
+          // QC Category Dropdown
+          GestureDetector(
+            onTap: isTaskCompleted ? _showTaskCompletedWarning : _showQcCategoryPicker,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isTaskCompleted
+                    ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isTaskCompleted
+                      ? AppColors.borderColor.withOpacity(0.5)
+                      : AppColors.borderColor,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    _selectedQcCategory?.name ?? 'Select QC Category',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isTaskCompleted
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          : (_selectedQcCategory != null 
+                              ? Theme.of(context).colorScheme.onSurface 
+                              : Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                  Spacer(),
+                  if (_isUpdatingQcCategory)
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  else if (isTaskCompleted)
+                    Icon(
+                      Icons.lock,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      size: 16,
+                    )
+                  else
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -3740,7 +4304,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         // Used Materials Section (if any materials were used)
         if (progress.usedMaterial.isNotEmpty) ...[
           SizedBox(height: 5,),
-          _buildUsedMaterialsSection(progress.usedMaterial),
+          _buildUsedMaterialsSection(context, progress.usedMaterial),
         ],
 
         SizedBox(height: 16),
@@ -3767,16 +4331,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     );
   }
 
-  Widget _buildUsedMaterialsSection(List<UsedMaterialModel> usedMaterials) {
+  Widget _buildUsedMaterialsSection(BuildContext context, List<UsedMaterialModel> usedMaterials) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         ...usedMaterials.map((material) => Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-        (material.material.specification != null) ? '${material.material.specification}' : "Material",
+              (material.material.specification != null) ? '${material.material.specification}' : "Material",
               style: AppTypography.bodySmall.copyWith(
                 fontSize: 11,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -4424,56 +4987,432 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildQCData() {
+    final qualityChecks = _taskDetail!.qualityChecks;
+    
+    // Group QC checks by type
+    final preChecks = qualityChecks.where((qc) => qc.isPreCheck).toList();
+    final duringChecks = qualityChecks.where((qc) => qc.isDuringCheck).toList();
+    final afterChecks = qualityChecks.where((qc) => qc.isAfterCheck).toList();
+
+    // Apply filter
+    List<Widget> sections = [];
+    bool showPre = _qcFilter == 'all' || _qcFilter == 'pre';
+    bool showDuring = _qcFilter == 'all' || _qcFilter == 'during';
+    bool showAfter = _qcFilter == 'all' || _qcFilter == 'after';
+
+    // Filter during checks by date if date is selected
+    List<QualityCheckModel> filteredDuringChecks = duringChecks;
+    if (_qcFilter == 'during' && _qcSelectedDate != null) {
+      final selectedDateString = '${_qcSelectedDate!.year}-${_qcSelectedDate!.month.toString().padLeft(2, '0')}-${_qcSelectedDate!.day.toString().padLeft(2, '0')}';
+      filteredDuringChecks = duringChecks.where((qc) => qc.date == selectedDateString).toList();
+    }
+
     return Column(
-      children: _taskDetail!.qualityChecks.map((qc) {
-        return Container(
-          margin: EdgeInsets.only(bottom: 16),
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.textWhite,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.borderColor, width: 1),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Pre Checks
+        if (showPre && preChecks.isNotEmpty) ...[
+          ...preChecks.map((qc) => _buildQcCheckCard(qc)),
+          SizedBox(height: 16),
+        ],
+
+        // During Checks
+        if (showDuring && filteredDuringChecks.isNotEmpty) ...[
+          ...filteredDuringChecks.map((qc) => _buildQcCheckCard(qc)),
+          SizedBox(height: 16),
+        ],
+
+        // After Checks
+        if (showAfter && afterChecks.isNotEmpty) ...[
+          ...afterChecks.map((qc) => _buildQcCheckCard(qc)),
+        ],
+
+        if ((showPre && preChecks.isEmpty) &&
+            (showDuring && filteredDuringChecks.isEmpty) &&
+            (showAfter && afterChecks.isEmpty))
+          _buildEmptyState(_qcFilter == 'during' && _qcSelectedDate != null
+              ? 'No QC data available for selected date'
+              : 'No QC data available for selected filter'),
+      ],
+    );
+  }
+
+  Widget _buildQcTypeHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        SizedBox(width: 8),
+        Text(
+          title,
+          style: AppTypography.titleMedium.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQcCheckCard(QualityCheckModel qc) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with date, type, and edit button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'QC Check: ${qc.checkType}',
+                'Date: ${_formatDate(qc.date)}',
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              SizedBox(height: 8),
-              ...qc.items.map(
-                (item) => Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Icon(
-                        item.isPassed ? Icons.check_circle : Icons.cancel,
-                        size: 16,
-                        color: item.isPassed
-                            ? Colors.green
-                            : Theme.of(context).colorScheme.error,
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getQcTypeColor(qc.checkType).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      qc.checkType.toUpperCase(),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: _getQcTypeColor(qc.checkType),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
                       ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item.description,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _editQcCheck(qc),
+                    child: Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ],
+                      child: Icon(
+                        Icons.edit,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+
+          // Team information (if available)
+          if (qc.clientTeamName != null || qc.pmcTeamName != null || qc.contractorTeamName != null) ...[
+            _buildTeamInfo(qc),
+            SizedBox(height: 8),
+          ],
+
+          // QC Items
+          if (qc.items.isNotEmpty) ...[
+            ...qc.items.map((item) => _buildQcItem(item)),
+          ] else ...[
+            Text(
+              'No check points available',
+              style: AppTypography.bodyMedium.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamInfo(QualityCheckModel qc) {
+    final teams = <String>[];
+    if (qc.clientTeamName != null) teams.add('Client: ${qc.clientTeamName}');
+    if (qc.pmcTeamName != null) teams.add('PMC: ${qc.pmcTeamName}');
+    if (qc.contractorTeamName != null) teams.add('Contractor: ${qc.contractorTeamName}');
+
+    if (teams.isEmpty) return SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Teams',
+          style: AppTypography.bodySmall.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: 4),
+        ...teams.map((team) => Padding(
+          padding: EdgeInsets.only(bottom: 2),
+          child: Text(
+            team,
+            style: AppTypography.bodySmall.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildQcItem(QualityCheckItemModel item) {
+    // Get the status color and icon based on the actual status
+    final statusColor = _getQcItemStatusColor(item.status);
+    final statusIcon = _getQcItemStatusIcon(item.status);
+    final statusText = _getQcItemStatusText(item.status);
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: statusColor,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                statusIcon,
+                size: 14,
+                color: statusColor,
+              ),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  item.description,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusText,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
                   ),
                 ),
               ),
             ],
           ),
-        );
-      }).toList(),
+          if (item.remarks.isNotEmpty) ...[
+            SizedBox(height: 6),
+            Text(
+              'Remarks: ${item.remarks}',
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _getQcItemStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'yes':
+        return Colors.green.withOpacity(0.8);
+      case 'no':
+        return Theme.of(context).colorScheme.error.withOpacity(0.8);
+      case 'na':
+        return Colors.grey.withOpacity(0.8);
+      default:
+        return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6);
+    }
+  }
+
+  IconData _getQcItemStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'yes':
+        return Icons.check_circle;
+      case 'no':
+        return Icons.cancel;
+      case 'na':
+        return Icons.remove_circle;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  String _getQcItemStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'yes':
+        return 'PASS';
+      case 'no':
+        return 'FAIL';
+      case 'na':
+        return 'NA';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  Widget _buildQcDatePicker() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.calendar_today,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showQcDatePicker,
+              child: Text(
+                _qcSelectedDate != null
+                    ? 'Date: ${_formatDate(_qcSelectedDate!.toIso8601String())}'
+                    : 'Select Date',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: _qcSelectedDate != null
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          if (_qcSelectedDate != null)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _qcSelectedDate = null;
+                });
+              },
+              child: Icon(
+                Icons.clear,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showQcDatePicker() async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: _qcSelectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (selectedDate != null) {
+      setState(() {
+        _qcSelectedDate = selectedDate;
+      });
+    }
+  }
+
+  Color _getQcTypeColor(String checkType) {
+    switch (checkType.toLowerCase()) {
+      case 'pre':
+        return Colors.blue;
+      case 'during':
+        return Colors.orange;
+      case 'after':
+        return Colors.green;
+      default:
+        return Theme.of(context).colorScheme.primary;
+    }
+  }
+
+  Widget _buildQcFilterChips() {
+    Widget buildChip(String key, String label) {
+      final bool selected = _qcFilter == key;
+      return GestureDetector(
+        onTap: () {
+          if (_qcFilter == key) return;
+          setState(() {
+            _qcFilter = key;
+            if (_qcFilter != 'during') {
+              _qcSelectedDate = null;
+            }
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                : Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : AppColors.borderColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          buildChip('all', 'All'),
+          SizedBox(width: 8),
+          buildChip('pre', 'Pre'),
+          SizedBox(width: 8),
+          buildChip('during', 'During'),
+          SizedBox(width: 8),
+          buildChip('after', 'After'),
+        ],
+      ),
     );
   }
 
@@ -6167,3 +7106,5 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     );
   }
 }
+
+

@@ -3917,6 +3917,108 @@ class ApiService {
     }
   }
 
+  // Store Quality Check API
+  static Future<ApiResponse<Map<String, dynamic>>> storeQualityCheck({
+    required String apiToken,
+    required int taskId,
+    required String checkType,
+    required String date,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'task_id': taskId.toString(),
+        'check_type': checkType,
+        'date': date,
+        'items': json.encode(items),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/quality/storeQualityCheck'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+        );
+      }
+    } catch (e) {
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException')) {
+        return ApiResponse(
+          status: 0,
+          message: 'No internet connection. Please check your network.',
+        );
+      }
+      return ApiResponse(
+        status: 0,
+        message: 'Something went wrong. $e',
+      );
+    }
+  }
+
+  // Update Quality Check API
+  static Future<ApiResponse<Map<String, dynamic>>> updateQualityCheck({
+    required String apiToken,
+    required int taskId,
+    required String checkType,
+    required int qualityCheckId,
+    required String date,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'task_id': taskId.toString(),
+        'check_type': checkType,
+        'quality_check_id': qualityCheckId.toString(),
+        'date': date,
+        'items': json.encode(items),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/quality/updateQualityCheck'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+        );
+      }
+    } catch (e) {
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException')) {
+        return ApiResponse(
+          status: 0,
+          message: 'No internet connection. Please check your network.',
+        );
+      }
+      return ApiResponse(
+        status: 0,
+        message: 'Something went wrong. $e',
+      );
+    }
+  }
+
   // Delete Site Vendor API
   static Future<bool> deleteSiteVendor({
     required int vendorId,
