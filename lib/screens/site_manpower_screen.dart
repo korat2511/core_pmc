@@ -45,7 +45,25 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     _loadManpowerForDate(_selectedDate);
   }
 
+  @override
+  void dispose() {
+    // Dispose all controllers
+    _skilledControllers.values.forEach((controller) => controller.dispose());
+    _unskilledControllers.values.forEach((controller) => controller.dispose());
+    
+    // Clear the maps
+    _skilledControllers.clear();
+    _unskilledControllers.clear();
+    
+    super.dispose();
+  }
 
+  @override
+  void deactivate() {
+    // Close keyboard when leaving the screen
+    FocusManager.instance.primaryFocus?.unfocus();
+    super.deactivate();
+  }
 
   Future<void> _loadManpowerForDate(DateTime date) async {
     setState(() {
@@ -79,16 +97,14 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
   void _initializeEntries() {
     _entries = _manpowerList.map((manpower) => ManpowerEntryModel(
       categoryId: manpower.categoryId,
-      categoryName: manpower.category.name, // Use the category name from the manpower model
+      categoryName: manpower.category.name,
       shift: manpower.shift,
       skilledWorker: manpower.skilledWorker,
       unskilledWorker: manpower.unskilledWorker,
     )).toList();
     
-    // Store original entries for change detection
     _originalEntries = _entries.map((entry) => entry.copyWith()).toList();
     
-    // Initialize controllers
     _skilledControllers.clear();
     _unskilledControllers.clear();
     for (int i = 0; i < _entries.length; i++) {
@@ -104,18 +120,38 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     _loadManpowerForDate(date);
   }
 
-  void _addNewEntry() {
-    final newIndex = _entries.length;
-    setState(() {
-      _entries.add(ManpowerEntryModel(
-        categoryId: 0,
-        shift: 1,
-        skilledWorker: 0,
-        unskilledWorker: 0,
-      ));
-      _skilledControllers[newIndex] = TextEditingController(text: '0');
-      _unskilledControllers[newIndex] = TextEditingController(text: '0');
-    });
+  void _addNewEntry() async {
+    // Show category picker first
+    final selectedCategory = await _showCategoryPickerForNewEntry();
+    
+    if (selectedCategory != null) {
+      final newIndex = _entries.length;
+      setState(() {
+        _entries.add(ManpowerEntryModel(
+          categoryId: selectedCategory.id,
+          categoryName: selectedCategory.name,
+          shift: 1,
+          skilledWorker: 0,
+          unskilledWorker: 0,
+        ));
+        _skilledControllers[newIndex] = TextEditingController(text: '0');
+        _unskilledControllers[newIndex] = TextEditingController(text: '0');
+      });
+    }
+  }
+
+  Future<CategoryModel?> _showCategoryPickerForNewEntry() async {
+    final excludedCategoryIds = _entries
+        .where((entry) => entry.categoryId != 0)
+        .map((entry) => entry.categoryId)
+        .toList();
+
+    return await CategoryPickerUtils.showCategoryPicker(
+      context: context,
+      siteId: widget.site.id,
+      allowedSubIds: [5],
+      excludedCategoryIds: excludedCategoryIds,
+    );
   }
 
   void _removeEntry(int index) {
@@ -162,7 +198,6 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
   }
 
   Future<void> _saveManpower() async {
-    // Check if data has changed
     if (!_hasDataChanged()) {
       SnackBarUtils.showInfo(
         context,
@@ -211,7 +246,6 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
           context,
           message: 'Manpower saved successfully',
         );
-        // Update original entries to reflect the saved state
         _originalEntries = _entries.map((entry) => entry.copyWith()).toList();
         _loadManpowerForDate(_selectedDate);
       } else {
@@ -262,14 +296,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
               ),
             ),
 
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 16,
-                tablet: 20,
-                desktop: 24,
-              ),
-            ),
+            SizedBox(height: 16),
 
             // Content
             Expanded(
@@ -290,13 +317,13 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
   Widget _buildHorizontalDatePicker() {
     final today = DateTime.now();
     final dates = List.generate(30, (index) {
-      return today.subtract(Duration(days: 29 - index)); // Show last 30 days, newest first
+      return today.subtract(Duration(days: 29 - index));
     });
 
     return ListView.builder(
       scrollDirection: Axis.horizontal,
       itemCount: dates.length,
-      controller: ScrollController(initialScrollOffset: 29 * 78.0), // Scroll to newest date (today)
+      controller: ScrollController(initialScrollOffset: 29 * 78.0),
       itemBuilder: (context, index) {
         final date = dates[index];
         final isSelected = date.year == _selectedDate.year &&
@@ -328,37 +355,37 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                                  Text(
-                    DateFormat('MMM').format(date),
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: ResponsiveUtils.responsiveFontSize(
-                        context,
-                        mobile: 8,
-                        tablet: 10,
-                        desktop: 12,
-                      ),
-                      color: isSelected
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
+                Text(
+                  DateFormat('MMM').format(date),
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 8,
+                      tablet: 10,
+                      desktop: 12,
                     ),
+                    color: isSelected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
                 SizedBox(height: 2),
-                                  Text(
-                    DateFormat('E').format(date),
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: ResponsiveUtils.responsiveFontSize(
-                        context,
-                        mobile: 8,
-                        tablet: 10,
-                        desktop: 12,
-                      ),
-                      color: isSelected
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
+                Text(
+                  DateFormat('E').format(date),
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 8,
+                      tablet: 10,
+                      desktop: 12,
                     ),
+                    color: isSelected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
                 SizedBox(height: 2),
                 Text(
                   date.day.toString(),
@@ -383,83 +410,6 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     );
   }
 
-  Widget _buildViewMode() {
-    if (_manpowerList.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.engineering_outlined,
-              size: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 60,
-                tablet: 80,
-                desktop: 100,
-              ),
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 16,
-                tablet: 20,
-                desktop: 24,
-              ),
-            ),
-            Text(
-              'No manpower data for this date',
-              style: AppTypography.bodyLarge.copyWith(
-                fontSize: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 16,
-                  tablet: 18,
-                  desktop: 20,
-                ),
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 8,
-                tablet: 12,
-                desktop: 16,
-              ),
-            ),
-            Text(
-              'Tap "Edit" to add manpower',
-              style: AppTypography.bodyMedium.copyWith(
-                fontSize: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 14,
-                  tablet: 16,
-                  desktop: 18,
-                ),
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _loadManpowerForDate(_selectedDate),
-      color: Theme.of(context).colorScheme.primary,
-      child: ListView.builder(
-        padding: ResponsiveUtils.horizontalPadding(context),
-        itemCount: _manpowerList.length,
-        itemBuilder: (context, index) {
-          final manpower = _manpowerList[index];
-          return _buildManpowerCard(manpower, index);
-        },
-      ),
-    );
-  }
-
   Widget _buildEditMode() {
     return Column(
       children: [
@@ -472,52 +422,23 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                     children: [
                       Icon(
                         Icons.engineering_outlined,
-                        size: ResponsiveUtils.responsiveFontSize(
-                          context,
-                          mobile: 60,
-                          tablet: 80,
-                          desktop: 100,
-                        ),
+                        size: 60,
                         color: AppColors.textSecondary,
                       ),
-                      SizedBox(
-                        height: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 16,
-                          tablet: 20,
-                          desktop: 24,
-                        ),
-                      ),
+                      SizedBox(height: 16),
                       Text(
                         'No manpower entries',
                         style: AppTypography.bodyLarge.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20,
-                          ),
+                          fontSize: 16,
                           color: AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(
-                        height: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 8,
-                          tablet: 12,
-                          desktop: 16,
-                        ),
-                      ),
+                      SizedBox(height: 8),
                       Text(
-                        'Tap "Add Entry" to get started',
+                        'Tap "Add Manpower" to get started',
                         style: AppTypography.bodyMedium.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 14,
-                            tablet: 16,
-                            desktop: 18,
-                          ),
+                          fontSize: 14,
                           color: AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
@@ -536,7 +457,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
 
         // Action Buttons
         Container(
-          padding: ResponsiveUtils.responsivePadding(context),
+          padding: EdgeInsets.all(16),
           child: Column(
             children: [
               // Add Entry Button
@@ -544,62 +465,28 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _addNewEntry,
-                  icon: Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: ResponsiveUtils.responsiveFontSize(
-                      context,
-                      mobile: 16,
-                      tablet: 18,
-                      desktop: 20,
-                    ),
-                  ),
+                  icon: Icon(Icons.add, color: Colors.white, size: 18),
                   label: Text(
-                    'Add Manpower',
+                    '+ Add Manpower',
                     style: AppTypography.bodyMedium.copyWith(
-                      fontSize: ResponsiveUtils.responsiveFontSize(
-                        context,
-                        mobile: 14,
-                        tablet: 16,
-                        desktop: 18,
-                      ),
+                      fontSize: 16,
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: AppColors.textWhite,
-                    padding: EdgeInsets.symmetric(
-                      vertical: ResponsiveUtils.responsiveSpacing(
-                        context,
-                        mobile: 12,
-                        tablet: 16,
-                        desktop: 20,
-                      ),
-                    ),
+                    backgroundColor: Colors.grey[600],
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 8,
-                          tablet: 12,
-                          desktop: 16,
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    elevation: 2,
                   ),
                 ),
               ),
               
-              SizedBox(
-                height: ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 12,
-                  tablet: 16,
-                  desktop: 20,
-                ),
-              ),
+              SizedBox(height: 16),
               
               // Save Button
               SizedBox(
@@ -607,57 +494,29 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveManpower,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: AppColors.textWhite,
-                    padding: EdgeInsets.symmetric(
-                      vertical: ResponsiveUtils.responsiveSpacing(
-                        context,
-                        mobile: 12,
-                        tablet: 16,
-                        desktop: 20,
-                      ),
-                    ),
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 8,
-                          tablet: 12,
-                          desktop: 16,
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    elevation: 2,
                   ),
                   child: _isLoading
                       ? SizedBox(
-                          width: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 20,
-                            tablet: 24,
-                            desktop: 28,
-                          ),
-                          height: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 20,
-                            tablet: 24,
-                            desktop: 28,
-                          ),
+                          width: 24,
+                          height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : Text(
-                          'Save Manpower',
+                          'Submit',
                           style: AppTypography.bodyLarge.copyWith(
-                            fontSize: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 16,
-                              tablet: 18,
-                              desktop: 20,
-                            ),
+                            fontSize: 18,
                             color: Colors.white,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                 ),
@@ -669,494 +528,83 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     );
   }
 
-  Widget _buildManpowerCard(ManpowerModel manpower, int index) {
-    return Container(
-      margin: EdgeInsets.only(
-        bottom: ResponsiveUtils.responsiveSpacing(
-          context,
-          mobile: 12,
-          tablet: 16,
-          desktop: 20,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20,
-          ),
-        ),
-        border: Border.all(
-          color: AppColors.borderColor,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: ResponsiveUtils.responsivePadding(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        manpower.category.name,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontSize: ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20,
-                          ),
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 4,
-                          tablet: 6,
-                          desktop: 8,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 8,
-                                tablet: 10,
-                                desktop: 12,
-                              ),
-                              vertical: ResponsiveUtils.responsiveSpacing(
-                                context,
-                                mobile: 4,
-                                tablet: 6,
-                                desktop: 8,
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(
-                                ResponsiveUtils.responsiveSpacing(
-                                  context,
-                                  mobile: 6,
-                                  tablet: 8,
-                                  desktop: 10,
-                                ),
-                              ),
-                            ),
-                            child: Text(
-                              manpower.shiftText,
-                              style: AppTypography.bodySmall.copyWith(
-                                fontSize: ResponsiveUtils.responsiveFontSize(
-                                  context,
-                                  mobile: 10,
-                                  tablet: 12,
-                                  desktop: 14,
-                                ),
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 10,
-                              desktop: 12,
-                            ),
-                          ),
-                          Text(
-                            'ID: ${manpower.categoryId}',
-                            style: AppTypography.bodySmall.copyWith(
-                              fontSize: ResponsiveUtils.responsiveFontSize(
-                                context,
-                                mobile: 10,
-                                tablet: 12,
-                                desktop: 14,
-                              ),
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 12,
-                tablet: 16,
-                desktop: 20,
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildWorkerInfo(
-                    'Skilled Workers',
-                    manpower.skilledWorker,
-                    Icons.engineering,
-                    AppColors.successColor,
-                  ),
-                ),
-                SizedBox(
-                  width: ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 12,
-                    tablet: 16,
-                    desktop: 20,
-                  ),
-                ),
-                Expanded(
-                  child: _buildWorkerInfo(
-                    'Unskilled Workers',
-                    manpower.unskilledWorker,
-                    Icons.people,
-                    AppColors.warningColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorkerInfo(String title, int count, IconData icon, Color color) {
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveUtils.responsiveSpacing(
-          context,
-          mobile: 12,
-          tablet: 16,
-          desktop: 20,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 8,
-            tablet: 12,
-            desktop: 16,
-          ),
-        ),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: ResponsiveUtils.responsiveFontSize(
-              context,
-              mobile: 20,
-              tablet: 24,
-              desktop: 28,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 4,
-              tablet: 6,
-              desktop: 8,
-            ),
-          ),
-          Text(
-            count.toString(),
-            style: AppTypography.titleLarge.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 18,
-                tablet: 20,
-                desktop: 22,
-              ),
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 2,
-              tablet: 4,
-              desktop: 6,
-            ),
-          ),
-                      Text(
-              title,
-              style: AppTypography.bodySmall.copyWith(
-                fontSize: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 10,
-                  tablet: 12,
-                  desktop: 14,
-                ),
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEntryCard(int index) {
     final entry = _entries[index];
     String categoryName = 'Select Category';
     
-    // Show the actual category name if available, otherwise show ID
     if (entry.categoryId != 0) {
       categoryName = entry.categoryName ?? 'Category ID: ${entry.categoryId}';
     }
 
     return Container(
-      margin: EdgeInsets.only(
-        bottom: ResponsiveUtils.responsiveSpacing(
-          context,
-          mobile: 12,
-          tablet: 16,
-          desktop: 20,
-        ),
-      ),
+      margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20,
-          ),
-        ),
-        border: Border.all(
-          color: AppColors.borderColor,
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: ResponsiveUtils.responsivePadding(context),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // Category Selection
+            // Header with Category Name and Delete Icon
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showCategoryPicker(index),
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 12,
-                          tablet: 16,
-                          desktop: 20,
-                        ),
-                        vertical: ResponsiveUtils.responsiveSpacing(
-                          context,
-                          mobile: 12,
-                          tablet: 16,
-                          desktop: 20,
-                        ),
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.textWhite,
-                        borderRadius: BorderRadius.circular(
-                          ResponsiveUtils.responsiveSpacing(
-                            context,
-                            mobile: 8,
-                            tablet: 12,
-                            desktop: 16,
-                          ),
-                        ),
-                        border: Border.all(
-                          color: AppColors.borderColor,
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                                                  Icon(
-                          Icons.category_outlined,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            size: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 18,
-                              tablet: 20,
-                              desktop: 22,
-                            ),
-                          ),
-                          SizedBox(
-                            width: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 8,
-                              tablet: 10,
-                              desktop: 12,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              categoryName,
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontSize: ResponsiveUtils.responsiveFontSize(
-                                  context,
-                                  mobile: 14,
-                                  tablet: 16,
-                                  desktop: 18,
-                                ),
-                                                        color: entry.categoryId == 0
-                            ? Theme.of(context).colorScheme.onSurfaceVariant
-                            : Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                                                  Icon(
-                          Icons.arrow_drop_down,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            size: ResponsiveUtils.responsiveFontSize(
-                              context,
-                              mobile: 20,
-                              tablet: 24,
-                              desktop: 28,
-                            ),
-                          ),
-                        ],
-                      ),
+                  child: Text(
+                    categoryName,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: entry.categoryId == 0 ? AppColors.textSecondary : AppColors.textPrimary,
                     ),
                   ),
                 ),
-                SizedBox(width: 10,),
-                if (_entries.length > 1)
-                  GestureDetector(
-                    onTap: () => _removeEntry(index),
-                    child: Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.delete,
-                        color: Theme.of(context).colorScheme.error,
-                        size: 20,
-                      ),
+                // Delete icon for all entries
+                GestureDetector(
+                  onTap: () => _removeEntry(index),
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                  ),
-              ],
-            ),
-            
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 16,
-                tablet: 20,
-                desktop: 24,
-              ),
-            ),
-            
-            // Shift Selection
-            Row(
-              children: [
-                Expanded(
-                  child: _buildShiftButton(
-                    index,
-                    1,
-                    'Day',
-                    Icons.wb_sunny,
-                  ),
-                ),
-                SizedBox(
-                  width: ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 8,
-                    tablet: 10,
-                    desktop: 12,
-                  ),
-                ),
-                Expanded(
-                  child: _buildShiftButton(
-                    index,
-                    2,
-                    'Night',
-                    Icons.nightlight,
-                  ),
-                ),
-                SizedBox(
-                  width: ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 8,
-                    tablet: 10,
-                    desktop: 12,
-                  ),
-                ),
-                Expanded(
-                  child: _buildShiftButton(
-                    index,
-                    3,
-                    'Day Night',
-                    Icons.schedule,
+                    child: Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
             ),
             
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 16,
-                tablet: 20,
-                desktop: 24,
-              ),
-            ),
+            SizedBox(height: 20),
             
-            // Worker Counts
+            // Shift Selection (Dropdown) and Worker Inputs
             Row(
               children: [
+                // Shift Dropdown
                 Expanded(
-                  child: CustomTextField(
-                    controller: _skilledControllers[index] ?? TextEditingController(text: entry.skilledWorker.toString()),
-                    label: 'Skilled Workers',
-                    hintText: '0',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icon(Icons.engineering),
-                    onChanged: (value) {
+                  flex: 2,
+                  child: _buildShiftDropdown(index),
+                ),
+                SizedBox(width: 12),
+                // Skilled Workers
+                Expanded(
+                  flex: 1,
+                  child: _buildWorkerInput(
+                    'Skilled',
+                    _skilledControllers[index] ?? TextEditingController(text: entry.skilledWorker.toString()),
+                    (value) {
                       final newEntry = entry.copyWith(
                         skilledWorker: int.tryParse(value) ?? 0,
                       );
@@ -1164,22 +612,14 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                     },
                   ),
                 ),
-                SizedBox(
-                  width: ResponsiveUtils.responsiveSpacing(
-                    context,
-                    mobile: 12,
-                    tablet: 16,
-                    desktop: 20,
-                  ),
-                ),
+                SizedBox(width: 12),
+                // Unskilled Workers
                 Expanded(
-                  child: CustomTextField(
-                    controller: _unskilledControllers[index] ?? TextEditingController(text: entry.unskilledWorker.toString()),
-                    label: 'Unskilled Workers',
-                    hintText: '0',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icon(Icons.people),
-                    onChanged: (value) {
+                  flex: 1,
+                  child: _buildWorkerInput(
+                    'Unskilled',
+                    _unskilledControllers[index] ?? TextEditingController(text: entry.unskilledWorker.toString()),
+                    (value) {
                       final newEntry = entry.copyWith(
                         unskilledWorker: int.tryParse(value) ?? 0,
                       );
@@ -1195,107 +635,118 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     );
   }
 
-  Widget _buildShiftButton(int index, int shift, String label, IconData icon) {
+  Widget _buildShiftDropdown(int index) {
     final entry = _entries[index];
-    final isSelected = entry.shift == shift;
+    final shiftOptions = [
+      {'value': 1, 'label': 'Day', 'icon': Icons.wb_sunny},
+      {'value': 2, 'label': 'Night', 'icon': Icons.nightlight},
+      {'value': 3, 'label': 'Day Night', 'icon': Icons.schedule},
+    ];
 
-    return GestureDetector(
-      onTap: () {
-        final newEntry = entry.copyWith(shift: shift);
-        _updateEntry(index, newEntry);
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 8,
-            tablet: 12,
-            desktop: 16,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Shift',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(
-            ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 8,
-              tablet: 12,
-              desktop: 16,
+        SizedBox(height: 6),
+        Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.borderColor, width: 1),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: entry.shift,
+              isExpanded: true,
+              icon: Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+              items: shiftOptions.map((option) {
+                return DropdownMenuItem<int>(
+                  value: option['value'] as int,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          option['icon'] as IconData,
+                          color: AppColors.primaryColor,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(option['label'] as String),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  final newEntry = entry.copyWith(shift: value);
+                  _updateEntry(index, newEntry);
+                }
+              },
             ),
           ),
-          border: Border.all(
-            color: isSelected 
-                ? AppColors.primaryColor
-                : AppColors.borderColor,
-            width: 1,
-          ),
         ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected 
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-              size: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 16,
-                tablet: 18,
-                desktop: 20,
-              ),
-            ),
-            SizedBox(
-              height: ResponsiveUtils.responsiveSpacing(
-                context,
-                mobile: 2,
-                tablet: 4,
-                desktop: 6,
-              ),
-            ),
-            Text(
-              label,
-              style: AppTypography.bodySmall.copyWith(
-                fontSize: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 8,
-                  tablet: 10,
-                  desktop: 12,
-                ),
-                              color: isSelected 
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 
-  void _showCategoryPicker(int index) async {
-    // Get list of already added category IDs to exclude them
-    final excludedCategoryIds = _entries
-        .where((entry) => entry.categoryId != 0)
-        .map((entry) => entry.categoryId)
-        .toList();
-
-    final selectedCategory = await CategoryPickerUtils.showCategoryPicker(
-      context: context,
-      siteId: widget.site.id,
-      allowedSubIds: [5], // Example: Only show categories with sub IDs 5, 6, 7
-      excludedCategoryIds: excludedCategoryIds, // Exclude already added categories
+  Widget _buildWorkerInput(String label, TextEditingController controller, Function(String) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 6),
+        Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.borderColor, width: 1),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: AppTypography.bodyMedium.copyWith(
+              fontSize: 16,
+              color: AppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              hintText: '0',
+              hintStyle: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary.withOpacity(0.6),
+                fontSize: 16,
+              ),
+              counterText: '', // Remove character counter
+            ),
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
-    
-    if (selectedCategory != null) {
-      final newEntry = _entries[index].copyWith(
-        categoryId: selectedCategory.id,
-        categoryName: selectedCategory.name, // Store the category name
-      );
-      _updateEntry(index, newEntry);
-    }
   }
 }
+

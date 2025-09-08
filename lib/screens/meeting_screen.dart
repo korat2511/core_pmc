@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
@@ -11,6 +10,7 @@ import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_search_bar.dart';
 import 'meeting_detail_screen.dart';
+import 'create_meeting_screen.dart';
 
 class MeetingScreen extends StatefulWidget {
   final SiteModel site;
@@ -28,7 +28,6 @@ class _MeetingScreenState extends State<MeetingScreen> {
   List<MeetingModel> _meetings = [];
   List<MeetingModel> _filteredMeetings = [];
   bool _isLoading = false;
-  bool _isRefreshing = false;
   final _searchController = TextEditingController();
 
   @override
@@ -75,15 +74,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
   }
 
   Future<void> _refreshMeetings() async {
-    setState(() {
-      _isRefreshing = true;
-    });
-
     await _loadMeetings();
-
-    setState(() {
-      _isRefreshing = false;
-    });
   }
 
   void _filterMeetings(String query) {
@@ -105,9 +96,46 @@ class _MeetingScreenState extends State<MeetingScreen> {
     }
   }
 
-  void _createMeeting() {
-    // TODO: Implement create meeting functionality
-    SnackBarUtils.showInfo(context, message: 'Create meeting functionality coming soon');
+  void _createMeeting() async {
+    final result = await NavigationUtils.push(
+      context,
+      CreateMeetingScreen(site: widget.site),
+    );
+    // If meeting was created successfully, refresh the list
+    if (result == true) {
+      await _loadMeetings();
+    }
+  }
+
+  Future<void> _updateMeetingInList(int meetingId) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token != null) {
+        final response = await ApiService.getMeetingDetail(
+          apiToken: token,
+          meetingId: meetingId,
+        );
+        
+        if (response != null && response.status == 1) {
+          setState(() {
+            // Update the specific meeting in the list
+            final index = _meetings.indexWhere((m) => m.id == meetingId);
+            if (index != -1) {
+              _meetings[index] = response.meetingDetail;
+            }
+            
+            // Also update in filtered list
+            final filteredIndex = _filteredMeetings.indexWhere((m) => m.id == meetingId);
+            if (filteredIndex != -1) {
+              _filteredMeetings[filteredIndex] = response.meetingDetail;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      // Silent fail - don't show error for background updates
+      print('Error updating meeting in list: $e');
+    }
   }
 
   @override
@@ -246,11 +274,15 @@ class _MeetingScreenState extends State<MeetingScreen> {
       color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 16),
       child: InkWell(
-        onTap: () {
-          NavigationUtils.push(
+        onTap: () async {
+          final result = await NavigationUtils.push(
             context,
             MeetingDetailScreen(meetingId: meeting.id),
           );
+          // If meeting was updated, refresh the specific meeting data
+          if (result == true) {
+            _updateMeetingInList(meeting.id);
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

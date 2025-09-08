@@ -4537,7 +4537,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         Text(
           value,
           style: AppTypography.bodyMedium.copyWith(
-            fontSize: 14,
+            fontSize: 13,
             color: isAction ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
             fontWeight: isAction ? FontWeight.w600 : FontWeight.w500,
           ),

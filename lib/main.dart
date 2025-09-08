@@ -13,6 +13,7 @@ import 'screens/create_site_screen.dart';
 import 'screens/task_details_screen.dart';
 import 'models/task_model.dart';
 import 'services/session_manager.dart';
+import 'services/force_update_manager.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
@@ -45,7 +46,7 @@ class MyApp extends StatelessWidget {
                 data: themeProvider.themeMode == ThemeMode.dark 
                     ? AppTheme.darkTheme 
                     : AppTheme.lightTheme,
-                child: child!,
+                child: ForceUpdateWrapper(child: child!),
               );
             },
             initialRoute: '/',
@@ -71,5 +72,30 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class ForceUpdateWrapper extends StatefulWidget {
+  final Widget child;
+
+  const ForceUpdateWrapper({Key? key, required this.child}) : super(key: key);
+
+  @override
+  State<ForceUpdateWrapper> createState() => _ForceUpdateWrapperState();
+}
+
+class _ForceUpdateWrapperState extends State<ForceUpdateWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    // Check for updates after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ForceUpdateManager.checkForUpdates(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

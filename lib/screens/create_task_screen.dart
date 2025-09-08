@@ -12,7 +12,6 @@ import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../core/utils/image_picker_utils.dart';
-import '../core/utils/date_picker_utils.dart';
 import '../core/utils/user_assignment_utils.dart';
 import '../core/utils/category_picker_utils.dart';
 import '../core/utils/qc_category_picker_utils.dart';
@@ -123,6 +122,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Future<void> _showAgencySelectionModal() async {
     if (_selectedCategory == null) return;
     
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     final result = await DecisionPendingFromUtils.showDecisionPendingFromPicker(
       context: context,
       catSubId: _selectedCategory!.catSubId,
@@ -138,6 +140,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _otherPendingByController.text = result['other'] ?? '';
       });
     }
+    
+    // Ensure keyboard stays dismissed after modal closes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
 
@@ -149,6 +156,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         showBackButton: true,
         showDrawer: false,
         onBackPressed: () {
+          FocusScope.of(context).unfocus(); // Dismiss keyboard first
           Navigator.pop(context, false); // Return false when user presses back
         },
       ),
@@ -156,11 +164,16 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           ? Center(
               child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
             )
-          : SingleChildScrollView(
-              padding: ResponsiveUtils.responsivePadding(context),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          : GestureDetector(
+              onTap: () {
+                // Dismiss keyboard when tapping outside
+                FocusScope.of(context).unfocus();
+              },
+              child: SingleChildScrollView(
+                padding: ResponsiveUtils.responsivePadding(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // Category Selection
                   _buildCategorySelection(),
                   SizedBox(height: 24),
@@ -191,6 +204,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 ],
               ),
             ),
+          ),
     );
   }
 
@@ -209,7 +223,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         SizedBox(height: 16),
 
           GestureDetector(
-            onTap: () => _showCategorySelectionModal(),
+            onTap: () {
+              FocusScope.of(context).unfocus(); // Dismiss keyboard first
+              _showCategorySelectionModal();
+            },
             child: Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -254,7 +271,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         SizedBox(height: 8),
         
         GestureDetector(
-          onTap: () => _showAgencySelectionModal(),
+          onTap: () {
+            FocusScope.of(context).unfocus(); // Dismiss keyboard first
+            _showAgencySelectionModal();
+          },
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -287,43 +307,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           children: [
             // Asking Date
             Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final dateString = await DatePickerUtils.pickDate(context: context);
-                  if (dateString != null) {
-                    setState(() {
-                      _askingDateController.text = dateString;
-                    });
-                  }
-                },
-                child: CustomTextField(
-                  controller: _askingDateController,
-                  label: 'Asking Date',
-                  hintText: 'Select asking date (optional)',
-                  readOnly: true,
-                  suffixIcon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
-                ),
+              child: CustomDatePickerField(
+                controller: _askingDateController,
+                label: 'Asking Date',
+                hintText: 'Select asking date (optional)',
               ),
             ),
             SizedBox(width: 16),
             // Requirement Date
             Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final dateString = await DatePickerUtils.pickDate(context: context);
-                  if (dateString != null) {
-                    setState(() {
-                      _requirementDateController.text = dateString;
-                    });
-                  }
-                },
-                child: CustomTextField(
-                  controller: _requirementDateController,
-                  label: 'Requirement Date',
-                  hintText: 'Select requirement date (optional)',
-                  readOnly: true,
-                  suffixIcon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
-                ),
+              child: CustomDatePickerField(
+                controller: _requirementDateController,
+                label: 'Requirement Date',
+                hintText: 'Select requirement date (optional)',
               ),
             ),
           ],
@@ -380,7 +376,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         SizedBox(height: 8),
 
           GestureDetector(
-            onTap: () => _showQcCategorySelectionModal(),
+            onTap: () {
+              FocusScope.of(context).unfocus(); // Dismiss keyboard first
+              _showQcCategorySelectionModal();
+            },
             child: Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -426,7 +425,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
         // Add Photos Button
         GestureDetector(
-          onTap: _pickImages,
+          onTap: () {
+            FocusScope.of(context).unfocus(); // Dismiss keyboard first
+            _pickImages();
+          },
           child: Container(
             width: 80,
             height: 80,
@@ -545,7 +547,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               child: _buildActionButton(
                 icon: Icons.mic,
                 label: 'Voice Notes',
-                onTap: () => _showVoiceNotesModal(),
+                onTap: () {
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard first
+                  _showVoiceNotesModal();
+                },
                 hasData: false, // TODO: Add voice notes functionality
               ),
             ),
@@ -554,7 +559,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               child: _buildActionButton(
                 icon: Icons.people,
                 label: 'Assign',
-                onTap: () => _showUserAssignmentModal(),
+                onTap: () {
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard first
+                  _showUserAssignmentModal();
+                },
                 hasData: _selectedUsers.isNotEmpty,
               ),
             ),
@@ -563,7 +571,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               child: _buildActionButton(
                 icon: Icons.note,
                 label: 'Remark',
-                onTap: () => _showAddDataModal('remark', 'Remark'),
+                onTap: () {
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard first
+                  _showAddDataModal('remark', 'Remark');
+                },
                 hasData: _remarkController.text.isNotEmpty,
               ),
             ),
@@ -576,7 +587,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               child: _buildActionButton(
                 icon: Icons.assignment,
                 label: 'Instructions',
-                onTap: () => _showAddDataModal('instructions', 'Instructions'),
+                onTap: () {
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard first
+                  _showAddDataModal('instructions', 'Instructions');
+                },
                 hasData: _instructionsController.text.isNotEmpty,
               ),
             ),
@@ -585,7 +599,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               child: _buildActionButton(
                 icon: Icons.comment,
                 label: 'Comments',
-                onTap: () => _showAddDataModal('comments', 'Comments'),
+                onTap: () {
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard first
+                  _showAddDataModal('comments', 'Comments');
+                },
                 hasData: _commentsController.text.isNotEmpty,
               ),
             ),
@@ -641,6 +658,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   void _showAddDataModal(String type, String title) {
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -653,10 +673,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
         child: _buildAddDataModal(type, title),
       ),
-    );
+    ).then((_) {
+      // Ensure keyboard stays dismissed after modal closes
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FocusScope.of(context).unfocus();
+      });
+    });
   }
 
   Widget _buildAddDataModal(String type, String title) {
+    // Create a focus node for the text field
+    final FocusNode textFieldFocusNode = FocusNode();
+    
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -702,6 +730,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 // Close button
                 GestureDetector(
                   onTap: () {
+                    textFieldFocusNode.dispose();
                     FocusScope.of(context).unfocus();
                     Navigator.pop(context, false); // Return false to indicate cancellation
                   },
@@ -722,7 +751,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               children: [
                 TextField(
                   controller: _getControllerForType(type),
+                  focusNode: textFieldFocusNode,
                   maxLines: 3,
+                  autofocus: true, // Automatically focus the text field
                   decoration: InputDecoration(
                     hintText: 'Enter $title',
                     border: OutlineInputBorder(
@@ -741,6 +772,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
+                      textFieldFocusNode.dispose();
                       Navigator.pop(context, false); // Return false to indicate cancellation
                     },
                     style: ElevatedButton.styleFrom(
@@ -803,6 +835,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   Future<void> _pickImages() async {
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     final List<File> images = await ImagePickerUtils.pickImages(
       context: context,
       chooseMultiple: true,
@@ -815,6 +850,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _selectedImages.addAll(images);
       });
     }
+    
+    // Ensure keyboard stays dismissed after image picker closes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   void _resetForm() {
@@ -836,6 +876,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   Future<void> _createTask() async {
+    // Dismiss keyboard first
+    FocusScope.of(context).unfocus();
+    
     // Validate required fields based on task type
     if (_selectedCategory == null) {
       SnackBarUtils.showError(context, message: 'Please select a category');
@@ -1008,6 +1051,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   // Modal Methods
   Future<void> _showCategorySelectionModal() async {
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     final selectedCategory = await CategoryPickerUtils.showCategoryPicker(
       context: context,
       siteId: widget.site.id,
@@ -1020,11 +1066,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _resetForm();
       });
     }
+    
+    // Ensure keyboard stays dismissed after modal closes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
 
 
   Future<void> _showQcCategorySelectionModal() async {
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     final selectedQcCategory = await QcCategoryPickerUtils.showQcCategoryPicker(
       context: context,
       selectedCategory: _selectedQcCategory,
@@ -1035,9 +1089,17 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _selectedQcCategory = selectedQcCategory;
       });
     }
+    
+    // Ensure keyboard stays dismissed after modal closes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   Future<void> _showUserAssignmentModal() async {
+    // Dismiss keyboard and remove focus from any text field
+    FocusScope.of(context).unfocus();
+    
     final selectedUsers = await UserAssignmentUtils.showSimpleUserAssignmentModal(
       context: context,
       siteId: widget.site.id,
@@ -1049,6 +1111,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _selectedUsers = selectedUsers;
       });
     }
+    
+    // Ensure keyboard stays dismissed after modal closes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
 

@@ -33,6 +33,7 @@ dependencies:
   provider: ^6.1.5+1
   firebase_core: ^4.0.0
   flutter_launcher_icons: ^0.14.4
+  smooth_compass_new: ^0.0.4
 
 dev_dependencies:
   flutter_test:

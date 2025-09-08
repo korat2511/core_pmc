@@ -6,7 +6,6 @@ import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../core/utils/navigation_utils.dart';
 import '../models/site_model.dart';
-import '../widgets/custom_app_bar.dart';
 import 'manage_user_screen.dart';
 import 'site_album_screen.dart';
 import 'site_category_screen.dart';
@@ -15,6 +14,7 @@ import 'site_qc_category_screen.dart';
 import 'site_vendor_screen.dart';
 import 'site_agency_screen.dart';
 import 'meeting_screen.dart';
+import 'quantity_screen.dart';
 
 
 class SiteMoreScreen extends StatefulWidget {
@@ -193,7 +193,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
           border: Border.all(color: AppColors.borderColor, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -287,10 +287,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         NavigationUtils.push(context, SiteQcCategoryScreen(site: widget.site));
         break;
       case 'Quantity':
-        SnackBarUtils.showInfo(
-          context,
-          message: 'Quantity functionality coming soon',
-        );
+        NavigationUtils.push(context, QuantityScreen(site: widget.site));
         break;
       case 'Tags':
         SnackBarUtils.showInfo(

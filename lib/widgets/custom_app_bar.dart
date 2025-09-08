@@ -1,3 +1,5 @@
+import 'package:core_pmc/core/utils/navigation_utils.dart';
+import 'package:core_pmc/screens/compass_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
@@ -13,6 +15,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   final bool showDrawer;
   final bool showBackButton;
+  final bool showCompass;
   final VoidCallback? onDrawerPressed;
   final VoidCallback? onNotificationPressed;
   final VoidCallback? onProfilePressed;
@@ -23,6 +26,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.actions,
     this.showDrawer = true,
+    this.showCompass = true,
     this.showBackButton = false,
     this.onDrawerPressed,
     this.onNotificationPressed,
@@ -193,17 +197,25 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
           ),
       actions: [
-        Consumer<ThemeProvider>(
-          builder: (context, themeProvider, child) {
-            return IconButton(
-              onPressed: () {
-                themeProvider.toggleTheme();
-              },
-              icon:Icon(themeProvider.isDarkMode
-                  ? Icons.light_mode
-                  : Icons.dark_mode),
-            );
-          },
+        // Consumer<ThemeProvider>(
+        //   builder: (context, themeProvider, child) {
+        //     return IconButton(
+        //       onPressed: () {
+        //         themeProvider.toggleTheme();
+        //       },
+        //       icon:Icon(themeProvider.isDarkMode
+        //           ? Icons.light_mode
+        //           : Icons.dark_mode),
+        //     );
+        //   },
+        // ),
+
+        if(showCompass) IconButton(
+          icon: const Icon(Icons.location_on_outlined),
+          onPressed: (){
+            NavigationUtils.push(context, CompassScreen());
+          }
+
         ),
 
         IconButton(

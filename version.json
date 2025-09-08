@@ -1,0 +1,10 @@
+{
+  "latest_version": "3.0.1",
+  "force_update": false,
+  "android_update_url": "https://pmcprojects.in",
+  "ios_update_url": "https://pmcprojects.in",
+  "android_play_store_url": "https://play.google.com/store/apps/details?id=com.pmcprojects.app",
+  "android_google_drive_url": "https://drive.google.com/file/d/your-file-id/view",
+  "ios_app_store_url": "https://apps.apple.com/app/your-app-id",
+  "ios_testflight_url": "https://testflight.apple.com/join/your-testflight-code"
+}

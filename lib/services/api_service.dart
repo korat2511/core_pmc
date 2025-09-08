@@ -3488,7 +3488,7 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
-      print('Get Meeting List API Response: ${response.statusCode} - ${response.body}');
+
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -3604,6 +3604,317 @@ class ApiService {
       }
     } catch (e) {
       print('Exception deleting attachment: $e');
+      return null;
+    }
+  }
+
+  // Get Element List API
+  static Future<Map<String, dynamic>?> getElementList({
+    required String apiToken,
+    required int siteId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/elementlist'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+        },
+      ).timeout(timeout);
+
+      print('Get Element List API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error getting element list: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting element list: $e');
+      return null;
+    }
+  }
+
+  // Store Element API
+  static Future<Map<String, dynamic>?> storeElement({
+    required String apiToken,
+    required int siteId,
+    required String name,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/storeElement'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+          'name': name,
+        },
+      ).timeout(timeout);
+
+      print('Store Element API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error storing element: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception storing element: $e');
+      return null;
+    }
+  }
+
+  // Get Stone Quantity API
+  static Future<Map<String, dynamic>?> getStoneQuantity({
+    required String apiToken,
+    required int siteElementId,
+    required int siteId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/getStoneQuantity'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+          'site_element_id': siteElementId.toString(),
+        },
+      ).timeout(timeout);
+
+      print('${siteElementId}');
+      print('Get Stone Quantity API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error getting stone quantity: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting stone quantity: $e');
+      return null;
+    }
+  }
+
+  // Add Stone Quantity API
+  static Future<Map<String, dynamic>?> addStoneQuantity({
+    required String apiToken,
+    required int siteId,
+    required int siteElementId,
+    required int siteLocationId,
+    required int stoneId,
+    String? code,
+    required double floorArea,
+    required String skirtingLength,
+    required String skirtingHeight,
+    required String skirtingSubtractLength,
+    required double skirtingArea,
+    required double counterTopAdditional,
+    required double wallArea,
+    required double totalCounterSkirtingWall,
+    required double total,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/stoneQuantity'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+          'site_element_id': siteElementId.toString(),
+          'site_location_id': siteLocationId.toString(),
+          'stone_id': stoneId.toString(),
+          'code': code ?? '',
+          'floor_area': floorArea.toString(),
+          'skirting_length': skirtingLength,
+          'skirting_height': skirtingHeight,
+          'skirting_subtract_length': skirtingSubtractLength,
+          'skirting_area': skirtingArea.toString(),
+          'counter_top_additional': counterTopAdditional.toString(),
+          'wall_area': wallArea.toString(),
+          'total_counter_skirting_wall': totalCounterSkirtingWall.toString(),
+          'total': total.toString(),
+        },
+      ).timeout(timeout);
+
+      print('Add Stone Quantity API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error adding stone quantity: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception adding stone quantity: $e');
+      return null;
+    }
+  }
+
+  // Get Stone List API
+  static Future<Map<String, dynamic>?> getStoneList({
+    required String apiToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/stoneList'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+        },
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error getting stone list: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting stone list: $e');
+      return null;
+    }
+  }
+
+  // Get Site Location List API
+  static Future<Map<String, dynamic>?> getSiteLocationList({
+    required String apiToken,
+    required int siteId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/siteLocationList'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+        },
+      ).timeout(timeout);
+
+      print('Get Site Location List API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error getting site location list: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception getting site location list: $e');
+      return null;
+    }
+  }
+
+  // Store Location API
+  static Future<Map<String, dynamic>?> storeLocation({
+    required String apiToken,
+    required int siteId,
+    required String name,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/storeLocation'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'site_id': siteId.toString(),
+          'name': name,
+        },
+      ).timeout(timeout);
+
+      print('Store Location API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error storing location: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception storing location: $e');
+      return null;
+    }
+  }
+
+  // Store Stone API
+  static Future<Map<String, dynamic>?> storeStone({
+    required String apiToken,
+    required String name,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/stone/storeStone'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': apiToken,
+          'name': name,
+        },
+      ).timeout(timeout);
+
+      print('Store Stone API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error storing stone: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception storing stone: $e');
+      return null;
+    }
+  }
+
+  // Save Meeting API
+  static Future<Map<String, dynamic>?> saveMeeting(Map<String, dynamic> meetingData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/saveMeeting'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(meetingData),
+      ).timeout(timeout);
+
+      print('Save Meeting API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error saving meeting: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception saving meeting: $e');
       return null;
     }
   }
@@ -4052,6 +4363,33 @@ class ApiService {
       }
     } catch (e) {
       return false;
+    }
+  }
+
+  // Update Meeting API
+  static Future<Map<String, dynamic>?> updateMeeting(Map<String, dynamic> updateData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/updateMeeting'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(updateData),
+      ).timeout(timeout);
+
+      print('Update Meeting API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        print('Error updating meeting: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception updating meeting: $e');
+      return null;
     }
   }
 } 

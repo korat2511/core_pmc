@@ -102,9 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
           : null,
       body: DismissKeyboard(
         child: RefreshIndicator(
-          onRefresh: _loadSites,
+        onRefresh: _loadSites,
           color: Theme.of(context).colorScheme.primary,
-          child: CustomScrollView(
+        child: CustomScrollView(
           slivers: [
 
             SliverToBoxAdapter(
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _buildStatusChip(context, 'All', '', SiteService.allSites.length),
+                          _buildStatusChip(context, 'All', '', _getStatusCount('', _getSitesForCounting())),
                           SizedBox(
                             width: ResponsiveUtils.responsiveSpacing(
                               context,
@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               desktop: 16,
                             ),
                           ),
-                          _buildStatusChip(context, 'Active', 'Active', SiteService.getActiveSites().length),
+                          _buildStatusChip(context, 'Active', 'Active', _getStatusCount('Active', _getSitesForCounting())),
                           SizedBox(
                             width: ResponsiveUtils.responsiveSpacing(
                               context,
@@ -150,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               desktop: 16,
                             ),
                           ),
-                          _buildStatusChip(context, 'Pending', 'Pending', SiteService.getPendingSites().length),
+                          _buildStatusChip(context, 'Pending', 'Pending', _getStatusCount('Pending', _getSitesForCounting())),
                           SizedBox(
                             width: ResponsiveUtils.responsiveSpacing(
                               context,
@@ -159,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               desktop: 16,
                             ),
                           ),
-                          _buildStatusChip(context, 'Complete', 'Complete', SiteService.getCompleteSites().length),
+                          _buildStatusChip(context, 'Complete', 'Complete', _getStatusCount('Complete', _getSitesForCounting())),
                           SizedBox(
                             width: ResponsiveUtils.responsiveSpacing(
                               context,
@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               desktop: 16,
                             ),
                           ),
-                          _buildStatusChip(context, 'Overdue', 'Overdue', SiteService.getOverdueSites().length),
+                          _buildStatusChip(context, 'Overdue', 'Overdue', _getStatusCount('Overdue', _getSitesForCounting())),
                         ],
                       ),
                     ),
@@ -295,9 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        ),
       ),
-    ),
-  );
+    );
   }
 
   void _updateSite(SiteModel updatedSite) {
@@ -311,18 +311,63 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
-  List<SiteModel> _getFilteredSites() {
-    List<SiteModel> filteredSites = SiteService.sites;
-
-    // Filter by search query
+  // Helper method to get filtered sites for counting (without affecting the main filtered list)
+  List<SiteModel> _getSitesForCounting() {
+    List<SiteModel> sitesToFilter = SiteService.allSites;
+    
+    // Only apply search filter for counting, not status filter
     if (_searchQuery.isNotEmpty) {
-      filteredSites = filteredSites.where((site) {
-        return site.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               (site.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+      sitesToFilter = sitesToFilter.where((site) {
+        final nameMatch = site.name.toLowerCase().contains(_searchQuery.toLowerCase());
+        final clientMatch = site.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+        return nameMatch || clientMatch;
       }).toList();
     }
+    
+    return sitesToFilter;
+  }
 
-    return filteredSites;
+  // Helper method to get status-specific counts from filtered sites
+  int _getStatusCount(String status, List<SiteModel> sites) {
+    if (status.isEmpty) return sites.length;
+    return sites.where((site) => site.status.toLowerCase() == status.toLowerCase()).length;
+  }
+
+  List<SiteModel> _getFilteredSites() {
+    List<SiteModel> sitesToFilter = SiteService.allSites;
+
+    // Debug logging
+    print('🔍 === SEARCH DEBUG ===');
+    print('📊 Total sites: ${sitesToFilter.length}');
+    print('🔍 Search query: "$_searchQuery"');
+    print('📋 Selected status: "$_selectedStatus"');
+
+    // First filter by status
+    if (_selectedStatus.isNotEmpty) {
+      sitesToFilter = sitesToFilter.where((site) {
+        return site.status.toLowerCase() == _selectedStatus.toLowerCase();
+      }).toList();
+      print('📊 After status filter: ${sitesToFilter.length} sites');
+    }
+
+    // Then filter by search query
+    if (_searchQuery.isNotEmpty) {
+      sitesToFilter = sitesToFilter.where((site) {
+        final nameMatch = site.name.toLowerCase().contains(_searchQuery.toLowerCase());
+        final clientMatch = site.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+        
+        // Debug individual site matching
+        if (nameMatch || clientMatch) {
+          print('✅ Site "${site.name}" matches search "$_searchQuery"');
+        }
+        
+        return nameMatch || clientMatch;
+      }).toList();
+      print('📊 After search filter: ${sitesToFilter.length} sites');
+    }
+
+    print('🔍 === END SEARCH DEBUG ===');
+    return sitesToFilter;
   }
 
   Widget _buildStatusChip(BuildContext context, String label, String status, int count) {
@@ -385,33 +430,4 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
-  Widget _buildFilterChip(BuildContext context, String label, String status) {
-    final isSelected = _selectedStatus == status;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedStatus = selected ? status : '';
-        });
-        _loadSites();
-      },
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-      labelStyle: AppTypography.bodyMedium.copyWith(
-        fontSize: ResponsiveUtils.responsiveFontSize(
-          context,
-          mobile: 12,
-          tablet: 14,
-          desktop: 16,
-        ),
-        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      side: BorderSide(
-        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
-        width: 1,
-      ),
-    );
-  }
 } 

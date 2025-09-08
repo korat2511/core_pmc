@@ -23,12 +23,355 @@ class MeetingDetailScreen extends StatefulWidget {
 class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   MeetingModel? _meeting;
   bool _isLoading = false;
-  bool _isRefreshing = false;
+  bool _isEditing = false;
+  bool _isUpdating = false;
+
+  // Editable fields
+  late TextEditingController _architectCompanyController;
+  late TextEditingController _meetingPlaceController;
+  late TextEditingController _meetingDateTimeController;
+  late List<String> _editableClients;
+  late List<String> _editableArchitects;
+  late List<String> _editablePmcMembers;
+  late List<String> _editableContractors;
+  late List<MeetingDiscussionModel> _editableDiscussions;
 
   @override
   void initState() {
     super.initState();
+    _architectCompanyController = TextEditingController();
+    _meetingPlaceController = TextEditingController();
+    _meetingDateTimeController = TextEditingController();
     _loadMeetingDetail();
+  }
+
+  @override
+  void dispose() {
+    _architectCompanyController.dispose();
+    _meetingPlaceController.dispose();
+    _meetingDateTimeController.dispose();
+    super.dispose();
+  }
+
+  void _initializeEditableFields() {
+    if (_meeting != null) {
+      _architectCompanyController.text = _meeting!.architectCompany;
+      _meetingPlaceController.text = _meeting!.meetingPlace ?? '';
+      
+      // Format the date time to remove seconds if present
+      String dateTimeString = _meeting!.meetingDateTime;
+      try {
+        // If the date includes seconds, remove them
+        if (dateTimeString.contains(':')) {
+          final parts = dateTimeString.split(' ');
+          if (parts.length == 2) {
+            final datePart = parts[0];
+            final timePart = parts[1];
+            // Remove seconds from time part (e.g., "12:05:00" -> "12:05")
+            if (timePart.split(':').length == 3) {
+              final timeComponents = timePart.split(':');
+              final formattedTime = '${timeComponents[0]}:${timeComponents[1]}';
+              dateTimeString = '$datePart $formattedTime';
+            }
+          }
+        }
+      } catch (e) {
+        // If parsing fails, use original string
+      }
+      
+      _meetingDateTimeController.text = dateTimeString;
+      _editableClients = List.from(_meeting!.clients);
+      _editableArchitects = List.from(_meeting!.architects);
+      _editablePmcMembers = List.from(_meeting!.pmcMembers);
+      _editableContractors = List.from(_meeting!.contractors);
+      _editableDiscussions = List.from(_meeting!.meetingDiscussions);
+    }
+  }
+
+  void _updateLocalMeetingData() {
+    if (_meeting != null) {
+      // Update the meeting model with new data from controllers
+      final updatedMeeting = MeetingModel(
+        id: _meeting!.id,
+        siteId: _meeting!.siteId,
+        userId: _meeting!.userId,
+        architectCompany: _architectCompanyController.text.trim(),
+        meetingPlace: _meetingPlaceController.text.trim().isEmpty ? null : _meetingPlaceController.text.trim(),
+        meetingDateTime: _meetingDateTimeController.text.trim(),
+        clients: _editableClients,
+        architects: _editableArchitects,
+        pmcMembers: _editablePmcMembers,
+        contractors: _editableContractors,
+        meetingDiscussions: _editableDiscussions.where((d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty).toList(),
+        createdAt: _meeting!.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        pdfReportUrl: _meeting!.pdfReportUrl,
+      );
+      
+      setState(() {
+        _meeting = updatedMeeting;
+      });
+    }
+  }
+
+  void _removeDiscussionPointLocally(int discussionId) {
+    if (_meeting != null) {
+      // Remove from both editable and main meeting discussions
+      _editableDiscussions.removeWhere((d) => d.id == discussionId);
+      
+      final updatedDiscussions = _meeting!.meetingDiscussions.where((d) => d.id != discussionId).toList();
+      
+      final updatedMeeting = MeetingModel(
+        id: _meeting!.id,
+        siteId: _meeting!.siteId,
+        userId: _meeting!.userId,
+        architectCompany: _meeting!.architectCompany,
+        meetingPlace: _meeting!.meetingPlace,
+        meetingDateTime: _meeting!.meetingDateTime,
+        clients: _meeting!.clients,
+        architects: _meeting!.architects,
+        pmcMembers: _meeting!.pmcMembers,
+        contractors: _meeting!.contractors,
+        meetingDiscussions: updatedDiscussions,
+        createdAt: _meeting!.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        pdfReportUrl: _meeting!.pdfReportUrl,
+      );
+      
+      setState(() {
+        _meeting = updatedMeeting;
+      });
+    }
+  }
+
+  void _removeAttachmentLocally(int attachmentId) {
+    if (_meeting != null) {
+      // Remove attachment from discussions
+      final updatedDiscussions = _meeting!.meetingDiscussions.map((discussion) {
+        if (discussion.meetingAttachment?.id == attachmentId) {
+          return MeetingDiscussionModel(
+            id: discussion.id,
+            meetingId: discussion.meetingId,
+            discussionAction: discussion.discussionAction,
+            actionBy: discussion.actionBy,
+            remarks: discussion.remarks,
+            createdAt: discussion.createdAt,
+            updatedAt: discussion.updatedAt,
+            deletedAt: discussion.deletedAt,
+            meetingAttachment: null,
+          );
+        }
+        return discussion;
+      }).toList();
+      
+      // Also update editable discussions
+      _editableDiscussions = _editableDiscussions.map((discussion) {
+        if (discussion.meetingAttachment?.id == attachmentId) {
+          return MeetingDiscussionModel(
+            id: discussion.id,
+            meetingId: discussion.meetingId,
+            discussionAction: discussion.discussionAction,
+            actionBy: discussion.actionBy,
+            remarks: discussion.remarks,
+            createdAt: discussion.createdAt,
+            updatedAt: discussion.updatedAt,
+            deletedAt: discussion.deletedAt,
+            meetingAttachment: null,
+          );
+        }
+        return discussion;
+      }).toList();
+      
+      final updatedMeeting = MeetingModel(
+        id: _meeting!.id,
+        siteId: _meeting!.siteId,
+        userId: _meeting!.userId,
+        architectCompany: _meeting!.architectCompany,
+        meetingPlace: _meeting!.meetingPlace,
+        meetingDateTime: _meeting!.meetingDateTime,
+        clients: _meeting!.clients,
+        architects: _meeting!.architects,
+        pmcMembers: _meeting!.pmcMembers,
+        contractors: _meeting!.contractors,
+        meetingDiscussions: updatedDiscussions,
+        createdAt: _meeting!.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        pdfReportUrl: _meeting!.pdfReportUrl,
+      );
+      
+      setState(() {
+        _meeting = updatedMeeting;
+      });
+    }
+  }
+
+  void _addAttachmentLocally(int discussionId, dynamic attachmentData) {
+    if (_meeting != null && attachmentData != null) {
+      // Create new attachment model
+      final newAttachment = MeetingAttachmentModel(
+        id: attachmentData['id'] ?? DateTime.now().millisecondsSinceEpoch,
+        meetingDiscussionId: discussionId,
+        file: attachmentData['file'] ?? '',
+        filePath: attachmentData['file_path'] ?? attachmentData['file'] ?? '',
+      );
+      
+      // Update discussions with new attachment
+      final updatedDiscussions = _meeting!.meetingDiscussions.map((discussion) {
+        if (discussion.id == discussionId) {
+          return MeetingDiscussionModel(
+            id: discussion.id,
+            meetingId: discussion.meetingId,
+            discussionAction: discussion.discussionAction,
+            actionBy: discussion.actionBy,
+            remarks: discussion.remarks,
+            createdAt: discussion.createdAt,
+            updatedAt: discussion.updatedAt,
+            deletedAt: discussion.deletedAt,
+            meetingAttachment: newAttachment,
+          );
+        }
+        return discussion;
+      }).toList();
+      
+      // Also update editable discussions
+      _editableDiscussions = _editableDiscussions.map((discussion) {
+        if (discussion.id == discussionId) {
+          return MeetingDiscussionModel(
+            id: discussion.id,
+            meetingId: discussion.meetingId,
+            discussionAction: discussion.discussionAction,
+            actionBy: discussion.actionBy,
+            remarks: discussion.remarks,
+            createdAt: discussion.createdAt,
+            updatedAt: discussion.updatedAt,
+            deletedAt: discussion.deletedAt,
+            meetingAttachment: newAttachment,
+          );
+        }
+        return discussion;
+      }).toList();
+      
+      final updatedMeeting = MeetingModel(
+        id: _meeting!.id,
+        siteId: _meeting!.siteId,
+        userId: _meeting!.userId,
+        architectCompany: _meeting!.architectCompany,
+        meetingPlace: _meeting!.meetingPlace,
+        meetingDateTime: _meeting!.meetingDateTime,
+        clients: _meeting!.clients,
+        architects: _meeting!.architects,
+        pmcMembers: _meeting!.pmcMembers,
+        contractors: _meeting!.contractors,
+        meetingDiscussions: updatedDiscussions,
+        createdAt: _meeting!.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        pdfReportUrl: _meeting!.pdfReportUrl,
+      );
+      
+      setState(() {
+        _meeting = updatedMeeting;
+      });
+    }
+  }
+
+  Future<void> _updateMeeting() async {
+    if (_meeting == null) return;
+
+    setState(() {
+      _isUpdating = true;
+    });
+
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
+        return;
+      }
+
+      // Prepare the update data
+      final updateData = {
+        'api_token': token,
+        'site_id': _meeting!.siteId.toString(),
+        'meeting_id': _meeting!.id.toString(),
+        'architect_company': _architectCompanyController.text.trim(),
+        'meeting_date_time': _meetingDateTimeController.text.trim(),
+        'clients': _editableClients,
+        'architects': _editableArchitects,
+        'pmc_members': _editablePmcMembers,
+        'contractors': _editableContractors,
+        'meeting_discussions': _editableDiscussions
+            .where(
+              (d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty,
+            ) // Filter out empty discussions
+            .where(
+              (d) => d.id > 999999999, // Only new discussions (temporary IDs)
+            ) // Only send new discussion points
+            .map(
+              (d) => {
+                'discussion_action': d.discussionAction,
+                'action_by': d.actionBy,
+                'remarks': d.remarks,
+                'meeting_attachment': d.meetingAttachment != null
+                    ? {
+                        'id': d.meetingAttachment!.id,
+                        'file': d.meetingAttachment!.file,
+                      }
+                    : null,
+              },
+            )
+            .toList(),
+      };
+
+      // Validate date format before sending to API
+      final dateTimeString = _meetingDateTimeController.text.trim();
+      if (!_isValidDateTimeFormat(dateTimeString)) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Invalid date format. Please use YYYY-MM-DD HH:mm format',
+        );
+        return;
+      }
+
+      // Debug: Print the date format being sent
+      print('Meeting date time being sent: "$dateTimeString"');
+      
+      // Debug: Print new discussion points count
+      final newDiscussions = _editableDiscussions
+          .where((d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty)
+          .where((d) => d.id > 999999999)
+          .toList();
+      print('Sending ${newDiscussions.length} new discussion points');
+
+      final response = await ApiService.updateMeeting(updateData);
+
+      if (response != null && response['status'] == 1) {
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'Meeting updated successfully',
+        );
+        setState(() {
+          _isEditing = false;
+        });
+        // Update local data without full reload
+        _updateLocalMeetingData();
+        // Return true to indicate meeting was updated
+        Navigator.of(context).pop(true);
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response?['message'] ?? 'Failed to update meeting',
+        );
+      }
+    } catch (e) {
+      SnackBarUtils.showError(context, message: 'Error updating meeting: $e');
+    } finally {
+      setState(() {
+        _isUpdating = false;
+      });
+    }
   }
 
   Future<void> _loadMeetingDetail() async {
@@ -48,6 +391,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           setState(() {
             _meeting = response.meetingDetail;
           });
+          _initializeEditableFields();
         } else {
           SnackBarUtils.showError(
             context,
@@ -69,22 +413,32 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Future<void> _refreshMeetingDetail() async {
     setState(() {
-      _isRefreshing = true;
     });
 
     await _loadMeetingDetail();
 
     setState(() {
-      _isRefreshing = false;
     });
   }
 
-  void _addDiscussionPoint() {
-    // TODO: Implement add discussion point functionality
-    SnackBarUtils.showInfo(
-      context,
-      message: 'Add discussion point functionality coming soon',
+
+  void _addNewDiscussionPoint() {
+    final newDiscussion = MeetingDiscussionModel(
+      id: DateTime.now().millisecondsSinceEpoch,
+      // Temporary ID
+      meetingId: _meeting!.id,
+      discussionAction: '',
+      actionBy: '',
+      remarks: 'NA',
+      createdAt: DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now().toIso8601String(),
+      deletedAt: null,
+      meetingAttachment: null,
     );
+
+    setState(() {
+      _editableDiscussions.add(newDiscussion);
+    });
   }
 
   Future<void> _deleteDiscussionPoint(int discussionId) async {
@@ -119,16 +473,17 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
+        return const Center(child: CircularProgressIndicator());
       },
     );
 
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
         return;
       }
 
@@ -141,16 +496,25 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       Navigator.of(context).pop();
 
       if (response != null && response['status'] == 1) {
-        SnackBarUtils.showSuccess(context, message: 'Discussion point deleted successfully');
-        // Refresh the meeting details
-        await _loadMeetingDetail();
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'Discussion point deleted successfully',
+        );
+        // Update local data without full reload
+        _removeDiscussionPointLocally(discussionId);
       } else {
-        SnackBarUtils.showError(context, message: response?['message'] ?? 'Failed to delete discussion point');
+        SnackBarUtils.showError(
+          context,
+          message: response?['message'] ?? 'Failed to delete discussion point',
+        );
       }
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
-      SnackBarUtils.showError(context, message: 'Error deleting discussion point: $e');
+      SnackBarUtils.showError(
+        context,
+        message: 'Error deleting discussion point: $e',
+      );
     }
   }
 
@@ -160,7 +524,19 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       final files = await ImagePickerUtils.pickDocumentsWithSource(
         context: context,
         maxFiles: 1,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'rtf', 'jpg', 'jpeg', 'png', 'gif'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'txt',
+          'rtf',
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+        ],
       );
 
       if (files.isEmpty) return;
@@ -183,7 +559,10 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       try {
         final token = await AuthService.currentToken;
         if (token == null) {
-          SnackBarUtils.showError(context, message: 'Authentication token not found');
+          SnackBarUtils.showError(
+            context,
+            message: 'Authentication token not found',
+          );
           return;
         }
 
@@ -197,16 +576,25 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         Navigator.of(context).pop();
 
         if (response != null && response['status'] == 1) {
-          SnackBarUtils.showSuccess(context, message: 'Attachment uploaded successfully');
-          // Refresh the meeting details
-          await _loadMeetingDetail();
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'Attachment uploaded successfully',
+          );
+          // Update local data without full reload
+          _addAttachmentLocally(discussionId, response['data']);
         } else {
-          SnackBarUtils.showError(context, message: response?['message'] ?? 'Failed to upload attachment');
+          SnackBarUtils.showError(
+            context,
+            message: response?['message'] ?? 'Failed to upload attachment',
+          );
         }
       } catch (e) {
         // Close loading dialog
         Navigator.of(context).pop();
-        SnackBarUtils.showError(context, message: 'Error uploading attachment: $e');
+        SnackBarUtils.showError(
+          context,
+          message: 'Error uploading attachment: $e',
+        );
       }
     } catch (e) {
       SnackBarUtils.showError(context, message: 'Error selecting file: $e');
@@ -245,16 +633,17 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
+        return const Center(child: CircularProgressIndicator());
       },
     );
 
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
         return;
       }
 
@@ -267,28 +656,29 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       Navigator.of(context).pop();
 
       if (response != null && response['status'] == 1) {
-        SnackBarUtils.showSuccess(context, message: 'Attachment deleted successfully');
-        // Refresh the meeting details
-        await _loadMeetingDetail();
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'Attachment deleted successfully',
+        );
+        // Update local data without full reload
+        _removeAttachmentLocally(attachmentId);
       } else {
-        SnackBarUtils.showError(context, message: response?['message'] ?? 'Failed to delete attachment');
+        SnackBarUtils.showError(
+          context,
+          message: response?['message'] ?? 'Failed to delete attachment',
+        );
       }
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
-      SnackBarUtils.showError(context, message: 'Error deleting attachment: $e');
-    }
-  }
-
-  void _openPdfReport() {
-    if (_meeting?.pdfReportUrl.isNotEmpty == true) {
-      // TODO: Implement PDF opening functionality
-      SnackBarUtils.showInfo(
+      SnackBarUtils.showError(
         context,
-        message: 'PDF report opening functionality coming soon',
+        message: 'Error deleting attachment: $e',
       );
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -300,41 +690,65 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       ),
 
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(
-              color: Theme.of(context).colorScheme.primary,
-            ))
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
           : _meeting == null
           ? Center(child: Text('Meeting not found'))
           : RefreshIndicator(
               onRefresh: _refreshMeetingDetail,
               color: Theme.of(context).colorScheme.primary,
-                             child: SingleChildScrollView(
-                 padding: ResponsiveUtils.responsivePadding(context),
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     _buildMeetingHeader(),
-                     SizedBox(height: 16),
-                     _buildMeetingInfo(),
-                     SizedBox(height: 16),
-                     _buildParticipantsSection(),
-                     SizedBox(height: 16),
-                     _buildDiscussionsSection(),
-                     // Add bottom padding to ensure content is not hidden behind FAB
-                     SizedBox(height: 100),
-                   ],
-                 ),
-               ),
+              child: SingleChildScrollView(
+                padding: ResponsiveUtils.responsivePadding(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMeetingHeader(),
+                    SizedBox(height: 16),
+                    _buildMeetingInfo(),
+                    SizedBox(height: 16),
+                    _buildParticipantsSection(),
+                    SizedBox(height: 16),
+                    _buildDiscussionsSection(),
+                    // Add bottom padding to ensure content is not hidden behind FAB
+                    SizedBox(height: 100),
+                  ],
+                ),
+              ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addDiscussionPoint,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        icon: Icon(Icons.add),
-        label: Text('Add Discussion'),
-      ),
+      floatingActionButton: _isEditing
+          ? FloatingActionButton.extended(
+              onPressed: _isUpdating ? null : _updateMeeting,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              icon: _isUpdating
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(Icons.save),
+              label: Text(_isUpdating ? 'Saving...' : 'Save Changes'),
+            )
+          : FloatingActionButton.extended(
+              onPressed: () {
+                setState(() {
+                  _isEditing = true;
+                });
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              icon: Icon(Icons.add),
+              label: Text('Add or Edit'),
+            ),
     );
   }
+
 
   Widget _buildMeetingHeader() {
     return Card(
@@ -359,7 +773,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.green),
                   ),
@@ -419,38 +833,60 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Meeting Information',
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Meeting Information',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: 12),
 
             // Architect Company
-            _buildInfoRow(
+            _buildEditableInfoRow(
               icon: Icons.business,
               label: 'Architect Company',
-              value: _meeting!.architectCompany,
+              controller: _architectCompanyController,
+              isEditing: _isEditing,
             ),
 
             SizedBox(height: 8),
 
             // Meeting Place
-            if (_meeting!.meetingPlace != null &&
-                _meeting!.meetingPlace!.isNotEmpty)
+            _buildEditableInfoRow(
+              icon: Icons.location_on,
+              label: 'Meeting Place',
+              controller: _meetingPlaceController,
+              isEditing: _isEditing,
+              isOptional: true,
+            ),
+
+            SizedBox(height: 8),
+
+            // Meeting Date & Time
+            if (_isEditing)
+              _buildEditableInfoRow(
+                icon: Icons.access_time,
+                label: 'Meeting Date & Time',
+                controller: _meetingDateTimeController,
+                isEditing: _isEditing,
+                onTap: _selectDateTime,
+              )
+            else
               _buildInfoRow(
-                icon: Icons.location_on,
-                label: 'Meeting Place',
-                value: _meeting!.meetingPlace!,
+                icon: Icons.access_time,
+                label: 'Meeting Date & Time',
+                value: '${_meeting!.formattedDate} ${_meeting!.formattedTime}',
               ),
 
-            if (_meeting!.meetingPlace != null &&
-                _meeting!.meetingPlace!.isNotEmpty)
-              SizedBox(height: 8),
+            SizedBox(height: 8),
 
-            // Created Date
+            // Created Date (Read-only)
             _buildInfoRow(
               icon: Icons.schedule,
               label: 'Created',
@@ -470,7 +906,11 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -497,6 +937,215 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     );
   }
 
+  Widget _buildEditableInfoRow({
+    required IconData icon,
+    required String label,
+    required TextEditingController controller,
+    required bool isEditing,
+    bool isOptional = false,
+    VoidCallback? onTap,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: 2),
+              if (isEditing)
+                GestureDetector(
+                  onTap: onTap,
+                  child: TextFormField(
+                    controller: controller,
+                    enabled: onTap == null,
+                    // Disable if it has onTap (like date picker)
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                      hintText: isOptional ? 'Optional' : 'Enter $label',
+                    ),
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  controller.text.isEmpty
+                      ? (isOptional ? 'Not specified' : 'N/A')
+                      : controller.text,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: controller.text.isEmpty
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    try {
+      final y = dt.year.toString().padLeft(4, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final d = dt.day.toString().padLeft(2, '0');
+      final h = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      // Ensure format matches API expectation exactly: "YYYY-MM-DD HH:mm" (NO SECONDS)
+      final formatted = "$y-$m-$d $h:$min";
+      if (!_isValidDateTimeFormat(formatted)) {
+        throw Exception('Generated date format is invalid: $formatted');
+      }
+      return formatted;
+    } catch (e) {
+      throw Exception('Invalid date format. Please use YYYY-MM-DD HH:mm format');
+    }
+  }
+
+  bool _isValidDateTimeFormat(String dateTimeString) {
+    try {
+      // Check if the format matches YYYY-MM-DD HH:mm exactly
+      final regex = RegExp(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$');
+      if (!regex.hasMatch(dateTimeString)) {
+        return false;
+      }
+      
+      // Try to parse the date to ensure it's valid
+      final parts = dateTimeString.split(' ');
+      if (parts.length != 2) return false;
+      
+      final datePart = parts[0];
+      final timePart = parts[1];
+      
+      final dateComponents = datePart.split('-');
+      final timeComponents = timePart.split(':');
+      
+      if (dateComponents.length != 3 || timeComponents.length != 2) {
+        return false;
+      }
+      
+      final year = int.parse(dateComponents[0]);
+      final month = int.parse(dateComponents[1]);
+      final day = int.parse(dateComponents[2]);
+      final hour = int.parse(timeComponents[0]);
+      final minute = int.parse(timeComponents[1]);
+      
+      // Validate ranges
+      if (year < 2000 || year > 2100) return false;
+      if (month < 1 || month > 12) return false;
+      if (day < 1 || day > 31) return false;
+      if (hour < 0 || hour > 23) return false;
+      if (minute < 0 || minute > 59) return false;
+      
+      // Try to create a DateTime to ensure it's valid
+      DateTime(year, month, day, hour, minute);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _selectDateTime() async {
+    // Parse current date from controller to set initial values
+    DateTime initialDate = DateTime.now();
+    TimeOfDay initialTime = TimeOfDay.now();
+
+    if (_meetingDateTimeController.text.isNotEmpty) {
+      try {
+        // Try to parse the current date format
+        String dateTimeText = _meetingDateTimeController.text;
+        
+        // If the time has seconds, remove them for parsing
+        if (dateTimeText.contains(':')) {
+          final parts = dateTimeText.split(' ');
+          if (parts.length == 2) {
+            final datePart = parts[0];
+            final timePart = parts[1];
+            // Remove seconds if present (e.g., "12:05:00" -> "12:05")
+            if (timePart.split(':').length == 3) {
+              final timeComponents = timePart.split(':');
+              final formattedTime = '${timeComponents[0]}:${timeComponents[1]}';
+              dateTimeText = '$datePart $formattedTime';
+            }
+          }
+        }
+        
+        final currentDateTime = DateTime.parse('${dateTimeText.split(' ')[0]}T${dateTimeText.split(' ')[1]}:00');
+        initialDate = currentDateTime;
+        initialTime = TimeOfDay(
+          hour: currentDateTime.hour,
+          minute: currentDateTime.minute,
+        );
+      } catch (e) {
+        // If parsing fails, use current date/time
+      }
+    }
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: initialTime,
+      );
+
+      if (pickedTime != null) {
+        // Use the robust formatting method
+        final combinedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        
+        try {
+          final formattedDateTime = _formatDateTime(combinedDateTime);
+          setState(() {
+            _meetingDateTimeController.text = formattedDateTime;
+          });
+        } catch (e) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Error formatting date: ${e.toString()}',
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildParticipantsSection() {
     return Card(
       color: Theme.of(context).colorScheme.surface,
@@ -514,24 +1163,148 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             ),
             SizedBox(height: 12),
 
-            // Simple list format
-            if (_meeting!.clients.isNotEmpty)
-              _buildSimpleParticipantGroup('Clients', _meeting!.clients),
-
-            if (_meeting!.architects.isNotEmpty)
-              _buildSimpleParticipantGroup('Architects', _meeting!.architects),
-
-            if (_meeting!.pmcMembers.isNotEmpty)
-              _buildSimpleParticipantGroup('PMC Members', _meeting!.pmcMembers),
-
-            if (_meeting!.contractors.isNotEmpty &&
-                _meeting!.contractors.any((c) => c != 'NA'))
-              _buildSimpleParticipantGroup(
-                'Contractors',
-                _meeting!.contractors.where((c) => c != 'NA').toList(),
-              ),
+            // Editable participants
+            if (_isEditing)
+              _buildEditableParticipants()
+            else
+              _buildReadOnlyParticipants(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyParticipants() {
+    return Column(
+      children: [
+        if (_meeting!.clients.isNotEmpty)
+          _buildSimpleParticipantGroup('Clients', _meeting!.clients),
+
+        if (_meeting!.architects.isNotEmpty)
+          _buildSimpleParticipantGroup('Architects', _meeting!.architects),
+
+        if (_meeting!.pmcMembers.isNotEmpty)
+          _buildSimpleParticipantGroup('PMC Members', _meeting!.pmcMembers),
+
+        if (_meeting!.contractors.isNotEmpty &&
+            _meeting!.contractors.any((c) => c != 'NA'))
+          _buildSimpleParticipantGroup(
+            'Contractors',
+            _meeting!.contractors.where((c) => c != 'NA').toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEditableParticipants() {
+    return Column(
+      children: [
+        _buildEditableParticipantGroup('Clients', _editableClients),
+        SizedBox(height: 8),
+        _buildEditableParticipantGroup('Architects', _editableArchitects),
+        SizedBox(height: 8),
+        _buildEditableParticipantGroup('PMC Members', _editablePmcMembers),
+        SizedBox(height: 8),
+        _buildEditableParticipantGroup('Contractors', _editableContractors),
+      ],
+    );
+  }
+
+  Widget _buildEditableParticipantGroup(
+    String title,
+    List<String> participants,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AppTypography.bodySmall.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          child: Wrap(
+            spacing: ResponsiveUtils.isPhone(context) ? 4 : 8,
+            runSpacing: ResponsiveUtils.isPhone(context) ? 2 : 4,
+            children: [
+              ...participants.map(
+                (participant) => ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: ResponsiveUtils.isPhone(context) ? 120 : 150,
+                  ),
+                  child: Chip(
+                    label: Text(
+                      participant,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: ResponsiveUtils.isPhone(context) ? 12 : 14,
+                      ),
+                    ),
+                    deleteIcon: Icon(
+                      Icons.close,
+                      size: ResponsiveUtils.isPhone(context) ? 14 : 16,
+                    ),
+                    onDeleted: () {
+                      setState(() {
+                        participants.remove(participant);
+                      });
+                    },
+                  ),
+                ),
+              ),
+              ActionChip(
+                label: Text('+ Add'),
+                onPressed: () => _addParticipant(title, participants),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                labelStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontSize: ResponsiveUtils.isPhone(context) ? 12 : 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _addParticipant(String groupTitle, List<String> participants) {
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add $groupTitle'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: 'Name',
+            hintText: 'Enter $groupTitle name',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                setState(() {
+                  participants.add(name);
+                });
+                Navigator.of(context).pop();
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
       ),
     );
   }
@@ -545,11 +1318,11 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           SizedBox(
             width: 80,
             child: Text(
-                              '$title:',
-                style: AppTypography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              '$title:',
+              style: AppTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(
@@ -573,8 +1346,8 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Discussion Points',
@@ -583,60 +1356,130 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                Text(
-                  '${_meeting!.meetingDiscussions.length} points',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_isEditing ? _editableDiscussions.length : _meeting!.meetingDiscussions.length} points',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (_isEditing)
+                      IconButton(
+                        onPressed: _addNewDiscussionPoint,
+                        icon: Icon(
+                          Icons.add_circle,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        tooltip: 'Add Discussion Point',
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                  ],
                 ),
               ],
             ),
             SizedBox(height: 16),
 
-            if (_meeting!.meetingDiscussions.isEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'No discussion points yet',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Tap the + button to add a discussion point',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: _meeting!.meetingDiscussions.length,
-                itemBuilder: (context, index) {
-                  final discussion = _meeting!.meetingDiscussions[index];
-                  return _buildDiscussionCard(discussion);
-                },
-              ),
+            _buildDiscussionsList(),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildDiscussionsList() {
+    if (_isEditing) {
+      // Show editable discussions
+      if (_editableDiscussions.isEmpty) {
+        return Center(
+          child: Column(
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 48,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'No discussion points yet',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Tap the + button to add a discussion point',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        return ListView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: _editableDiscussions.length,
+          itemBuilder: (context, index) {
+            final discussion = _editableDiscussions[index];
+            return _buildDiscussionCard(discussion);
+          },
+        );
+      }
+    } else {
+      // Show read-only discussions
+      if (_meeting!.meetingDiscussions.isEmpty) {
+        return Center(
+          child: Column(
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 48,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'No discussion points yet',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Tap the + button to add a discussion point',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        return ListView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: _meeting!.meetingDiscussions.length,
+          itemBuilder: (context, index) {
+            final discussion = _meeting!.meetingDiscussions[index];
+            return _buildDiscussionCard(discussion);
+          },
+        );
+      }
+    }
+  }
+
   Widget _buildDiscussionCard(MeetingDiscussionModel discussion) {
+    final int discussionIndex = _editableDiscussions.indexWhere(
+      (d) => d.id == discussion.id,
+    );
+    final bool isEditable = _isEditing && discussionIndex != -1;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -653,50 +1496,187 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      discussion.discussionAction,
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.person,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isEditable)
+                        TextFormField(
+                          initialValue: discussion.discussionAction,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            hintText: 'Discussion action',
+                          ),
+                          onChanged: (value) {
+                            if (discussionIndex != -1) {
+                              final discussion =
+                                  _editableDiscussions[discussionIndex];
+                              _editableDiscussions[discussionIndex] =
+                                  MeetingDiscussionModel(
+                                    id: discussion.id,
+                                    meetingId: discussion.meetingId,
+                                    discussionAction: value,
+                                    actionBy: discussion.actionBy,
+                                    remarks: discussion.remarks,
+                                    createdAt: discussion.createdAt,
+                                    updatedAt: discussion.updatedAt,
+                                    deletedAt: discussion.deletedAt,
+                                    meetingAttachment:
+                                        discussion.meetingAttachment,
+                                  );
+                            }
+                          },
+                        )
+                      else
                         Text(
-                          discussion.actionBy,
+                          discussion.discussionAction,
                           style: AppTypography.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      SizedBox(height: 5),
+                      if (isEditable)
+                        TextFormField(
+                          initialValue: discussion.actionBy,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            hintText: 'Action by',
+                          ),
+                          onChanged: (value) {
+                            if (discussionIndex != -1) {
+                              final discussion =
+                                  _editableDiscussions[discussionIndex];
+                              _editableDiscussions[discussionIndex] =
+                                  MeetingDiscussionModel(
+                                    id: discussion.id,
+                                    meetingId: discussion.meetingId,
+                                    discussionAction:
+                                        discussion.discussionAction,
+                                    actionBy: value,
+                                    remarks: discussion.remarks,
+                                    createdAt: discussion.createdAt,
+                                    updatedAt: discussion.updatedAt,
+                                    deletedAt: discussion.deletedAt,
+                                    meetingAttachment:
+                                        discussion.meetingAttachment,
+                                  );
+                            }
+                          },
+                        )
+                      else
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.person,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              discussion.actionBy,
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-                                 IconButton(
-                   onPressed: () => _deleteDiscussionPoint(discussion.id),
-                   icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                   tooltip: 'Delete Discussion',
-                   padding: EdgeInsets.zero,
-                   constraints: BoxConstraints(),
-                 ),
+                // Show delete button for all discussions
+                IconButton(
+                  onPressed: () {
+                    if (_isEditing && discussion.id > 999999999) {
+                      // If it's a new discussion (temporary ID) in edit mode, just remove from editable list
+                      setState(() {
+                        _editableDiscussions.removeWhere(
+                          (d) => d.id == discussion.id,
+                        );
+                      });
+                    } else {
+                      // Existing discussion, show delete confirmation (works in both edit and read-only mode)
+                      _deleteDiscussionPoint(discussion.id);
+                    }
+                  },
+                  icon: Icon(
+                    Icons.delete,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  tooltip: (_isEditing && discussion.id > 999999999)
+                      ? 'Remove New Discussion'
+                      : 'Delete Discussion',
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
               ],
             ),
 
             SizedBox(height: 6),
 
             // Remarks
-            if (discussion.remarks.isNotEmpty && discussion.remarks != 'NA')
+            if (isEditable)
+              TextFormField(
+                initialValue: discussion.remarks == 'NA'
+                    ? ''
+                    : discussion.remarks,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  hintText: 'Remarks (optional)',
+                ),
+                onChanged: (value) {
+                  if (discussionIndex != -1) {
+                    final discussion = _editableDiscussions[discussionIndex];
+                    _editableDiscussions[discussionIndex] =
+                        MeetingDiscussionModel(
+                          id: discussion.id,
+                          meetingId: discussion.meetingId,
+                          discussionAction: discussion.discussionAction,
+                          actionBy: discussion.actionBy,
+                          remarks: value.isEmpty ? 'NA' : value,
+                          createdAt: discussion.createdAt,
+                          updatedAt: discussion.updatedAt,
+                          deletedAt: discussion.deletedAt,
+                          meetingAttachment: discussion.meetingAttachment,
+                        );
+                  }
+                },
+              )
+            else if (discussion.remarks.isNotEmpty &&
+                discussion.remarks != 'NA')
               Text(
                 discussion.remarks,
                 style: AppTypography.bodyMedium.copyWith(
@@ -704,8 +1684,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 ),
               ),
 
-
-              SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Attachment Section
             _buildAttachmentSection(discussion),
@@ -719,7 +1698,11 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   Widget _buildAttachmentSection(MeetingDiscussionModel discussion) {
     return Row(
       children: [
-        Icon(Icons.attach_file, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        Icon(
+          Icons.attach_file,
+          size: 14,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         SizedBox(width: 4),
         Text(
           'Attachment:',
@@ -795,7 +1778,11 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               onTap: () => _addAttachment(discussion.id),
               child: Row(
                 children: [
-                  Icon(Icons.add, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.add,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'Add Attachment',
