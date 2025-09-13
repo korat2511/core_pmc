@@ -23,6 +23,7 @@ import '../models/site_vendor_model.dart';
 import '../models/material_category_model.dart';
 import '../models/material_model.dart';
 import '../models/po_model.dart';
+import '../models/grn_detail_model.dart';
 import '../models/po_detail_model.dart';
 import '../models/billing_address_model.dart';
 import '../models/terms_and_condition_model.dart';
@@ -3016,6 +3017,7 @@ class ApiService {
     String? remark,
     String? transactionId,
     required String advanceId,
+    List<File>? documents,
   }) async {
     try {
       final token = await AuthService.currentToken;
@@ -3023,26 +3025,61 @@ class ApiService {
         return null;
       }
 
-      final Map<String, dynamic> requestData = {
-        'api_token': token,
-        'po_id': poId.toString(),
-        'grn_id': grnId?.toString() ?? '',
-        'payment_date': paymentDate,
-        'payment_amount': paymentAmount,
-        'payment_mode': paymentMode,
-        'remark': remark ?? '',
-        'transaction_id': transactionId ?? '',
-        'advance_id': advanceId,
-      };
+      http.Response response;
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/materialpo/storePayment'),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
-      ).timeout(timeout);
+      // Use multipart request if documents are provided
+      if (documents != null && documents.isNotEmpty) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/api/materialpo/storePayment'),
+        );
+
+        // Add form fields
+        request.fields['api_token'] = token;
+        request.fields['po_id'] = poId.toString();
+        request.fields['grn_id'] = grnId?.toString() ?? '';
+        request.fields['payment_date'] = paymentDate;
+        request.fields['payment_amount'] = paymentAmount;
+        request.fields['payment_mode'] = paymentMode;
+        request.fields['remark'] = remark ?? '';
+        request.fields['transaction_id'] = transactionId ?? '';
+        request.fields['advance_id'] = advanceId;
+
+        // Add document files
+        for (final document in documents) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'documents[]',
+              document.path,
+            ),
+          );
+        }
+
+        final streamedResponse = await request.send().timeout(timeout);
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
+        // Use regular form request if no documents
+        final Map<String, dynamic> requestData = {
+          'api_token': token,
+          'po_id': poId.toString(),
+          'grn_id': grnId?.toString() ?? '',
+          'payment_date': paymentDate,
+          'payment_amount': paymentAmount,
+          'payment_mode': paymentMode,
+          'remark': remark ?? '',
+          'transaction_id': transactionId ?? '',
+          'advance_id': advanceId,
+        };
+
+        response = await http.post(
+          Uri.parse('$baseUrl/api/materialpo/storePayment'),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+          },
+          body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+        ).timeout(timeout);
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -3076,6 +3113,63 @@ class ApiService {
     }
   }
 
+  // Get GRN Detail API
+  static Future<ApiResponse<GrnDetailModel>?> getGrnDetail({
+    required int grnId,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/materialgrn/getGrnDetail'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': token,
+          'grn_id': grnId.toString(),
+        },
+      ).timeout(timeout);
+
+      print('GRN Detail Response Status: ${response.statusCode}');
+      print('GRN Detail Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['status'] == 1) {
+          return ApiResponse<GrnDetailModel>(
+            status: jsonData['status'],
+            message: jsonData['message'] ?? '',
+            data: GrnDetailModel.fromJson(jsonData['data']),
+          );
+        } else {
+          return ApiResponse<GrnDetailModel>(
+            status: jsonData['status'] ?? 0,
+            message: jsonData['message'] ?? 'Failed to get GRN details',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse<GrnDetailModel>(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<GrnDetailModel>(
+        status: 0,
+        message: 'Network error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
+
   // Save GRN API
   static Future<ApiResponse<Map<String, dynamic>>?> saveGrn({
     required String grnDate,
@@ -3086,6 +3180,7 @@ class ApiService {
     required int siteId,
     String? remarks,
     required List<Map<String, dynamic>> grnMaterials,
+    List<Map<String, dynamic>>? grnDocuments,
   }) async {
     try {
       final token = await AuthService.currentToken;
@@ -3093,60 +3188,166 @@ class ApiService {
         return null;
       }
 
-      // Create request data without grn_materials first
-      final Map<String, dynamic> requestData = {
-        'api_token': token,
-        'grn_date': grnDate,
-        'grn_number': grnNumber,
-        'delivery_challan_number': deliveryChallanNumber,
-        'po_id': poId.toString(),
-        'vendor_id': vendorId.toString(),
-        'site_id': siteId.toString(),
-        'remarks': remarks ?? '',
-      };
+      // Check if we have documents to upload (files)
+      bool hasFileDocuments = grnDocuments?.any((doc) => doc['file'] != null) ?? false;
 
-      // Add grn_materials as individual parameters
-      for (int i = 0; i < grnMaterials.length; i++) {
-        final material = grnMaterials[i];
-        requestData['grn_materials[$i][material_id]'] = material['material_id'].toString();
-        requestData['grn_materials[$i][quantity]'] = material['quantity'].toString();
-      }
+      if (hasFileDocuments) {
+        // Use multipart request for file uploads
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/api/materialgrn/saveGrn'),
+        );
 
-      print('GRN Request Data: $requestData');
+        // Add basic fields
+        request.fields['api_token'] = token;
+        request.fields['grn_date'] = grnDate;
+        request.fields['grn_number'] = grnNumber;
+        request.fields['delivery_challan_number'] = deliveryChallanNumber;
+        request.fields['po_id'] = poId.toString();
+        request.fields['vendor_id'] = vendorId.toString();
+        request.fields['site_id'] = siteId.toString();
+        request.fields['remarks'] = remarks ?? '';
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/materialgrn/saveGrn'),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
-      ).timeout(timeout);
-      print('GRN Response Status: ${response.statusCode}');
-      print('GRN Response Body: ${response.body}');
-      
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
+        // Add grn_materials
+        for (int i = 0; i < grnMaterials.length; i++) {
+          final material = grnMaterials[i];
+          request.fields['grn_materials[$i][material_id]'] = material['material_id'].toString();
+          request.fields['grn_materials[$i][quantity]'] = material['quantity'].toString();
+        }
+
+        // Add grn_documents
+        if (grnDocuments != null) {
+          for (int i = 0; i < grnDocuments.length; i++) {
+            final doc = grnDocuments[i];
+            if (doc['file'] != null) {
+              // Add file
+              final file = doc['file'] as File;
+              final stream = http.ByteStream(file.openRead());
+              final length = await file.length();
+              
+              final multipartFile = http.MultipartFile(
+                'grn_documents[$i][document]',
+                stream,
+                length,
+                filename: file.path.split('/').last,
+              );
+              
+              request.files.add(multipartFile);
+              
+              // Add description
+              if (doc['description'] != null) {
+                request.fields['grn_documents[$i][description]'] = doc['description'].toString();
+              }
+            } else {
+              // Add non-file document
+              request.fields['grn_documents[$i][document]'] = doc['document']?.toString() ?? '';
+              if (doc['description'] != null) {
+                request.fields['grn_documents[$i][description]'] = doc['description'].toString();
+              }
+            }
+          }
+        }
+
+        print('GRN Multipart Request Fields: ${request.fields}');
+        print('GRN Multipart Request Files: ${request.files.length}');
+
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
         
-        if (jsonData['status'] == 1) {
-          return ApiResponse<Map<String, dynamic>>(
-            status: jsonData['status'],
-            message: jsonData['message'] ?? '',
-            data: jsonData['data'] ?? {},
-          );
+        print('GRN Response Status: ${response.statusCode}');
+        print('GRN Response Body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          
+          if (jsonData['status'] == 1) {
+            return ApiResponse<Map<String, dynamic>>(
+              status: jsonData['status'],
+              message: jsonData['message'] ?? '',
+              data: jsonData['data'] ?? {},
+            );
+          } else {
+            return ApiResponse<Map<String, dynamic>>(
+              status: jsonData['status'] ?? 0,
+              message: jsonData['message'] ?? 'Failed to save GRN',
+              data: {},
+            );
+          }
         } else {
           return ApiResponse<Map<String, dynamic>>(
-            status: jsonData['status'] ?? 0,
-            message: jsonData['message'] ?? 'Failed to save GRN',
+            status: 0,
+            message: getErrorMessage(response.statusCode),
             data: {},
           );
         }
       } else {
-        return ApiResponse<Map<String, dynamic>>(
-          status: 0,
-          message: getErrorMessage(response.statusCode),
-          data: {},
-        );
+        // Use regular form data for non-file requests
+        final Map<String, dynamic> requestData = {
+          'api_token': token,
+          'grn_date': grnDate,
+          'grn_number': grnNumber,
+          'delivery_challan_number': deliveryChallanNumber,
+          'po_id': poId.toString(),
+          'vendor_id': vendorId.toString(),
+          'site_id': siteId.toString(),
+          'remarks': remarks ?? '',
+        };
+
+        // Add grn_materials
+        for (int i = 0; i < grnMaterials.length; i++) {
+          final material = grnMaterials[i];
+          requestData['grn_materials[$i][material_id]'] = material['material_id'].toString();
+          requestData['grn_materials[$i][quantity]'] = material['quantity'].toString();
+        }
+
+        // Add grn_documents (non-file)
+        if (grnDocuments != null) {
+          for (int i = 0; i < grnDocuments.length; i++) {
+            final doc = grnDocuments[i];
+            requestData['grn_documents[$i][document]'] = doc['document']?.toString() ?? '';
+            if (doc['description'] != null) {
+              requestData['grn_documents[$i][description]'] = doc['description'].toString();
+            }
+          }
+        }
+
+        print('GRN Request Data: $requestData');
+
+        final response = await http.post(
+          Uri.parse('$baseUrl/api/materialgrn/saveGrn'),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+          },
+          body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+        ).timeout(timeout);
+        
+        print('GRN Response Status: ${response.statusCode}');
+        print('GRN Response Body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          
+          if (jsonData['status'] == 1) {
+            return ApiResponse<Map<String, dynamic>>(
+              status: jsonData['status'],
+              message: jsonData['message'] ?? '',
+              data: jsonData['data'] ?? {},
+            );
+          } else {
+            return ApiResponse<Map<String, dynamic>>(
+              status: jsonData['status'] ?? 0,
+              message: jsonData['message'] ?? 'Failed to save GRN',
+              data: {},
+            );
+          }
+        } else {
+          return ApiResponse<Map<String, dynamic>>(
+            status: 0,
+            message: getErrorMessage(response.statusCode),
+            data: {},
+          );
+        }
       }
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(

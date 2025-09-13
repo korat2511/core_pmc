@@ -101,7 +101,50 @@ class SiteService {
 
   // Get overdue sites
   static List<SiteModel> getOverdueSites() {
-    return _allSites.where((site) => site.isOverdue).toList();
+    return _allSites.where((site) => isSiteOverdue(site)).toList();
+  }
+
+  // Helper method to check if a site is overdue based on end date
+  static bool isSiteOverdue(SiteModel site) {
+    if (site.endDate == null || site.endDate!.isEmpty) return false;
+    if (site.status.toLowerCase() == 'complete') return false; // Completed sites are not overdue
+    
+    try {
+      // Parse the end date (format: YYYY-MM-DD or DD-MM-YYYY)
+      DateTime? endDate;
+      
+      // Try YYYY-MM-DD format first
+      if (site.endDate!.contains('-')) {
+        final parts = site.endDate!.split('-');
+        if (parts.length == 3) {
+          // Check if it's YYYY-MM-DD format
+          if (parts[0].length == 4) {
+            endDate = DateTime.tryParse(site.endDate!);
+          } else {
+            // DD-MM-YYYY format
+            final day = int.tryParse(parts[0]);
+            final month = int.tryParse(parts[1]);
+            final year = int.tryParse(parts[2]);
+            
+            if (day != null && month != null && year != null) {
+              endDate = DateTime(year, month, day);
+            }
+          }
+        }
+      }
+      
+      if (endDate == null) return false;
+      
+      final today = DateTime.now();
+      final todayDateOnly = DateTime(today.year, today.month, today.day);
+      final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+      
+      // Site is overdue if end date is in the past and status is not complete
+      return endDateOnly.isBefore(todayDateOnly);
+    } catch (e) {
+      print('Error parsing end date for site ${site.name}: $e');
+      return false;
+    }
   }
 
   // Clear error message
@@ -121,6 +164,8 @@ class SiteService {
             
             if (status.isEmpty) {
               filteredSites = _allSites;
+            } else if (status.toLowerCase() == 'overdue') {
+              filteredSites = _allSites.where((site) => isSiteOverdue(site)).toList();
             } else {
               filteredSites = _allSites.where((site) => site.status.toLowerCase() == status.toLowerCase()).toList();
             }

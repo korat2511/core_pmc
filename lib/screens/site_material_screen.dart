@@ -16,20 +16,17 @@ import 'material_details_screen.dart';
 class SiteMaterialScreen extends StatefulWidget {
   final SiteModel site;
 
-  const SiteMaterialScreen({
-    super.key,
-    required this.site,
-  });
+  const SiteMaterialScreen({super.key, required this.site});
 
   @override
   State<SiteMaterialScreen> createState() => _SiteMaterialScreenState();
 }
 
-class _SiteMaterialScreenState extends State<SiteMaterialScreen> 
+class _SiteMaterialScreenState extends State<SiteMaterialScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentTabIndex = 0;
-  
+
   // Materials data
   List<MaterialModel> _materials = [];
   List<MaterialModel> _filteredMaterials = [];
@@ -53,7 +50,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
         _currentTabIndex = _tabController.index;
       });
     });
-    
+
     // Load materials when inventory tab is selected
     _loadMaterials();
     // Load PO orders when PO tab is selected
@@ -75,7 +72,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
 
     try {
       final response = await ApiService.getMaterials(page: 1);
-      
+
       if (response != null && response.status == 1) {
         setState(() {
           _materials = response.data;
@@ -119,8 +116,11 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
         } else {
           _filteredMaterials = _materials.where((material) {
             return material.name.toLowerCase().contains(query.toLowerCase()) ||
-                   material.sku.toLowerCase().contains(query.toLowerCase()) ||
-                   material.brandName?.toLowerCase().contains(query.toLowerCase()) == true;
+                material.sku.toLowerCase().contains(query.toLowerCase()) ||
+                material.brandName?.toLowerCase().contains(
+                      query.toLowerCase(),
+                    ) ==
+                    true;
           }).toList();
         }
       });
@@ -137,7 +137,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
         siteId: widget.site.id,
         page: 1,
       );
-      
+
       if (response != null && response.status == 1) {
         setState(() {
           _poOrders = response.data ?? [];
@@ -180,9 +180,11 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
           _filteredPOOrders = _poOrders;
         } else {
           _filteredPOOrders = _poOrders.where((po) {
-            return po.purchaseOrderId.toLowerCase().contains(query.toLowerCase()) ||
-                   po.vendorName.toLowerCase().contains(query.toLowerCase()) ||
-                   po.status.toLowerCase().contains(query.toLowerCase());
+            return po.purchaseOrderId.toLowerCase().contains(
+                  query.toLowerCase(),
+                ) ||
+                po.vendorName.toLowerCase().contains(query.toLowerCase()) ||
+                po.status.toLowerCase().contains(query.toLowerCase());
           }).toList();
         }
       });
@@ -192,21 +194,21 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
-      floatingActionButton: _currentTabIndex == 0 
-        ? FloatingActionButton.extended(
-            onPressed: () {
-              NavigationUtils.push(
-                context,
-                CreatePOScreen(site: widget.site),
-              );
-            },
-            backgroundColor: AppColors.primaryColor,
-            foregroundColor: Colors.white,
-            icon: Icon(Icons.add),
-            label: Text('Add PO'),
-          )
-        : _currentTabIndex == 1 
+      backgroundColor: AppColors.surfaceColor,
+      floatingActionButton: _currentTabIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                NavigationUtils.push(
+                  context,
+                  CreatePOScreen(site: widget.site),
+                );
+              },
+              backgroundColor: AppColors.primaryColor,
+              foregroundColor: Colors.white,
+              icon: Icon(Icons.add),
+              label: Text('Add PO'),
+            )
+          : _currentTabIndex == 1
           ? FloatingActionButton.extended(
               onPressed: () {
                 NavigationUtils.push(
@@ -261,7 +263,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
               ],
             ),
           ),
-          
+
           // Tab Content
           Expanded(
             child: TabBarView(
@@ -269,7 +271,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
               children: [
                 // PO & Delivery Tab
                 _buildPODeliveryTab(),
-                
+
                 // Inventory Tab
                 _buildInventoryTab(),
               ],
@@ -501,7 +503,6 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ),
           ),
 
-          
           // Materials List
           Expanded(
             child: RefreshIndicator(
@@ -533,103 +534,126 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
           ),
         );
       },
-      child: Card(
-        margin: EdgeInsets.only(bottom: 16),
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      material.name,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              material.name,
+              style: AppTypography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
-              SizedBox(height: 8),
+            ),
+            if (material.specification != null) ...[
+              SizedBox(height: 2,),
               Text(
-                'SKU: ${material.sku}',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                "${material.specification}",
+                style: AppTypography.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                  color: AppColors.textLight,
                 ),
               ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.category, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Category ID: ${material.categoryId}',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.straighten, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'UOM: ${material.unitOfMeasurement}',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.attach_money, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Price: ₹ ${material.unitPrice}',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Available Qty: ${material.currentStock}',
-                    style: AppTypography.bodyMedium,
-                  ),
-                ],
-              ),
-
-              if (material.brandName != null) ...[
-                SizedBox(height: 4),
-                Row(
+            ],
+            if (material.brandName != null) ...[
+              SizedBox(height: 2,),
+              RichText(
+                text: TextSpan(
                   children: [
-                    Icon(Icons.business, size: 16, color: AppColors.textSecondary),
-                    SizedBox(width: 8),
-                    Text(
-                      'Brand: ${material.brandName}',
-                      style: AppTypography.bodyMedium,
+                    TextSpan(
+                      text: "Brand: ",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "${material.brandName}",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                    TextSpan(
+                      text: " | Item Code: ",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "${material.sku}",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textLight,
+                      ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ],
-          ),
+            ...[
+            SizedBox(height: 2,),
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: "UOM: ",
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: "${material.unitOfMeasurement}",
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+            if (material.currentStock != null) ...[
+              SizedBox(height: 2,),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "In stock: ",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "${material.currentStock}",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            SizedBox(height: 2,),
+            Divider(),
+            SizedBox(height: 10,)
+
+          ],
         ),
       ),
     );
@@ -661,8 +685,18 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
       try {
         final date = DateTime.parse(dateString);
         final months = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ];
         return '${date.day} ${months[date.month - 1]}, ${date.year}';
       } catch (e) {
@@ -674,8 +708,18 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
       try {
         final date = DateTime.parse(dateString);
         final months = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ];
         final hour = date.hour > 12 ? date.hour - 12 : date.hour;
         final ampm = date.hour >= 12 ? 'PM' : 'AM';
@@ -696,81 +740,87 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
         );
       },
       child: Card(
-      margin: EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // PO Number at the top
-            Text(
-              poOrder.purchaseOrderId,
-              style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-                fontSize: 18,
+        margin: EdgeInsets.only(bottom: 16),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // PO Number at the top
+              Text(
+                poOrder.purchaseOrderId,
+                style: AppTypography.titleLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                  fontSize: 18,
+                ),
               ),
-            ),
-            
-            SizedBox(height: 12),
 
-            // Status Badges
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(poOrder.status),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    poOrder.status.toUpperCase(),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
+              SizedBox(height: 12),
+
+              // Status Badges
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(poOrder.status),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      poOrder.status.toUpperCase(),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'ORDERED',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
+                  SizedBox(width: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'ORDERED',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            
-            SizedBox(height: 16),
+                ],
+              ),
 
-            // Details Section with Label-Value pairs
-            _buildDetailRow('Created By', 'Rutvik | ${_formatDateTime(poOrder.createdAt)}'),
-            SizedBox(height: 8),
-            _buildDetailRow('Vendor', poOrder.vendorName),
-            SizedBox(height: 8),
-            _buildDetailRow('Material', 'Asian Paint'), // Placeholder - you'll need to add material info to your model
-            SizedBox(height: 8),
-            _buildDetailRowWithIcon('Expected delivery', _formatDate(poOrder.expectedDeliveryDate), Icons.local_shipping),
-          ],
+              SizedBox(height: 16),
+
+              // Details Section with Label-Value pairs
+              _buildDetailRow(
+                'Created By',
+                'Rutvik | ${_formatDateTime(poOrder.createdAt)}',
+              ),
+              SizedBox(height: 8),
+              _buildDetailRow('Vendor', poOrder.vendorName),
+              SizedBox(height: 8),
+              _buildDetailRow('Material', 'Asian Paint'),
+              // Placeholder - you'll need to add material info to your model
+              SizedBox(height: 8),
+              _buildDetailRowWithIcon(
+                'Expected delivery',
+                _formatDate(poOrder.expectedDeliveryDate),
+                Icons.local_shipping,
+              ),
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
-
 
   Widget _buildDetailRow(String label, String value) {
     return Row(
@@ -813,11 +863,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ),
           ),
         ),
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[600],
-        ),
+        Icon(icon, size: 16, color: Colors.grey[600]),
         SizedBox(width: 4),
         Expanded(
           child: Text(

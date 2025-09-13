@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
-import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
 import '../models/po_detail_model.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_button.dart';
+import 'grn_detail_screen.dart';
+import 'payment_detail_screen.dart';
 import 'record_advance_screen.dart';
 import 'record_grn_screen.dart';
 
@@ -23,13 +25,14 @@ class PODetailScreen extends StatefulWidget {
   State<PODetailScreen> createState() => _PODetailScreenState();
 }
 
-class _PODetailScreenState extends State<PODetailScreen> 
+class _PODetailScreenState extends State<PODetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   PODetailModel? _poDetail;
   bool _isLoading = true;
   String? _errorMessage;
   final _receivedQuantityController = TextEditingController();
+  bool _isExpandedPayments = true;
 
   @override
   void initState() {
@@ -98,8 +101,18 @@ class _PODetailScreenState extends State<PODetailScreen>
     try {
       final date = DateTime.parse(dateString);
       final months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${date.day} ${months[date.month - 1]}, ${date.year}';
     } catch (e) {
@@ -111,8 +124,18 @@ class _PODetailScreenState extends State<PODetailScreen>
     try {
       final date = DateTime.parse(dateString);
       final months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       final hour = date.hour > 12 ? date.hour - 12 : date.hour;
       final ampm = date.hour >= 12 ? 'PM' : 'AM';
@@ -126,7 +149,8 @@ class _PODetailScreenState extends State<PODetailScreen>
     // Find the pending item with the same material ID and get its ordered quantity
     final pendingItem = _poDetail!.pendingItems.firstWhere(
       (item) => item.materialId == materialId,
-      orElse: () => _poDetail!.pendingItems.first, // Fallback to first item if not found
+      orElse: () =>
+          _poDetail!.pendingItems.first, // Fallback to first item if not found
     );
     return pendingItem.quantityForDelivery;
   }
@@ -134,13 +158,11 @@ class _PODetailScreenState extends State<PODetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       appBar: CustomAppBar(
         title: _poDetail?.purchaseOrderId ?? 'PO Details',
         showDrawer: false,
         showBackButton: true,
       ),
-
 
       body: GestureDetector(
         onTap: () {
@@ -151,10 +173,10 @@ class _PODetailScreenState extends State<PODetailScreen>
         child: _isLoading
             ? Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? _buildErrorState()
-                : _poDetail == null
-                    ? _buildEmptyState()
-                    : _buildContent(),
+            ? _buildErrorState()
+            : _poDetail == null
+            ? _buildEmptyState()
+            : _buildContent(),
       ),
     );
   }
@@ -164,11 +186,7 @@ class _PODetailScreenState extends State<PODetailScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[300],
-          ),
+          Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
           SizedBox(height: 16),
           Text(
             'Error Loading PO Details',
@@ -185,10 +203,7 @@ class _PODetailScreenState extends State<PODetailScreen>
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadPODetail,
-            child: Text('Retry'),
-          ),
+          CustomButton(text: 'Retry', onPressed: _loadPODetail),
         ],
       ),
     );
@@ -226,55 +241,186 @@ class _PODetailScreenState extends State<PODetailScreen>
 
   Widget _buildContent() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Status Badge
           if (_poDetail != null) ...[
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getStatusColor(_poDetail!.status).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _poDetail!.status.toUpperCase(),
-                style: TextStyle(
-                  color: _getStatusColor(_poDetail!.status),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              width: double.infinity,
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.surfaceColor),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(_poDetail!.status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _poDetail!.status.toUpperCase(),
+                  style: TextStyle(
+                    color: _getStatusColor(_poDetail!.status),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-            SizedBox(height: 10),
           ],
-
-          // Purchase Order Info Section
+          SizedBox(height: 10),
           _buildPurchaseOrderInfoSection(),
+          SizedBox(height: 10),
 
-          SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isExpandedPayments = !_isExpandedPayments;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.surfaceColor),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'ADVANCE PAYMENT',
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        '${_poDetail!.poPayment.length}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(
+                        _isExpandedPayments
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        color: Colors.grey[600],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 3),
 
-          // Advance Payment Section
           _buildAdvancePaymentSection(),
 
-          SizedBox(height: 8),
+          GestureDetector(
+            onTap: () async {
+              if (_poDetail != null) {
+                final result = await NavigationUtils.push(
+                  context,
+                  RecordAdvanceScreen(poDetail: _poDetail!),
+                );
+                if (result == true) {
+                  _loadPODetail();
+                }
+              }
+            },
+            child: Container(
+              alignment: Alignment.center,
+              width: double.infinity,
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.surfaceColor),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_circle, color: AppColors.primary),
+                  SizedBox(width: 5),
+                  Text(
+                    'Add Advance Payment',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-          // Delivered Items Section
-          if (_poDetail!.deliveredItems.isNotEmpty)
-            _buildDeliveredItemsSection(),
-
-
-
-          // Pending Items Section
+          SizedBox(height: 10),
           if (_poDetail!.pendingItems.isNotEmpty)
-            _buildPendingItemsSection(),
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.surfaceColor),
+                  child: Text(
+                    'Pending Items',
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 3),
 
+                _buildPendingItemsSection(),
+                SizedBox(height: 3),
+                _buildReceivedQuantitySection(),
+                SizedBox(height: 10),
+              ],
+            ),
 
+          if (_poDetail!.deliveredItems.isNotEmpty)
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.surfaceColor),
+                  child: Text(
+                    'Delivered Items',
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 3),
 
-          // Linked GRN Section
+                _buildDeliveredItemsSection(),
+                SizedBox(height: 10),
+              ],
+            ),
+
           if (_poDetail!.grn.isNotEmpty) ...[
-            _buildLinkedGRNSection(),
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.surfaceColor),
+                  child: Text(
+                    'Linked GRN',
+                    style: AppTypography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 3),
+                _buildLinkedGRNSection(),
+                SizedBox(height: 20,)
+              ],
+            ),
           ],
         ],
       ),
@@ -282,320 +428,242 @@ class _PODetailScreenState extends State<PODetailScreen>
   }
 
   Widget _buildPurchaseOrderInfoSection() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Purchase Order Info',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(color: AppColors.surfaceColor),
+          child: Text(
+            'DETAILS',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: AppColors.darkBorder,
             ),
-            SizedBox(height: 16),
-            _buildInfoRow('Created By', 'Rutvik Korat | ${_formatDateTime(_poDetail!.createdAt)}'),
-            _buildInfoRow('Expected on', _formatDate(_poDetail!.expectedDeliveryDate ?? '')),
-            _buildInfoRow('Site Name', _poDetail!.site.name ?? 'N/A'),
-            _buildInfoRow('Site POC', '-'),
-            _buildInfoRow('Vendor', _poDetail!.vendorName ?? 'N/A'),
-            _buildInfoRow('Vendor Contact', _poDetail!.vendorPhoneNo ?? 'N/A'),
-            _buildInfoRow('Office POC', '-'),
-          ],
+          ),
         ),
-      ),
+        SizedBox(height: 3),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(color: AppColors.surfaceColor),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailRow(
+                      'Created By',
+                      '${_formatDateTime(_poDetail!.createdAt)}',
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildDetailRow(
+                      'Expected on',
+                      _formatDate(_poDetail!.expectedDeliveryDate ?? ''),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 15),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailRow(
+                      'Site Name',
+                      _poDetail!.site.name ?? 'N/A',
+                    ),
+                  ),
+                  Expanded(child: _buildDetailRow('Site POC', '-')),
+                ],
+              ),
+              SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailRow('Vendor', _poDetail!.vendorName),
+                  ),
+                  Expanded(
+                    child: _buildDetailRow(
+                      'Vendor Contact',
+                      _poDetail!.vendorPhoneNo,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 15),
+              _buildDetailRow('Office POC', '-'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildAdvancePaymentSection() {
-    double totalAdvance = _poDetail!.poPayment.fold(0.0, (sum, payment) => 
-      sum + (double.tryParse(payment.paymentAmount) ?? 0.0));
-
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'ADVANCE PAYMENT',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      '₹${totalAdvance.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(Icons.keyboard_arrow_up, color: Colors.grey[600]),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            if (_poDetail!.poPayment.isNotEmpty) ...[
-              ..._poDetail!.poPayment.map((payment) => _buildAdvancePaymentItem(payment)).toList(),
-            ] else ...[
-              Text(
-                'No advance payments',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              ),
-            ],
-            SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await NavigationUtils.push(
-                    context,
-                    RecordAdvanceScreen(poDetail: _poDetail!),
-                  );
-                  if (result == true) {
-                    // Refresh PO details after successful payment
-                    _loadPODetail();
-                  }
-                },
-                icon: Icon(Icons.add, size: 18),
-                label: Text('Add Advance Payment'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_isExpandedPayments) ...[
+          ..._poDetail!.poPayment.map(
+            (payment) => _buildAdvancePaymentItem(payment),
+          ),
+          SizedBox(height: 3),
+        ],
+      ],
     );
   }
 
   Widget _buildDeliveredItemsSection() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Delivered Items',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
-            ),
-            SizedBox(height: 16),
-            ..._poDetail!.deliveredItems.map((item) => _buildDeliveredItemCard(item)).toList(),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._poDetail!.deliveredItems
+            .map((item) => _buildDeliveredItemCard(item))
+            .toList(),
+      ],
     );
   }
 
   Widget _buildPendingItemsSection() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Pending Items',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
-            ),
-            SizedBox(height: 6),
-            ..._poDetail!.pendingItems.map((item) => _buildPendingItemCard(item)).toList(),
-
-            _buildReceivedQuantitySection(),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._poDetail!.pendingItems
+            .map((item) => _buildPendingItemCard(item))
+            .toList(),
+      ],
     );
   }
 
   Widget _buildLinkedGRNSection() {
     return Container(
       width: double.infinity,
-      child: Card(
-
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Linked GRN',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              SizedBox(height: 16),
-              ..._poDetail!.grn.map((grn) => _buildGRNLink(grn)).toList(),
-            ],
-          ),
-        ),
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [..._poDetail!.grn.map((grn) => _buildGRNLink(grn)).toList()],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+  Widget _buildDetailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.bodyLarge.copyWith(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            color: AppColors.textLight,
+          ),
+        ),
+        SizedBox(height: 2),
+        Container(
+          width: 150,
+          child: Text(
+            value,
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: AppColors.textSecondary,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildAdvancePaymentItem(POPayment payment) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.access_time,
-              color: Colors.white,
-              size: 20,
-            ),
+    return GestureDetector(
+      onTap: () {
+        NavigationUtils.push(
+          context,
+          PaymentDetailScreen(
+            payment: payment,
+            poDetail: _poDetail,
           ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Colors.white),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(
-                  payment.advanceId,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
+                Container(
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.access_time, color: Colors.white, size: 17),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        payment.advanceId,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      Text(
+                        'Paid By Company',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        _formatDate(payment.paymentDate),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  'Paid By Company',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Text(
-                  _formatDate(payment.paymentDate),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '₹${payment.paymentAmount}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    SizedBox(width: 5),
+                    Icon(Icons.keyboard_arrow_right, color: Colors.grey[600]),
+                  ],
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '₹${payment.paymentAmount}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              Icon(Icons.keyboard_arrow_right, color: Colors.grey[600]),
-            ],
-          ),
-        ],
+            SizedBox(height: 10),
+            Divider(height: 1.5),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDeliveredItemCard(DeliveredItem item) {
     final material = item.material;
-    
+
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      width: double.infinity,
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -610,10 +678,21 @@ class _PODetailScreenState extends State<PODetailScreen>
           SizedBox(height: 8),
           _buildItemDetail('Specification', material.specification ?? 'N/A'),
           _buildItemDetail('Brand', material.brandName ?? 'N/A'),
-          _buildItemDetail('Ordered Qty', '${_getTotalOrderedQuantity(material.id)} ${material.unitOfMeasurement ?? 'nos'}'),
-          _buildItemDetail('Received Qty', '${item.quantity} ${material.unitOfMeasurement ?? 'nos'}'),
+          _buildItemDetail(
+            'Ordered Qty',
+            '${_getTotalOrderedQuantity(material.id)} ${material.unitOfMeasurement ?? 'nos'}',
+          ),
+          _buildItemDetail(
+            'Received Qty',
+            '${item.quantity} ${material.unitOfMeasurement ?? 'nos'}',
+          ),
           if (item.user != null)
-            _buildItemDetail('Received by', '${item.user!.firstName} ${item.user!.lastName} | ${_formatDateTime(item.createdAt)}'),
+            _buildItemDetail(
+              'Received by',
+              '${item.user!.firstName} ${item.user!.lastName} | ${_formatDateTime(item.createdAt)}',
+            ),
+          SizedBox(height: 5),
+          Divider(height: 1.5),
         ],
       ),
     );
@@ -621,31 +700,56 @@ class _PODetailScreenState extends State<PODetailScreen>
 
   Widget _buildPendingItemCard(PendingItem item) {
     final material = item.material;
-    
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      width: double.infinity,
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             material.name ?? 'Unknown Material',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: 8),
-          _buildItemDetail('Specification', material.specification ?? 'N/A'),
-          _buildItemDetail('Brand', material.brandName ?? 'N/A'),
-          _buildItemDetail('Ordered Qty', '${item.quantityForDelivery} ${material.unitOfMeasurement ?? 'nos'}'),
-          _buildItemDetail('Pending Qty', '${item.pendingQuantity} ${material.unitOfMeasurement ?? 'nos'}'),
+
+          Text(
+            material.specification ?? '-',
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: AppColors.textLight,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Brand: ${material.brandName ?? '-'}',
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: AppColors.textLight,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Ordered Qty:  ${item.quantityForDelivery} ${material.unitOfMeasurement ?? 'nos'}',
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            'Pending Qty:  ${item.pendingQuantity} ${material.unitOfMeasurement ?? 'nos'}',
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -685,23 +789,21 @@ class _PODetailScreenState extends State<PODetailScreen>
 
   Widget _buildReceivedQuantitySection() {
     return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      width: double.infinity,
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: AppColors.surfaceColor),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'RECEIVED QUANTITY',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: AppColors.textLight,
             ),
           ),
+
           SizedBox(height: 12),
           Row(
             children: [
@@ -715,14 +817,17 @@ class _PODetailScreenState extends State<PODetailScreen>
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),
               SizedBox(width: 8),
               Text(
-                _poDetail!.pendingItems.isNotEmpty 
-                    ? _poDetail!.pendingItems.first.material.unitOfMeasurement ?? 'nos'
+                _poDetail!.pendingItems.isNotEmpty
+                    ? _poDetail!.pendingItems.first.material.unitOfMeasurement
                     : 'nos',
                 style: TextStyle(
                   fontSize: 14,
@@ -735,7 +840,8 @@ class _PODetailScreenState extends State<PODetailScreen>
           SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: CustomButton(
+              text: 'Add to Stock',
               onPressed: () async {
                 if (_receivedQuantityController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -785,15 +891,8 @@ class _PODetailScreenState extends State<PODetailScreen>
                   _loadPODetail();
                 }
               },
-              child: Text('Add to Stock'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              backgroundColor: AppColors.primaryColor,
+              textColor: Colors.white,
             ),
           ),
         ],
@@ -806,10 +905,12 @@ class _PODetailScreenState extends State<PODetailScreen>
       padding: EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: () {
-          // TODO: Navigate to GRN details
+          // Navigate to GRN details screen
+          print('Navigating to GRN detail screen with ID: ${grn.id}');
+          NavigationUtils.push(context, GrnDetailScreen(grnId: grn.id));
         },
         child: Text(
-          grn.grnNumber ?? 'Unknown GRN',
+          grn.grnNumber,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -820,10 +921,4 @@ class _PODetailScreenState extends State<PODetailScreen>
       ),
     );
   }
-
-
-
-
-
-
 }

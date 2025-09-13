@@ -74,6 +74,11 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
               'icon': Icons.assessment_outlined,
               'color': AppColors.infoColor,
             },
+            {
+              'title': 'Petty Cash',
+              'icon': Icons.account_balance_wallet_outlined,
+              'color': AppColors.successColor,
+            },
           ]),
 
           SizedBox(height: 24),
@@ -315,6 +320,12 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         break;
       case 'Meetings':
         NavigationUtils.push(context, MeetingScreen(site: widget.site));
+        break;
+      case 'Petty Cash':
+        SnackBarUtils.showInfo(
+          context,
+          message: 'Petty Cash functionality coming soon',
+        );
         break;
       default:
         // Show a temporary message for other options

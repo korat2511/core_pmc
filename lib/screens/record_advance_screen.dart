@@ -1,21 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/constants/app_colors.dart';
-import '../core/theme/app_typography.dart';
-import '../core/utils/navigation_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/image_picker_utils.dart';
 import '../models/po_detail_model.dart';
+import '../models/grn_detail_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 
 class RecordAdvanceScreen extends StatefulWidget {
-  final PODetailModel poDetail;
+  final PODetailModel? poDetail;
+  final GrnDetailModel? grnDetail;
 
   const RecordAdvanceScreen({
     super.key,
-    required this.poDetail,
-  });
+    this.poDetail,
+    this.grnDetail,
+  }) : assert(poDetail != null || grnDetail != null, 'Either poDetail or grnDetail must be provided');
 
   @override
   State<RecordAdvanceScreen> createState() => _RecordAdvanceScreenState();
@@ -31,7 +34,7 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _generatedAdvanceId;
   bool _isLoading = false;
-  bool _isGeneratingId = false;
+  List<File> _selectedDocuments = [];
 
   final List<String> _paymentModes = [
     'cash',
@@ -57,7 +60,6 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
 
   Future<void> _generateAdvanceId() async {
     setState(() {
-      _isGeneratingId = true;
     });
 
 
@@ -66,7 +68,6 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
       final user = AuthService.currentUser;
       if (user == null) {
         setState(() {
-          _isGeneratingId = false;
         });
       }
 
@@ -89,19 +90,34 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
       });
     } finally {
       setState(() {
-        _isGeneratingId = false;
       });
     }
   }
 
   double get _totalAdvancePaid {
-    return widget.poDetail.poPayment.fold(0.0, (sum, payment) => 
-      sum + (double.tryParse(payment.paymentAmount) ?? 0.0));
+    if (widget.poDetail != null) {
+      return widget.poDetail!.poPayment.fold(0.0, (sum, payment) => 
+        sum + (double.tryParse(payment.paymentAmount) ?? 0.0));
+    }
+    // For GRN, we don't have advance payments yet, so return 0
+    return 0.0;
   }
 
   double get _remainingAmount {
-    final grandTotal = double.tryParse(widget.poDetail.grandTotal) ?? 0.0;
-    return grandTotal - _totalAdvancePaid;
+    if (widget.poDetail != null) {
+      final grandTotal = double.tryParse(widget.poDetail!.grandTotal) ?? 0.0;
+      return grandTotal - _totalAdvancePaid;
+    } else if (widget.grnDetail != null) {
+      // Calculate total from GRN materials
+      double total = 0;
+      for (final material in widget.grnDetail!.grnDetail) {
+        final quantity = material.quantity;
+        final unitPrice = double.tryParse(material.material?.unitPrice ?? '0') ?? 0;
+        total += quantity * unitPrice;
+      }
+      return total - _totalAdvancePaid;
+    }
+    return 0.0;
   }
 
   String _formatCurrency(double amount) {
@@ -126,6 +142,33 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
     }
   }
 
+  Future<void> _pickDocuments() async {
+    try {
+      final selectedImages = await ImagePickerUtils.pickImages(
+        context: context,
+        chooseMultiple: true,
+        maxImages: 5,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (selectedImages.isNotEmpty) {
+        setState(() {
+          _selectedDocuments.addAll(selectedImages);
+        });
+      }
+    } catch (e) {
+      SnackBarUtils.showError(context, message: 'Error picking documents: ${e.toString()}');
+    }
+  }
+
+  void _removeDocument(int index) {
+    setState(() {
+      _selectedDocuments.removeAt(index);
+    });
+  }
+
   Future<void> _recordAdvance() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -135,14 +178,15 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
 
     try {
       final response = await ApiService.storePayment(
-        poId: widget.poDetail.id,
-        grnId: null,
+        poId: widget.poDetail?.id ?? 0,
+        grnId: widget.grnDetail?.id,
         paymentDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
         paymentAmount: _paidAmountController.text,
         paymentMode: _selectedPaymentMode,
         remark: _remarksController.text.isEmpty ? null : _remarksController.text,
         transactionId: _transactionIdController.text.isEmpty ? null : _transactionIdController.text,
-        advanceId: _generatedAdvanceId ?? 'ADV00001',
+        advanceId: _generatedAdvanceId ?? '',
+        documents: _selectedDocuments.isNotEmpty ? _selectedDocuments : null,
       );
 
       if (response != null && response.status == 1) {
@@ -203,7 +247,7 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'PO amount:',
+                            widget.poDetail != null ? 'PO amount:' : 'GRN amount:',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -211,7 +255,7 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
                             ),
                           ),
                           Text(
-                            '₹${_formatCurrency(double.tryParse(widget.poDetail.grandTotal) ?? 0.0)}',
+                            '₹${_formatCurrency(_remainingAmount + _totalAdvancePaid)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -225,7 +269,7 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'PO ID:',
+                            widget.poDetail != null ? 'PO ID:' : 'GRN ID:',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -233,7 +277,7 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
                             ),
                           ),
                           Text(
-                            widget.poDetail.purchaseOrderId,
+                            widget.poDetail?.purchaseOrderId ?? widget.grnDetail?.grnNumber ?? '',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -458,6 +502,137 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
+
+              SizedBox(height: 24),
+
+              // Documents Section
+              Text(
+                'Documents (Optional)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+              ),
+              SizedBox(height: 8),
+              
+              // Add Document Button
+              GestureDetector(
+                onTap: _pickDocuments,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[400]!, style: BorderStyle.solid),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[50],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate, color: Colors.grey[600]),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add Documents',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Selected Documents
+              if (_selectedDocuments.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Selected Documents (${_selectedDocuments.length})',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 8),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.2,
+                  ),
+                  itemCount: _selectedDocuments.length,
+                  itemBuilder: (context, index) {
+                    final document = _selectedDocuments[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: Stack(
+                        children: [
+                          // Image preview
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              document,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.broken_image, color: Colors.grey[400], size: 32),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Failed to load',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // Remove button
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () => _removeDocument(index),
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
 
               SizedBox(height: 32),
 

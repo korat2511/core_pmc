@@ -81,16 +81,16 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
   void _applyFilters() {
     if (_materialStock == null) return;
 
-    print('Applying filters: User=$_selectedUser, Type=$_selectedType, Duration=$_selectedDuration');
+
 
     List<StockHistoryModel> filtered = _materialStock!.data;
 
     // Filter by user
     if (_selectedUser != null && _selectedUser!.isNotEmpty && _selectedUser != 'All') {
       filtered = filtered.where((item) => 
-        item.user?.fullName?.toLowerCase().contains(_selectedUser!.toLowerCase()) ?? false
+        item.user?.fullName.toLowerCase().contains(_selectedUser!.toLowerCase()) ?? false
       ).toList();
-      print('After user filter: ${filtered.length} items');
+
     }
 
     // Filter by type
@@ -98,7 +98,7 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
       filtered = filtered.where((item) => 
         item.type.toLowerCase() == _selectedType!.toLowerCase()
       ).toList();
-      print('After type filter: ${filtered.length} items');
+
     }
 
     // Filter by duration
@@ -133,14 +133,12 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
             return false;
           }
         }).toList();
-        print('After duration filter: ${filtered.length} items');
       }
     }
 
     setState(() {
       _filteredData = filtered;
     });
-    print('Final filtered data: ${_filteredData.length} items');
   }
 
   void _clearFilters() {
@@ -305,64 +303,6 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
     );
   }
 
-  Widget _buildFilterSection(String title, List<String> options, String? selectedValue, Function(String?) onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: AppTypography.bodyMedium.copyWith(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        SizedBox(height: 10),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: options.map((option) {
-            final isSelected = selectedValue == option || (selectedValue == null && option == 'All');
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  print('Tapped option: $option');
-                  onChanged(option);
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                        ? AppColors.primaryColor 
-                        : Colors.grey.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected 
-                          ? AppColors.primaryColor 
-                          : Colors.grey.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    option,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: isSelected 
-                          ? Colors.white 
-                          : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
 
   List<String> _getUniqueUsers() {
     if (_materialStock == null) return [];

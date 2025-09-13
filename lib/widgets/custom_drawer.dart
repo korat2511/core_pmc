@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/constants/app_colors.dart';
 import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -9,6 +8,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../screens/all_users_screen.dart';
 import '../screens/attendance_screen.dart';
+import '../screens/to_do_list.dart';
 import '../providers/theme_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -84,7 +84,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     desktop: 80,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(
                       ResponsiveUtils.responsiveFontSize(
                         context,
@@ -180,7 +180,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                             tablet: 14,
                             desktop: 16,
                           ),
-                          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -231,6 +231,15 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     NavigationUtils.push(context, const AllUsersScreen());
                   },
                 ),
+                // To-Do List
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.task_outlined,
+                  title: 'To-Do List',
+                  onTap: () {
+                    NavigationUtils.push(context, const ToDoList());
+                  },
+                ),
                 // Theme Toggle
                 Consumer<ThemeProvider>(
                   builder: (context, themeProvider, child) {
@@ -264,12 +273,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
           FutureBuilder<PackageInfo>(
             future: PackageInfo.fromPlatform(),
             builder: (context, snapshot) {
-              String version = 'v1.25.0(1)';
-
               if (snapshot.connectionState == ConnectionState.waiting) {
-                version = 'Loading...';
+                print('Loading package info...');
               } else if (snapshot.hasData && snapshot.data != null) {
-                version = 'v${snapshot.data!.version}(${snapshot.data!.buildNumber})';
                 print('Package info loaded: ${snapshot.data!.version} - ${snapshot.data!.buildNumber}');
               } else if (snapshot.hasError) {
                 print('Error getting package info: ${snapshot.error}');

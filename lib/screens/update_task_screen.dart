@@ -739,7 +739,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
           SizedBox(height: 12),
           // Image previews
           Container(
-            height: 100,
+            height: 80,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _noProgressImages.length,
@@ -749,8 +749,8 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                   child: Stack(
                     children: [
                       Container(
-                        width: 100,
-                        height: 100,
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.borderColor),
@@ -930,7 +930,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
           SizedBox(height: 12),
           // Image previews
           Container(
-            height: 100,
+            height: 80,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _updateProgressImages.length,
@@ -940,8 +940,8 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                   child: Stack(
                     children: [
                       Container(
-                        width: 100,
-                        height: 100,
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.borderColor),

@@ -87,11 +87,11 @@ class TaskCard extends StatelessWidget {
                         Text(
                           task.name,
                           style: AppTypography.titleMedium.copyWith(
-                            fontSize: 16,
+                            fontSize: 14,
                             color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w500,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 2),

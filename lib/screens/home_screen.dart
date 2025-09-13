@@ -4,19 +4,14 @@ import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../services/session_manager.dart';
 import '../core/theme/app_typography.dart';
-import '../services/auth_service.dart';
 import '../services/site_service.dart';
-import '../models/user_model.dart';
 import '../models/site_model.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_drawer.dart';
-import '../widgets/attendance_card.dart';
 import '../widgets/site_card.dart';
 import '../widgets/custom_search_bar.dart';
 import '../widgets/dismiss_keyboard.dart';
 import '../core/utils/validation_utils.dart';
-import '../core/utils/navigation_utils.dart';
-import '../widgets/custom_button.dart';
 import '../screens/attendance_check_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -69,7 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final UserModel? user = AuthService.currentUser;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -330,8 +324,15 @@ class _HomeScreenState extends State<HomeScreen> {
   // Helper method to get status-specific counts from filtered sites
   int _getStatusCount(String status, List<SiteModel> sites) {
     if (status.isEmpty) return sites.length;
+    
+    if (status.toLowerCase() == 'overdue') {
+      // Calculate overdue dynamically based on end date
+      return sites.where((site) => SiteService.isSiteOverdue(site)).length;
+    }
+    
     return sites.where((site) => site.status.toLowerCase() == status.toLowerCase()).length;
   }
+
 
   List<SiteModel> _getFilteredSites() {
     List<SiteModel> sitesToFilter = SiteService.allSites;
@@ -345,6 +346,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // First filter by status
     if (_selectedStatus.isNotEmpty) {
       sitesToFilter = sitesToFilter.where((site) {
+        if (_selectedStatus.toLowerCase() == 'overdue') {
+          return SiteService.isSiteOverdue(site);
+        }
         return site.status.toLowerCase() == _selectedStatus.toLowerCase();
       }).toList();
       print('📊 After status filter: ${sitesToFilter.length} sites');

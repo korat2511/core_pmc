@@ -1392,6 +1392,29 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
 
+  void _updateTaskImagesLocally(List<File> images) {
+    if (_taskDetail == null) return;
+
+    setState(() {
+      // Create new TaskImageModel from uploaded files
+      final newImages = images.map((file) {
+        return TaskImageModel(
+          id: DateTime.now().millisecondsSinceEpoch, // Temporary ID
+          taskId: _taskDetail!.id,
+          image: file.path.split('/').last,
+          imagePath: file.path,
+          createdAt: DateTime.now().toIso8601String(),
+          updatedAt: DateTime.now().toIso8601String(),
+        );
+      }).toList();
+
+      // Add new images to the beginning of existing images
+      _taskDetail = _taskDetail!.copyWith(
+        images: [...newImages, ..._taskDetail!.images],
+      );
+    });
+  }
+
   void _updateTaskAttachmentsLocally(List<File> attachments) {
     if (_taskDetail == null) return;
 
@@ -1495,8 +1518,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             message: 'Images uploaded successfully',
           );
 
-          // Reload task details to get proper image URLs from server
-          _loadTaskDetails();
+          // Update images locally to avoid full screen refresh
+          _updateTaskImagesLocally(images);
+          
+          // Optionally reload after a delay to get proper URLs from server
+          // This can be removed if local update is sufficient
+          // Future.delayed(Duration(seconds: 2), () {
+          //   _loadTaskDetails();
+          // });
         } else {
           SnackBarUtils.showError(
             context,
@@ -3459,7 +3488,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           ),
           SizedBox(height: 16),
           // Images Grid
-          _taskDetail?.images.isEmpty == true
+          _taskDetail?.allImages.isEmpty == true
               ? _buildEmptyState('No photos available')
               : _buildAllImagesGrid(),
         ],
@@ -6327,7 +6356,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           // Card Content
           Padding(
             padding: EdgeInsets.all(16),
-            child: _taskDetail?.images.isEmpty == true
+            child: _taskDetail?.allImages.isEmpty == true
                 ? _buildEmptyState('No photos available')
                 : _buildImagesGrid(),
           ),
