@@ -79,6 +79,18 @@ class ApiService {
     }
   }
 
+  static String _parseApiErrorMessage(String responseBody, int statusCode) {
+    try {
+      final Map<String, dynamic> errorData = json.decode(responseBody);
+      if (errorData['message'] != null) {
+        return errorData['message'].toString();
+      }
+    } catch (e) {
+      // If parsing fails, use the status code message
+    }
+    return getErrorMessage(statusCode);
+  }
+
   // Check if response indicates session expiration
   static bool _isSessionExpiredResponse(http.Response response) {
     return response.statusCode == 401 || 
@@ -1071,7 +1083,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return SiteAgencyResponse(
+          status: 'error',
+          message: 'Authentication token not found. Please login again.',
+          data: [],
+        );
       }
 
       final Map<String, dynamic> requestData = {
@@ -1088,20 +1104,27 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         return SiteAgencyResponse.fromJson(jsonData);
       } else {
-        return null;
+        return SiteAgencyResponse(
+          status: 'error',
+          message: _parseApiErrorMessage(response.body, response.statusCode),
+          data: [],
+        );
       }
     } catch (e) {
-      return null;
+      return SiteAgencyResponse(
+        status: 'error',
+        message: 'Network error. Please check your connection and try again.',
+        data: [],
+      );
     }
   }
 
-  // Save Site Vendor API
-  static Future<SiteAgencyModel?> saveSiteAgency({
+  // Save Site Agency API
+  static Future<Map<String, dynamic>?> saveSiteAgency({
     required int siteId,
     required int categoryId,
     required String name,
@@ -1111,7 +1134,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'data': null,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -1132,24 +1159,27 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
-          return SiteAgencyModel.fromJson(jsonData['data']);
-        } else {
-          return null;
-        }
+        return jsonData; // Return the full response
       } else {
-        return null;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'data': null,
+        };
       }
     } catch (e) {
-      return null;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'data': null,
+      };
     }
   }
 
-  // Update Site Vendor API
-  static Future<SiteAgencyModel?> updateSiteAgency({
+  // Update Site Agency API
+  static Future<Map<String, dynamic>?> updateSiteAgency({
     required int agencyId,
     required int siteId,
     required int categoryId,
@@ -1160,7 +1190,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'data': null,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -1182,30 +1216,37 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
-          return SiteAgencyModel.fromJson(jsonData['data']);
-        } else {
-          return null;
-        }
+        return jsonData; // Return the full response
       } else {
-        return null;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'data': null,
+        };
       }
     } catch (e) {
-      return null;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'data': null,
+      };
     }
   }
 
-  // Delete Site Vendor API
-  static Future<bool> deleteSiteAgency({
+  // Delete Site Agency API
+  static Future<Map<String, dynamic>?> deleteSiteAgency({
     required int agencyId,
   }) async {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return false;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'success': false,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -1223,17 +1264,25 @@ class ApiService {
       ).timeout(timeout);
 
 
+      log("Delete agency response == ${response.statusCode}");
+      log("Delete agency response == ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        final success = jsonData['status'] == 'success';
-        if (!success) {
-        }
-        return success;
+        return jsonData; // Return the full response
       } else {
-        return false;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'success': false,
+        };
       }
     } catch (e) {
-      return false;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'success': false,
+      };
     }
   }
 
@@ -2059,13 +2108,13 @@ class ApiService {
 
       // Add headers
       request.headers.addAll({
-        'Authorization': 'Bearer $apiToken',
         'Accept': 'application/json',
       });
 
       // Add text fields
       request.fields.addAll({
-        'site_name': siteName,
+        'api_token': apiToken,
+        'name': siteName,
         'client_name': clientName,
         'architect_name': architectName,
         'start_date': startDate.toIso8601String().split('T')[0], // YYYY-MM-DD format
@@ -2073,6 +2122,7 @@ class ApiService {
         'latitude': latitude.toString(),
         'longitude': longitude.toString(),
         'address': address,
+        'company': "Core PMC",
       });
 
       // Add image files
@@ -2309,6 +2359,40 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         return UnitResponse.fromJson(jsonData);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Delete Task API
+  static Future<ApiResponse?> deleteTask({
+    required String apiToken,
+    required int taskId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/deleteTask'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'task_id': taskId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? '',
+        );
       } else {
         return null;
       }
@@ -3166,6 +3250,61 @@ class ApiService {
         status: 0,
         message: 'Network error: ${e.toString()}',
         data: null,
+      );
+    }
+  }
+
+  // Get GRN List API
+  static Future<ApiResponse<List<dynamic>>?> getGrnList({
+    required int siteId,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/materialgrn/getGrn'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: {
+          'api_token': token,
+          'site_id': siteId.toString(),
+        },
+      ).timeout(timeout);
+
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['status'] == 1) {
+          return ApiResponse<List<dynamic>>(
+            status: jsonData['status'],
+            message: jsonData['message'] ?? '',
+            data: jsonData['data'] ?? [],
+          );
+        } else {
+          return ApiResponse<List<dynamic>>(
+            status: jsonData['status'] ?? 0,
+            message: jsonData['message'] ?? 'Failed to get GRN list',
+            data: [],
+          );
+        }
+      } else {
+        return ApiResponse<List<dynamic>>(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: [],
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<dynamic>>(
+        status: 0,
+        message: 'Network error: ${e.toString()}',
+        data: [],
       );
     }
   }
@@ -4301,7 +4440,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return SiteVendorResponse(
+          status: 'error',
+          message: 'Authentication token not found. Please login again.',
+          data: [],
+        );
       }
 
       final Map<String, dynamic> requestData = {
@@ -4320,21 +4463,25 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        if (jsonData['status'] == 'success') {
-          return SiteVendorResponse.fromJson(jsonData);
-        } else {
-          return null;
-        }
+        return SiteVendorResponse.fromJson(jsonData);
       } else {
-        return null;
+        return SiteVendorResponse(
+          status: 'error',
+          message: _parseApiErrorMessage(response.body, response.statusCode),
+          data: [],
+        );
       }
     } catch (e) {
-      return null;
+      return SiteVendorResponse(
+        status: 'error',
+        message: 'Network error. Please check your connection and try again.',
+        data: [],
+      );
     }
   }
 
   // Save Site Vendor API
-  static Future<SiteVendorModel?> saveSiteVendor({
+  static Future<Map<String, dynamic>?> saveSiteVendor({
     required int siteId,
     required String name,
     required String mobile,
@@ -4344,7 +4491,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'data': null,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -4365,23 +4516,29 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
+      log("Add site vendor response == ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
-          return SiteVendorModel.fromJson(jsonData['data']);
-        } else {
-          return null;
-        }
+        return jsonData; // Return the full response
       } else {
-        return null;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'data': null,
+        };
       }
     } catch (e) {
-      return null;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'data': null,
+      };
     }
   }
 
   // Update Site Vendor API
-  static Future<SiteVendorModel?> updateSiteVendor({
+  static Future<Map<String, dynamic>?> updateSiteVendor({
     required int vendorId,
     required int siteId,
     required String name,
@@ -4392,7 +4549,11 @@ class ApiService {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return null;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'data': null,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -4416,16 +4577,20 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        if (jsonData['status'] == 'success' && jsonData['data'] != null) {
-          return SiteVendorModel.fromJson(jsonData['data']);
-        } else {
-          return null;
-        }
+        return jsonData; // Return the full response
       } else {
-        return null;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'data': null,
+        };
       }
     } catch (e) {
-      return null;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'data': null,
+      };
     }
   }
 
@@ -4532,13 +4697,17 @@ class ApiService {
   }
 
   // Delete Site Vendor API
-  static Future<bool> deleteSiteVendor({
+  static Future<Map<String, dynamic>?> deleteSiteVendor({
     required int vendorId,
   }) async {
     try {
       final token = await AuthService.currentToken;
       if (token == null) {
-        return false;
+        return {
+          'status': 'error',
+          'message': 'Authentication token not found. Please login again.',
+          'success': false,
+        };
       }
 
       final Map<String, dynamic> requestData = {
@@ -4557,13 +4726,20 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        final success = jsonData['status'] == 'success';
-        return success;
+        return jsonData; // Return the full response
       } else {
-        return false;
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+          'success': false,
+        };
       }
     } catch (e) {
-      return false;
+      return {
+        'status': 'error',
+        'message': 'Network error. Please check your connection and try again.',
+        'success': false,
+      };
     }
   }
 

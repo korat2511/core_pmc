@@ -11,7 +11,7 @@ class ValidationUtils {
     final UserModel? currentUser = AuthService.currentUser;
     if (currentUser == null) return false;
     
-    return [1, 6, 57].contains(currentUser.id);
+    return [1, 6, 57, 51].contains(currentUser.id);
   }
 
   /// Check if current user can change "Decision Pending From"
@@ -65,8 +65,8 @@ class ValidationUtils {
     if (currentUser.id == task.createdBy) return true;
     
     // Check if user is assigned to the task
-    if (task.assign != null && task.assign!.isNotEmpty) {
-      final assignedUserIds = task.assign!.map((user) => user.id).toList();
+    if (task.assign.isNotEmpty) {
+      final assignedUserIds = task.assign.map((user) => user.id).toList();
       if (assignedUserIds.contains(currentUser.id)) return true;
     }
     
@@ -97,6 +97,19 @@ class ValidationUtils {
     // Check if user is the task creator
     if (currentUser.id == task.createdBy) return true;
     
+    return false;
+  }
+
+  static bool canDeleteTask(TaskModel task) {
+    final UserModel? currentUser = AuthService.currentUser;
+    if (currentUser == null) return false;
+
+    // Check if user has user type 1 (admin/supervisor)
+    if (currentUser.userType == 1) return true;
+
+    // Check if user is the task creator
+    if (currentUser.id == task.createdBy) return true;
+
     return false;
   }
 

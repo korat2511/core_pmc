@@ -2483,22 +2483,29 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
 
                 Navigator.of(context).pop(); // Close loading dialog
 
-                if (result != null) {
+                if (result != null && result['status'] == 'success') {
                   SnackBarUtils.showSuccess(
                     context,
-                    message: 'Vendor added successfully',
+                    message: result['message'] ?? 'Vendor added successfully',
                   );
                   Navigator.of(context).pop(); // Close add vendor dialog
                   
                   // Reload vendors and select the new vendor
                   await _loadVendors();
+                  
+                  // Find and select the newly added vendor by name
+                  final newVendor = _vendors.firstWhere(
+                    (vendor) => vendor.name == nameController.text.trim(),
+                    orElse: () => _vendors.first, // Fallback to first vendor if not found
+                  );
+                  
                   setState(() {
-                    _selectedVendor = result;
+                    _selectedVendor = newVendor;
                   });
                 } else {
                   SnackBarUtils.showError(
                     context,
-                    message: 'Failed to add vendor',
+                    message: result?['message'] ?? 'Failed to add vendor',
                   );
                 }
               } catch (e) {

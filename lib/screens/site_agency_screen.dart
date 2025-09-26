@@ -46,10 +46,17 @@ class _SiteAgencyScreenState extends State<SiteAgencyScreen> {
     try {
       final response = await ApiService.getSiteAgency(siteId: widget.site.id);
 
-      if (response != null && response.status == 'success') {
-        setState(() {
-          _agencies = response.data;
-        });
+      if (response != null) {
+        if (response.status == 'success') {
+          setState(() {
+            _agencies = response.data;
+          });
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: response.message ?? 'Failed to load agencies',
+          );
+        }
       } else {
         SnackBarUtils.showError(
           context,
@@ -154,14 +161,21 @@ class _SiteAgencyScreenState extends State<SiteAgencyScreen> {
       });
 
       try {
-        final success = await ApiService.deleteSiteAgency(agencyId: agency.id);
+        final result = await ApiService.deleteSiteAgency(agencyId: agency.id);
 
-        if (success) {
-          SnackBarUtils.showSuccess(
-            context,
-            message: 'Agency deleted successfully',
-          );
-          _loadAgencies();
+        if (result != null) {
+          if (result['status'] == 'success') {
+            SnackBarUtils.showSuccess(
+              context,
+              message: result['message'] ?? 'Agency deleted successfully',
+            );
+            _loadAgencies();
+          } else {
+            SnackBarUtils.showError(
+              context,
+              message: result['message'] ?? 'Failed to delete agency',
+            );
+          }
         } else {
           SnackBarUtils.showError(
             context,
@@ -363,6 +377,11 @@ class __AgencyDialogState extends State<_AgencyDialog> {
   CategoryModel? _selectedCategory;
   bool _isLoading = false;
   bool _isDialogClosing = false;
+  bool _isLoadingContacts = false;
+  List<Contact> _contacts = [];
+  List<Contact> _filteredContacts = [];
+  bool _showContacts = false;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -381,6 +400,7 @@ class __AgencyDialogState extends State<_AgencyDialog> {
     _nameController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
+    _searchController.dispose();
     _isDialogClosing = true;
     super.dispose();
   }
@@ -399,18 +419,24 @@ class __AgencyDialogState extends State<_AgencyDialog> {
     }
   }
 
-  Future<void> _selectFromContacts() async {
+  Future<void> _loadContacts() async {
     try {
-      // Check if widget is still mounted and dialog is not closing
+      setState(() {
+        _isLoadingContacts = true;
+      });
+
+      // Check if widget is still mounted
       if (!mounted || _isDialogClosing) return;
 
-      // Request permission
-      if (!await FlutterContacts.requestPermission()) {
+      // Check current permission status
+      bool hasPermission = await FlutterContacts.requestPermission(readonly: true);
+      
+      // If permission is not granted, return silently
+      if (!hasPermission) {
         if (!mounted) return;
-        SnackBarUtils.showError(
-          context,
-          message: 'Permission denied to access contacts',
-        );
+        setState(() {
+          _isLoadingContacts = false;
+        });
         return;
       }
 
@@ -423,88 +449,69 @@ class __AgencyDialogState extends State<_AgencyDialog> {
       // Check if widget is still mounted after async operation
       if (!mounted) return;
 
-      if (contacts.isEmpty) {
-        SnackBarUtils.showInfo(
-          context,
-          message: 'No contacts found',
-        );
-        return;
-      }
-
-      // Show contact selection dialog
-      final selectedContact = await showDialog<Contact>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Select Contact'),
-          content: Container(
-            width: double.maxFinite,
-            height: 300,
-            child: ListView.builder(
-              itemCount: contacts.length,
-              itemBuilder: (context, index) {
-                final contact = contacts[index];
-                final name = contact.displayName;
-                final phones = contact.phones.map((p) => p.number).toList();
-                final emails = contact.emails.map((e) => e.address).toList();
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  title: Text(name.isNotEmpty ? name : 'Unknown'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (phones.isNotEmpty)
-                        Text('📞 ${phones.first}'),
-                      if (emails.isNotEmpty)
-                        Text('📧 ${emails.first}'),
-                    ],
-                  ),
-                  onTap: () => Navigator.of(context).pop(contact),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
-            ),
-          ],
-        ),
-      );
-
-      // Check if widget is still mounted after dialog
-      if (!mounted) return;
-
-      if (selectedContact != null) {
-        setState(() {
-          _nameController.text = selectedContact.displayName;
-
-          // Set first phone number
-          if (selectedContact.phones.isNotEmpty) {
-            _mobileController.text = selectedContact.phones.first.number;
-          }
-
-          // Set first email if available
-          if (selectedContact.emails.isNotEmpty) {
-            _emailController.text = selectedContact.emails.first.address;
-          }
-        });
-      }
+      setState(() {
+        _contacts = contacts;
+        _filteredContacts = contacts;
+        _showContacts = true;
+        _isLoadingContacts = false;
+      });
     } catch (e) {
       // Check if widget is still mounted before showing error
       if (!mounted) return;
-
+      
+      setState(() {
+        _isLoadingContacts = false;
+      });
+      
       SnackBarUtils.showError(
         context,
         message: 'Error accessing contacts: ${e.toString()}',
       );
     }
+  }
+
+  void _selectContact(Contact contact) {
+    setState(() {
+      _nameController.text = contact.displayName;
+      
+      // Set first phone number
+      if (contact.phones.isNotEmpty) {
+        _mobileController.text = contact.phones.first.number;
+      }
+      
+      // Set first email if available
+      if (contact.emails.isNotEmpty) {
+        _emailController.text = contact.emails.first.address;
+      }
+      
+      _showContacts = false;
+    });
+  }
+
+  void _hideContacts() {
+    setState(() {
+      _showContacts = false;
+      _searchController.clear();
+    });
+  }
+
+  void _filterContacts(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredContacts = _contacts;
+      } else {
+        _filteredContacts = _contacts.where((contact) {
+          final name = contact.displayName.toLowerCase();
+          final phones = contact.phones.map((p) => p.number).join(' ').toLowerCase();
+          final emails = contact.emails.map((e) => e.address).join(' ').toLowerCase();
+          final searchQuery = query.toLowerCase();
+          
+          return name.contains(searchQuery) || 
+                 phones.contains(searchQuery) || 
+                 emails.contains(searchQuery);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _saveAgency() async {
@@ -537,13 +544,20 @@ class __AgencyDialogState extends State<_AgencyDialog> {
       );
 
       if (result != null) {
-        SnackBarUtils.showSuccess(
-          context,
-          message: widget.agency == null
-              ? 'Agency added successfully'
-              : 'Agency updated successfully',
-        );
-        widget.onSuccess();
+        if (result['status'] == 'success') {
+          SnackBarUtils.showSuccess(
+            context,
+            message: result['message'] ?? (widget.agency == null
+                ? 'Agency added successfully'
+                : 'Agency updated successfully'),
+          );
+          widget.onSuccess();
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: result['message'] ?? 'Failed to ${widget.agency == null ? 'add' : 'update'} Agency',
+          );
+        }
       } else {
         SnackBarUtils.showError(
           context,
@@ -565,6 +579,7 @@ class __AgencyDialogState extends State<_AgencyDialog> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -612,13 +627,14 @@ class __AgencyDialogState extends State<_AgencyDialog> {
             SizedBox(height: 16),
 
             // Form Content
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     // Category Selection
                     GestureDetector(
                       onTap: _selectCategory,
@@ -650,10 +666,11 @@ class __AgencyDialogState extends State<_AgencyDialog> {
                     ),
                     SizedBox(height: 16),
 
-                    // Select from Contact Button (only for Add mode)
+                    // Contact Selection Section (only for Add mode)
                     if (widget.agency == null) ...[
+                      // Load Contacts Button
                       GestureDetector(
-                        onTap: _selectFromContacts,
+                        onTap: _showContacts ? _hideContacts : _loadContacts,
                         child: Container(
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -664,20 +681,185 @@ class __AgencyDialogState extends State<_AgencyDialog> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.contacts, color: Theme.of(context).colorScheme.primary),
+                              Icon(
+                                _showContacts ? Icons.contacts : Icons.contacts_outlined,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                               SizedBox(width: 12),
                               Text(
-                                'Select from Contact',
+                                _isLoadingContacts 
+                                  ? 'Loading contacts...' 
+                                  : _showContacts 
+                                    ? 'Hide Contacts' 
+                                    : 'Load Contacts',
                                 style: AppTypography.bodyMedium.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              Spacer(),
+                              if (_isLoadingContacts)
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
                       ),
                       SizedBox(height: 16),
+
+                      // Contact List
+                      if (_showContacts && _contacts.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          height: 350,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.borderColor),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceVariant,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Select a contact (${_filteredContacts.length} of ${_contacts.length} found)',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              // Search Field
+                              Padding(
+                                padding: EdgeInsets.all(8),
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: _filterContacts,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search contacts...',
+                                    prefixIcon: Icon(Icons.search, size: 20),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              _filterContacts('');
+                                            },
+                                          )
+                                        : null,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: AppColors.borderColor),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: AppColors.borderColor),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              // Contact List
+                              Expanded(
+                                child: _filteredContacts.isEmpty
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.search_off,
+                                              size: 48,
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'No contacts found',
+                                              style: AppTypography.bodyMedium.copyWith(
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Try a different search term',
+                                              style: AppTypography.bodySmall.copyWith(
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: _filteredContacts.length,
+                                        itemBuilder: (context, index) {
+                                          final contact = _filteredContacts[index];
+                                    final name = contact.displayName;
+                                    final phones = contact.phones.map((p) => p.number).toList();
+                                    final emails = contact.emails.map((e) => e.address).toList();
+                                    
+                                    return ListTile(
+                                      dense: true,
+                                      leading: CircleAvatar(
+                                        radius: 16,
+                                        child: Text(
+                                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        name.isNotEmpty ? name : 'Unknown',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (phones.isNotEmpty) 
+                                            Text(
+                                              '📞 ${phones.first}',
+                                              style: AppTypography.bodySmall,
+                                            ),
+                                          if (emails.isNotEmpty) 
+                                            Text(
+                                              '📧 ${emails.first}',
+                                              style: AppTypography.bodySmall,
+                                            ),
+                                        ],
+                                      ),
+                                      onTap: () => _selectContact(contact),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
                     ],
 
                     // Name Field
@@ -751,7 +933,8 @@ class __AgencyDialogState extends State<_AgencyDialog> {
                       ],
                     ),
                     SizedBox(height: 20), // Bottom padding for safe area
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

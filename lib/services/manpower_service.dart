@@ -1,5 +1,4 @@
 import '../models/manpower_model.dart';
-import '../models/manpower_response.dart';
 import '../models/manpower_entry_model.dart';
 import 'api_service.dart';
 import 'local_storage_service.dart';
@@ -8,12 +7,14 @@ class ManpowerService {
   List<ManpowerModel> _manpowerList = [];
   bool _isLoading = false;
   String _errorMessage = '';
+  String _whatsAppMessage = '';
 
   // Getters
   List<ManpowerModel> get manpowerList => _manpowerList;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   bool get hasError => _errorMessage.isNotEmpty;
+  String get whatsAppMessage => _whatsAppMessage;
 
   // Get manpower by date
   Future<bool> getManpowerByDate({
@@ -39,6 +40,7 @@ class ManpowerService {
 
       if (response.isSuccess) {
         _manpowerList = response.data;
+        _whatsAppMessage = response.whatsAppMessage;
         _isLoading = false;
         return true;
       } else {
@@ -82,6 +84,7 @@ class ManpowerService {
 
       if (response.isSuccess) {
         _manpowerList = response.data;
+        _whatsAppMessage = response.whatsAppMessage;
         _isLoading = false;
         return true;
       } else {
@@ -125,5 +128,6 @@ class ManpowerService {
   // Clear manpower list
   void clearManpowerList() {
     _manpowerList.clear();
+    _whatsAppMessage = '';
   }
 }

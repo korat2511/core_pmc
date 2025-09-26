@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:social_sharing_plus/social_sharing_plus.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -11,9 +12,7 @@ import '../models/manpower_model.dart';
 import '../models/manpower_entry_model.dart';
 import '../models/category_model.dart';
 import '../services/manpower_service.dart';
-import '../services/category_service.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_text_field.dart';
 import '../widgets/dismiss_keyboard.dart';
 
 class SiteManpowerScreen extends StatefulWidget {
@@ -35,6 +34,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
   List<ManpowerModel> _manpowerList = [];
   List<ManpowerEntryModel> _entries = [];
   List<ManpowerEntryModel> _originalEntries = []; // Track original data
+  String whatsappMessage = "";
   bool _isLoading = false;
   Map<int, TextEditingController> _skilledControllers = {};
   Map<int, TextEditingController> _unskilledControllers = {};
@@ -81,6 +81,8 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
         _isLoading = false;
         if (success) {
           _manpowerList = _manpowerService.manpowerList;
+          whatsappMessage = _manpowerService.whatsAppMessage;
+          
           _initializeEntries();
         }
       });
@@ -242,6 +244,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
       });
 
       if (success) {
+        whatsappMessage = _manpowerService.whatsAppMessage;
         SnackBarUtils.showSuccess(
           context,
           message: 'Manpower saved successfully',
@@ -254,6 +257,21 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
           message: _manpowerService.errorMessage,
         );
       }
+    }
+  }
+
+  void _shareWhatsAppMessage() async{
+    if (whatsappMessage.isNotEmpty) {
+      await SocialSharingPlus.shareToSocialMedia(
+        SocialPlatform.whatsapp,
+        whatsappMessage,
+        isOpenBrowser: true,
+      );
+    }else{
+      SnackBarUtils.showInfo(
+        context,
+        message: 'Manpower data not found...!',
+      );
     }
   }
 
@@ -296,7 +314,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
               ),
             ),
 
-            SizedBox(height: 16),
+            SizedBox(height: 12),
 
             // Content
             Expanded(
@@ -455,40 +473,72 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                 ),
         ),
 
-        // Action Buttons
+        // Action Buttons - Compact Layout
         Container(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             children: [
-              // Add Entry Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addNewEntry,
-                  icon: Icon(Icons.add, color: Colors.white, size: 18),
-                  label: Text(
-                    '+ Add Manpower',
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+              // Row with Add and WhatsApp buttons
+              Row(
+                children: [
+                  // Add Entry Button
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _addNewEntry,
+                      icon: Icon(Icons.add, color: Colors.white, size: 16),
+                      label: Text(
+                        'Add',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        elevation: 1,
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  
+                  SizedBox(width: 8),
+                  
+                  // WhatsApp Share Button (only show if there's a message)
+                  if (whatsappMessage.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _shareWhatsAppMessage,
+                        icon: Icon(Icons.share, color: Colors.white, size: 16),
+                        label: Text(
+                          'WhatsApp',
+                          style: AppTypography.bodySmall.copyWith(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          elevation: 1,
+                        ),
+                      ),
                     ),
-                    elevation: 2,
-                  ),
-                ),
+                ],
               ),
               
-              SizedBox(height: 16),
+              SizedBox(height: 8),
               
-              // Save Button
+              // Save Button - Full width but smaller
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -496,16 +546,16 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    elevation: 2,
+                    elevation: 1,
                   ),
                   child: _isLoading
                       ? SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -513,8 +563,8 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
                         )
                       : Text(
                           'Submit',
-                          style: AppTypography.bodyLarge.copyWith(
-                            fontSize: 18,
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontSize: 16,
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
@@ -537,21 +587,21 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
     }
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -587,7 +637,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
               ],
             ),
             
-            SizedBox(height: 20),
+            SizedBox(height: 12),
             
             // Shift Selection (Dropdown) and Worker Inputs
             Row(
@@ -654,12 +704,12 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 6),
+        SizedBox(height: 4),
         Container(
-          height: 40,
+          height: 36,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.borderColor, width: 1),
           ),
           child: DropdownButtonHideUnderline(
@@ -716,12 +766,12 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 6),
+        SizedBox(height: 4),
         Container(
-          height: 40,
+          height: 36,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.borderColor, width: 1),
           ),
           child: TextField(
@@ -734,7 +784,7 @@ class _SiteManpowerScreenState extends State<SiteManpowerScreen> {
             ),
             decoration: InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
               hintText: '0',
               hintStyle: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textSecondary.withOpacity(0.6),

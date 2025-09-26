@@ -1,17 +1,15 @@
 import 'package:core_pmc/core/utils/navigation_utils.dart';
 import 'package:core_pmc/screens/compass_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../core/constants/app_colors.dart';
 import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../models/user_model.dart';
-import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final String title;
+  final String? title;
+  final Widget? titleWidget;
   final List<Widget>? actions;
   final bool showDrawer;
   final bool showBackButton;
@@ -23,7 +21,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   const CustomAppBar({
     super.key,
-    required this.title,
+    this.title,
+    this.titleWidget,
     this.actions,
     this.showDrawer = true,
     this.showCompass = true,
@@ -32,7 +31,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onNotificationPressed,
     this.onProfilePressed,
     this.onBackPressed,
-  });
+  }) : assert(title != null || titleWidget != null, 'Either title or titleWidget must be provided');
 
   @override
   Widget build(BuildContext context) {
@@ -188,8 +187,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             )
           : GestureDetector(
         onTap: onProfilePressed,
-            child: Text(
-                title,
+            child: titleWidget ?? Text(
+                title!,
                 style: AppTypography.titleLarge.copyWith(
                   color: Theme.of(context).colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,

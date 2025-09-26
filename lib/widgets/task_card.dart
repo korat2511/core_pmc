@@ -14,12 +14,14 @@ class TaskCard extends StatelessWidget {
   final TaskModel task;
   final VoidCallback? onTap;
   final Function(TaskModel)? onTaskUpdated;
+  final Function(int)? onTaskDeleted;
 
   const TaskCard({
     super.key,
     required this.task,
     this.onTap,
     this.onTaskUpdated,
+    this.onTaskDeleted,
   });
 
     @override
@@ -30,6 +32,7 @@ class TaskCard extends StatelessWidget {
         NavigationUtils.push(context, TaskDetailsScreen(
           task: task,
           onTaskUpdated: onTaskUpdated,
+          onTaskDeleted: onTaskDeleted,
         ));
       },
       child: Container(

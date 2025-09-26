@@ -1602,17 +1602,19 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       print('Task tapped: ${task.name}');
                     },
                     onTaskUpdated: (updatedTask) {
-                    
-                      
                       // Update the task in the local list
                       setState(() {
                         final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
                         if (index != -1) {
                           _tasks[index] = updatedTask;
-                       
-                        } else {
-                         
                         }
+                      });
+                    },
+                    onTaskDeleted: (deletedTaskId) {
+                      // Remove the deleted task from the local list
+                      setState(() {
+                        _tasks.removeWhere((t) => t.id == deletedTaskId);
+                        _totalTasks = _totalTasks > 0 ? _totalTasks - 1 : 0;
                       });
                     },
                   );

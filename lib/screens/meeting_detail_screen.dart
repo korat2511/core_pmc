@@ -25,6 +25,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
   bool _isUpdating = false;
+  int _uiUpdateCounter = 0;
 
   // Editable fields
   late TextEditingController _architectCompanyController;
@@ -201,11 +202,14 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       
       setState(() {
         _meeting = updatedMeeting;
+        _uiUpdateCounter++;
       });
     }
   }
 
   void _addAttachmentLocally(int discussionId, dynamic attachmentData) {
+    print('_addAttachmentLocally called with discussionId: $discussionId, attachmentData: $attachmentData');
+    
     if (_meeting != null && attachmentData != null) {
       // Create new attachment model
       final newAttachment = MeetingAttachmentModel(
@@ -215,9 +219,15 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         filePath: attachmentData['file_path'] ?? attachmentData['file'] ?? '',
       );
       
+      print('Created new attachment: id=${newAttachment.id}, file=${newAttachment.file}, filePath=${newAttachment.filePath}');
+      
       // Update discussions with new attachment
+      print('Looking for discussion with ID: $discussionId');
+      print('Available discussion IDs: ${_meeting!.meetingDiscussions.map((d) => d.id).toList()}');
+      
       final updatedDiscussions = _meeting!.meetingDiscussions.map((discussion) {
         if (discussion.id == discussionId) {
+          print('Found matching discussion, updating with attachment');
           return MeetingDiscussionModel(
             id: discussion.id,
             meetingId: discussion.meetingId,
@@ -234,8 +244,10 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       }).toList();
       
       // Also update editable discussions
+      print('Available editable discussion IDs: ${_editableDiscussions.map((d) => d.id).toList()}');
       _editableDiscussions = _editableDiscussions.map((discussion) {
         if (discussion.id == discussionId) {
+          print('Found matching editable discussion, updating with attachment');
           return MeetingDiscussionModel(
             id: discussion.id,
             meetingId: discussion.meetingId,
@@ -270,7 +282,13 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       
       setState(() {
         _meeting = updatedMeeting;
+        _uiUpdateCounter++;
       });
+      
+      print('State updated. New meeting has ${_meeting!.meetingDiscussions.length} discussions');
+      print('Discussion attachments: ${_meeting!.meetingDiscussions.map((d) => 'ID: ${d.id}, Attachment: ${d.meetingAttachment?.id ?? 'none'}').toList()}');
+    } else {
+      print('_addAttachmentLocally failed: _meeting is null or attachmentData is null');
     }
   }
 
@@ -580,8 +598,22 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             context,
             message: 'Attachment uploaded successfully',
           );
+          // Debug: Print the response to see the structure
+          print('Attachment API Response: $response');
+          
           // Update local data without full reload
-          _addAttachmentLocally(discussionId, response['data']);
+          // Try different possible response structures
+          final attachmentData = response['data'] ?? response['attachment'] ?? response;
+          print('Using attachment data: $attachmentData');
+          
+          // Try to update locally first
+          _addAttachmentLocally(discussionId, attachmentData);
+          
+          // If local update doesn't work, reload the meeting data
+          // This ensures we get the latest data from the server
+          Future.delayed(Duration(milliseconds: 500), () {
+            _loadMeetingDetail();
+          });
         } else {
           SnackBarUtils.showError(
             context,
@@ -1421,6 +1453,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         );
       } else {
         return ListView.builder(
+          key: ValueKey('editable_discussions_$_uiUpdateCounter'),
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -1461,6 +1494,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         );
       } else {
         return ListView.builder(
+          key: ValueKey('readonly_discussions_$_uiUpdateCounter'),
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -1481,6 +1515,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     final bool isEditable = _isEditing && discussionIndex != -1;
 
     return Container(
+      key: ValueKey('discussion_${discussion.id}_${discussion.meetingAttachment?.id ?? 'no_attachment'}'),
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,

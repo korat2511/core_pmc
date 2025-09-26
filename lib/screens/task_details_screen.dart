@@ -23,13 +23,13 @@ import '../core/utils/image_picker_utils.dart';
 import '../services/local_storage_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/marquee_widget.dart';
 import '../widgets/custom_button.dart';
 import '../models/tag_model.dart';
 import '../core/utils/validation_utils.dart';
 import '../core/utils/decision_pending_from_utils.dart';
 import '../core/utils/qc_category_picker_utils.dart';
 import '../models/qc_category_model.dart';
-import '../models/qc_point_model.dart';
 import '../services/qc_category_service.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/attachment_viewer.dart';
@@ -48,8 +48,9 @@ class _QuestionStateHolder {
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
   final Function(TaskModel)? onTaskUpdated;
+  final Function(int)? onTaskDeleted;
 
-  const TaskDetailsScreen({super.key, required this.task, this.onTaskUpdated});
+  const TaskDetailsScreen({super.key, required this.task, this.onTaskUpdated, this.onTaskDeleted});
 
   @override
   State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
@@ -942,14 +943,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
       ),
     );
   }
-
-  // This method is no longer needed as it's moved to QcCreationScreen
-
-  // This method is no longer needed as it's moved to QcCreationScreen
-
-  // These methods are no longer needed as they're moved to QcCreationScreen
-
-    // This method is no longer needed as it's moved to QcCreationScreen
 
   Future<void> _updateTaskQcCategory() async {
     if (_selectedQcCategory == null) {
@@ -2730,9 +2723,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
       },
       child: Scaffold(
         appBar: CustomAppBar(
-          title: _getAppBarTitle(),
+          titleWidget: _buildMarqueeTitle(),
           showBackButton: true,
           showDrawer: false,
+          showCompass: false,
+          actions: _buildAppBarActions(),
         ),
         body: _isLoading
             ? Center(
@@ -4962,17 +4957,338 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
 
-  String _getAppBarTitle() {
-    if (_taskDetail == null) return 'Task Details';
+
+  Widget _buildMarqueeTitle() {
+    if (_taskDetail == null) {
+      return Text(
+        'Task Details',
+        style: AppTypography.titleMedium.copyWith(
+          color: Theme.of(context).colorScheme.onPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    }
 
     final taskName = _taskDetail!.name;
     final progress = _taskDetail!.progress;
+    final titleText = progress != null ? '$taskName - $progress%' : taskName;
 
-    if (progress != null) {
-      return '$taskName - $progress%';
+    return MarqueeWidget(
+      text: titleText,
+      style: AppTypography.titleMedium.copyWith(
+        color: Theme.of(context).colorScheme.onPrimary,
+        fontWeight: FontWeight.bold,
+      ),
+      scrollDuration: const Duration(seconds: 3),
+      pauseDuration: const Duration(seconds: 1),
+      velocity: 30.0, // Slower, more readable scrolling
+    );
+  }
+
+  List<Widget> _buildAppBarActions() {
+    // Hide edit/delete options for site survey tasks (catSubId = 1)
+    if (_taskDetail?.catSubId == 1) {
+      return [];
     }
+    
+    // Check if user has permission to delete (user type = 1)
+    final currentUser = AuthService.currentUser;
+    
+    return [
+      // More Options Menu
+      PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        tooltip: 'More Options',
+        onSelected: (String value) {
+          switch (value) {
+            case 'edit':
+              _handleEditTask();
+              break;
+            case 'delete':
+              _handleDeleteTask();
+              break;
+          }
+        },
+        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+          PopupMenuItem<String>(
+            value: 'edit',
+            child: Row(
+              children: [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(width: 8),
+                Text('Edit Task'),
+              ],
+            ),
+          ),
 
-    return taskName;
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Delete Task', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  void _handleEditTask() {
+    if (_taskDetail == null) return;
+    
+    _showEditTaskDialog();
+  }
+
+  void _showEditTaskDialog() {
+    _addDataController.text = _taskDetail?.name ?? '';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: _buildEditTaskModal(),
+      ),
+    );
+  }
+
+  Widget _buildEditTaskModal() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: ResponsiveUtils.responsivePadding(context),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Edit Task',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontSize: ResponsiveUtils.responsiveFontSize(
+                        context,
+                        mobile: 16,
+                        tablet: 18,
+                        desktop: 20,
+                      ),
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Close button
+                GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Form
+          Padding(
+            padding: ResponsiveUtils.horizontalPadding(context),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _addDataController,
+                  maxLines: 2,
+                  keyboardType: TextInputType.text,
+                  decoration: InputDecoration(
+                    hintText: 'Enter task name...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Save button
+                SizedBox(
+                  width: double.infinity,
+                  child: CustomButton(
+                    text: 'Save',
+                    onPressed: () async {
+                      if (_addDataController.text.trim().isNotEmpty) {
+                        Navigator.pop(context);
+                        await _updateTaskName(_addDataController.text.trim());
+                      }
+                    },
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateTaskName(String newName) async {
+    if (_taskDetail == null) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.editTask({
+        'api_token': await AuthService.currentToken ?? '',
+        'task_id': _taskDetail!.id.toString(),
+        'name': newName,
+      });
+
+      if (response != null && response.status == 1) {
+        // Update local state
+        setState(() {
+          _taskDetail = _taskDetail!.copyWith(name: newName);
+        });
+        
+        SnackBarUtils.showSuccess(context, message: 'Task name updated successfully!');
+        
+        // Update the original task model and notify parent
+        final updatedTask = widget.task.copyWith(name: newName);
+        widget.onTaskUpdated?.call(updatedTask);
+      } else {
+        SnackBarUtils.showError(context, message: response?.message ?? 'Failed to update task name');
+      }
+    } catch (e) {
+      SnackBarUtils.showError(context, message: 'Failed to update task name: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _handleDeleteTask() {
+   if( ValidationUtils.canDeleteTask(widget.task)){
+     // Show confirmation dialog
+     showDialog(
+       context: context,
+       builder: (BuildContext context) {
+         return AlertDialog(
+           title: Text('Delete Task'),
+           content: Text('Are you sure you want to delete this task? This action cannot be undone.'),
+           actions: [
+             TextButton(
+               onPressed: () => Navigator.of(context).pop(),
+               child: Text('Cancel'),
+             ),
+             TextButton(
+               onPressed: () {
+                 Navigator.of(context).pop();
+                 _confirmDeleteTask();
+               },
+               style: TextButton.styleFrom(
+                 foregroundColor: Colors.red,
+               ),
+               child: Text('Delete'),
+             ),
+           ],
+         );
+       },
+     );
+   }else{
+     SnackBarUtils.showError(context, message: "You don't have permission to delete this task");
+   }
+
+
+
+
+  }
+
+  Future<void> _confirmDeleteTask() async {
+    if (_taskDetail == null) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.deleteTask(
+        apiToken: await AuthService.currentToken ?? '',
+        taskId: _taskDetail!.id,
+      );
+
+      if (response != null && response.status == 1) {
+        SnackBarUtils.showSuccess(context, message: response.message ?? 'Task deleted successfully!');
+        
+        // Notify parent about task deletion
+        widget.onTaskDeleted?.call(_taskDetail!.id);
+        
+        // Navigate back to previous screen
+        Navigator.of(context).pop();
+      } else {
+        SnackBarUtils.showError(context, message: response?.message ?? 'Failed to delete task.');
+      }
+    } catch (e) {
+      SnackBarUtils.showError(context, message: 'Failed to delete task: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Color _getStatusColor() {

@@ -15,6 +15,7 @@ import 'site_vendor_screen.dart';
 import 'site_agency_screen.dart';
 import 'meeting_screen.dart';
 import 'quantity_screen.dart';
+import 'petty_cash_screen.dart';
 
 
 class SiteMoreScreen extends StatefulWidget {
@@ -322,10 +323,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         NavigationUtils.push(context, MeetingScreen(site: widget.site));
         break;
       case 'Petty Cash':
-        SnackBarUtils.showInfo(
-          context,
-          message: 'Petty Cash functionality coming soon',
-        );
+        NavigationUtils.push(context, PettyCashScreen(site: widget.site));
         break;
       default:
         // Show a temporary message for other options

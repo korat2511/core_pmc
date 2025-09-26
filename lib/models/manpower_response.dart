@@ -24,7 +24,7 @@ class ManpowerResponse {
     
     return ManpowerResponse(
       status: json['status'] ?? 0,
-      message: json['message'] ?? '',
+      message: json['message'] ?? 'Success', // Default message if not provided
       data: manpowerList,
       whatsAppMessage: json['whats_app_message'] ?? '',
     );

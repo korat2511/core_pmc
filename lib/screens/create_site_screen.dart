@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -10,16 +12,18 @@ import '../core/utils/image_picker_utils.dart';
 import '../core/utils/date_picker_utils.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
-import '../services/session_manager.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_date_picker_field.dart';
-import '../widgets/custom_image_picker.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/dismiss_keyboard.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CreateSiteScreen extends StatefulWidget {
   const CreateSiteScreen({super.key});
@@ -36,6 +40,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
   final _addressController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   
   DateTime? _startDate;
   DateTime? _endDate;
@@ -55,6 +61,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -107,6 +115,164 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     setState(() {
       _selectedImages.removeAt(index);
     });
+  }
+
+  void _dismissKeyboard() {
+    // Multiple methods to ensure keyboard is dismissed
+    FocusScope.of(context).unfocus();
+    _searchFocusNode.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _onPlaceSelected(Prediction prediction) async {
+    try {
+      // Dismiss keyboard and clear search field immediately
+      _dismissKeyboard();
+      _searchController.clear();
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Get place details using Google Places API
+      final String apiKey = "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ";
+      final String url = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.placeId}&key=$apiKey';
+      
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['status'] == 'OK' && data['result'] != null) {
+          final result = data['result'];
+          final geometry = result['geometry'];
+          final location = geometry['location'];
+          
+          final lat = location['lat'].toDouble();
+          final lng = location['lng'].toDouble();
+          
+          setState(() {
+            _selectedLocation = LatLng(lat, lng);
+            _latitudeController.text = lat.toStringAsFixed(6);
+            _longitudeController.text = lng.toStringAsFixed(6);
+            _addressController.text = result['formatted_address'] ?? prediction.description ?? '';
+            _updateMarkers();
+            _isLoading = false;
+          });
+
+          // Animate camera to selected location
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(lat, lng),
+                15.0,
+              ),
+            );
+          }
+
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'Location selected successfully!',
+          );
+        } else {
+          throw Exception('Place details not found');
+        }
+      } else {
+        throw Exception('Failed to fetch place details');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to get place details: $e',
+      );
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // Dismiss keyboard when getting current location
+      _dismissKeyboard();
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Location services are disabled. Please enable location services.',
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _isLoading = false;
+          });
+          SnackBarUtils.showError(
+            context,
+            message: 'Location permission denied. Please enable location access in settings.',
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _isLoading = false;
+        });
+        SnackBarUtils.showError(
+          context,
+          message: 'Location permission permanently denied. Please enable location access in app settings.',
+        );
+        return;
+      }
+
+      // Get current location
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 15),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Only animate camera to current location - do not update fields
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0,
+          ),
+        );
+      }
+
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'Showing current location on map',
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to get current location: $e',
+      );
+    }
   }
 
 
@@ -224,8 +390,13 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
         showDrawer: false,
         showBackButton: true,
       ),
-      body: DismissKeyboard(
-        child: Form(
+      body: GestureDetector(
+        onTap: () {
+          // Dismiss keyboard when tapping anywhere on the screen
+          _dismissKeyboard();
+        },
+        child: DismissKeyboard(
+          child: Form(
           key: _formKey,
           child: SingleChildScrollView(
             padding: ResponsiveUtils.responsivePadding(context),
@@ -251,12 +422,12 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   controller: _clientNameController,
                   label: 'Client Name',
                   prefixIcon: Icon(Icons.person),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter client name';
-                    }
-                    return null;
-                  },
+                  // validator: (value) {
+                  //   if (value == null || value.trim().isEmpty) {
+                  //     return 'Please enter client name';
+                  //   }
+                  //   return null;
+                  // },
                 ),
                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
 
@@ -265,12 +436,12 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   controller: _architectNameController,
                   label: 'Architect Name',
                   prefixIcon: Icon(Icons.architecture),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter architect name';
-                    }
-                    return null;
-                  },
+                  // validator: (value) {
+                  //   if (value == null || value.trim().isEmpty) {
+                  //     return 'Please enter architect name';
+                  //   }
+                  //   return null;
+                  // },
                 ),
                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
 
@@ -283,12 +454,12 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   ),
                   label: 'Start Date',
                   onTap: _selectStartDate,
-                  validator: (value) {
-                    if (_startDate == null) {
-                      return 'Please select start date';
-                    }
-                    return null;
-                  },
+                  // validator: (value) {
+                  //   if (_startDate == null) {
+                  //     return 'Please select start date';
+                  //   }
+                  //   return null;
+                  // },
                 ),
                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
 
@@ -301,14 +472,143 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   ),
                   label: 'End Date',
                   onTap: _selectEndDate,
-                  validator: (value) {
-                    if (_endDate == null) {
-                      return 'Please select end date';
-                    }
-                    return null;
-                  },
+                  // validator: (value) {
+                  //   if (_endDate == null) {
+                  //     return 'Please select end date';
+                  //   }
+                  //   return null;
+                  // },
                 ),
                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
+                
+                // Search Field
+                Text(
+                  'Search Location',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
+                GooglePlaceAutoCompleteTextField(
+                  textEditingController: _searchController,
+                  focusNode: _searchFocusNode,
+                  googleAPIKey: "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ",
+                  inputDecoration: InputDecoration(
+                    hintText: 'Search for a place...',
+                    hintStyle: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                      ),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                      ),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                      ),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                      ),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                      vertical: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                    ),
+                  ),
+                    debounceTime: 600,
+                    countries: ["in"], // Restrict to India
+                    isLatLngRequired: true,
+                    getPlaceDetailWithLatLng: (prediction) {
+                      _onPlaceSelected(prediction);
+                    },
+                    itemClick: (prediction) {
+                      _onPlaceSelected(prediction);
+                    },
+                    itemBuilder: (context, index, prediction) {
+                      return Container(
+                        padding: EdgeInsets.all(
+                          ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: AppColors.borderColor.withOpacity(0.5),
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: ResponsiveUtils.responsiveFontSize(context, mobile: 20, tablet: 22, desktop: 24),
+                            ),
+                            SizedBox(width: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    prediction.description ?? '',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (prediction.structuredFormatting?.secondaryText != null) ...[
+                                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 4, tablet: 6, desktop: 8)),
+                                    Text(
+                                      prediction.structuredFormatting!.secondaryText!,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 12, tablet: 14, desktop: 16),
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    seperatedBuilder: Divider(
+                      height: 1,
+                      color: AppColors.borderColor.withOpacity(0.5),
+                    ),
+                      containerHorizontalPadding: 0,
+                      containerVerticalPadding: 0,
+                ),
+                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
+                
                 Container(
                   height: ResponsiveUtils.responsiveFontSize(context, mobile: 200, tablet: 250, desktop: 300),
                   decoration: BoxDecoration(
@@ -317,54 +617,277 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
-                    child: GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: _selectedLocation ?? const LatLng(20.5937, 78.9629), // India center
-                        zoom: 5.0,
-                      ),
-                      onMapCreated: (GoogleMapController controller) {
-                        _mapController = controller;
-                      },
-                      onTap: (LatLng position) async {
-                        setState(() {
-                          _selectedLocation = position;
-                          _updateMarkers();
-                        });
-
-                        // Update coordinates
-                        _latitudeController.text = position.latitude.toStringAsFixed(6);
-                        _longitudeController.text = position.longitude.toStringAsFixed(6);
-
-                        // Get address from coordinates
-                        try {
-                          List<Placemark> placemarks = await placemarkFromCoordinates(
-                            position.latitude,
-                            position.longitude,
-                          );
-                          if (placemarks.isNotEmpty) {
-                            Placemark place = placemarks[0];
-                            String address = [
-                              place.street,
-                              place.subLocality,
-                              place.locality,
-                              place.administrativeArea,
-                              place.postalCode,
-                              place.country,
-                            ].where((element) => element != null && element.isNotEmpty).join(', ');
-
+                    child: Stack(
+                      children: [
+                        GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: _selectedLocation ?? const LatLng(20.5937, 78.9629), // India center
+                            zoom: 5.0,
+                          ),
+                          onMapCreated: (GoogleMapController controller) {
+                            _mapController = controller;
+                          },
+                          onTap: (LatLng position) async {
+                            // Dismiss keyboard when tapping on map
+                            _dismissKeyboard();
+                            
                             setState(() {
-                              _addressController.text = address;
+                              _selectedLocation = position;
+                              _updateMarkers();
                             });
-                          }
-                        } catch (e) {
-                          print('Error getting address: $e');
-                        }
-                      },
-                      markers: _markers,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: true,
-                      zoomControlsEnabled: true,
-                      mapToolbarEnabled: false,
+
+                            // Update coordinates
+                            _latitudeController.text = position.latitude.toStringAsFixed(6);
+                            _longitudeController.text = position.longitude.toStringAsFixed(6);
+
+                            // Get address from coordinates
+                            try {
+                              List<Placemark> placemarks = await placemarkFromCoordinates(
+                                position.latitude,
+                                position.longitude,
+                              );
+                              if (placemarks.isNotEmpty) {
+                                Placemark place = placemarks[0];
+                                String address = [
+                                  place.street,
+                                  place.subLocality,
+                                  place.locality,
+                                  place.administrativeArea,
+                                  place.postalCode,
+                                  place.country,
+                                ].where((element) => element != null && element.isNotEmpty).join(', ');
+
+                                setState(() {
+                                  _addressController.text = address;
+                                });
+                              }
+                            } catch (e) {
+                              print('Error getting address: $e');
+                            }
+                          },
+                          markers: _markers,
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: false,
+                          zoomControlsEnabled: false, // Disable default zoom controls
+                          mapToolbarEnabled: false,
+                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+                          },
+                        ),
+                        
+                        // Custom zoom controls
+                        Positioned(
+                          right: ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 12,
+                            tablet: 16,
+                            desktop: 20,
+                          ),
+                          top: ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 12,
+                            tablet: 16,
+                            desktop: 20,
+                          ),
+                          child: Column(
+                            children: [
+                              // Current Location Button
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(
+                                    ResponsiveUtils.responsiveSpacing(
+                                      context,
+                                      mobile: 8,
+                                      tablet: 10,
+                                      desktop: 12,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(
+                                      ResponsiveUtils.responsiveSpacing(
+                                        context,
+                                        mobile: 8,
+                                        tablet: 10,
+                                        desktop: 12,
+                                      ),
+                                    ),
+                                    onTap: _getCurrentLocation,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(
+                                        ResponsiveUtils.responsiveSpacing(
+                                          context,
+                                          mobile: 8,
+                                          tablet: 10,
+                                          desktop: 12,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.my_location,
+                                        color: Theme.of(context).colorScheme.primary,
+                                        size: ResponsiveUtils.responsiveFontSize(
+                                          context,
+                                          mobile: 20,
+                                          tablet: 22,
+                                          desktop: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              
+                              SizedBox(
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 4,
+                                  tablet: 6,
+                                  desktop: 8,
+                                ),
+                              ),
+                              
+                              // Zoom In Button
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(
+                                    ResponsiveUtils.responsiveSpacing(
+                                      context,
+                                      mobile: 8,
+                                      tablet: 10,
+                                      desktop: 12,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(
+                                      ResponsiveUtils.responsiveSpacing(
+                                        context,
+                                        mobile: 8,
+                                        tablet: 10,
+                                        desktop: 12,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      _mapController?.animateCamera(
+                                        CameraUpdate.zoomIn(),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(
+                                        ResponsiveUtils.responsiveSpacing(
+                                          context,
+                                          mobile: 8,
+                                          tablet: 10,
+                                          desktop: 12,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.add,
+                                        color: Theme.of(context).colorScheme.primary,
+                                        size: ResponsiveUtils.responsiveFontSize(
+                                          context,
+                                          mobile: 20,
+                                          tablet: 22,
+                                          desktop: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              
+                              SizedBox(
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 4,
+                                  tablet: 6,
+                                  desktop: 8,
+                                ),
+                              ),
+                              
+                              // Zoom Out Button
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(
+                                    ResponsiveUtils.responsiveSpacing(
+                                      context,
+                                      mobile: 8,
+                                      tablet: 10,
+                                      desktop: 12,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(
+                                      ResponsiveUtils.responsiveSpacing(
+                                        context,
+                                        mobile: 8,
+                                        tablet: 10,
+                                        desktop: 12,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      _mapController?.animateCamera(
+                                        CameraUpdate.zoomOut(),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(
+                                        ResponsiveUtils.responsiveSpacing(
+                                          context,
+                                          mobile: 8,
+                                          tablet: 10,
+                                          desktop: 12,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.remove,
+                                        color: Theme.of(context).colorScheme.primary,
+                                        size: ResponsiveUtils.responsiveFontSize(
+                                          context,
+                                          mobile: 20,
+                                          tablet: 22,
+                                          desktop: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -548,6 +1071,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

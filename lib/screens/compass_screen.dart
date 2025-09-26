@@ -78,7 +78,6 @@ class CompassScreen extends StatelessWidget {
                           child: Image.asset("assets/images/compass.png"),
                         ),
                       ),
-
                     ],
                   ),
                 ),

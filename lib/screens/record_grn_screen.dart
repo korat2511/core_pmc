@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/image_picker_utils.dart';
 import '../models/po_detail_model.dart';
+import '../models/site_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
@@ -29,16 +30,24 @@ class GrnImageWithDescription {
 }
 
 class RecordGrnScreen extends StatefulWidget {
-  final PODetailModel poDetail;
-  final PendingItem pendingItem;
-  final String receivedQuantity;
+  final PODetailModel? poDetail;
+  final PendingItem? pendingItem;
+  final String? receivedQuantity;
+  final List<Map<String, dynamic>>? selectedMaterials;
+  final SiteModel? site;
 
   const RecordGrnScreen({
     super.key,
-    required this.poDetail,
-    required this.pendingItem,
-    required this.receivedQuantity,
-  });
+    this.poDetail,
+    this.pendingItem,
+    this.receivedQuantity,
+    this.selectedMaterials,
+    this.site,
+  }) : assert(
+          (poDetail != null && pendingItem != null && receivedQuantity != null) ||
+          (site != null),
+          'Either provide PO details or site for GRN creation',
+        );
 
   @override
   State<RecordGrnScreen> createState() => _RecordGrnScreenState();
@@ -64,6 +73,21 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
   void initState() {
     super.initState();
     _generateAutoGrnId();
+    
+    // If we have selected materials, populate the form
+    if (widget.selectedMaterials != null) {
+      _populateFromSelectedMaterials();
+    }
+  }
+
+  void _populateFromSelectedMaterials() {
+    // Pre-fill form with selected materials data
+    // This will be used to show the materials in the form
+    if (widget.selectedMaterials != null) {
+      // Materials were selected - form is ready for GRN creation
+    } else {
+      // Photo upload flow - no materials needed, user can add photos directly
+    }
   }
 
   @override
@@ -208,7 +232,7 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
               Navigator.of(context).pop();
               setState(() {
                 _isCustomGrnId = true;
-                _grnIdController.clear();
+                // _grnIdController.clear();
               });
             },
             backgroundColor: AppColors.primaryColor,
@@ -232,19 +256,42 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
   Future<void> _saveGrn() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // For photo upload flow, ensure at least images are provided
+    if (widget.selectedMaterials == null && 
+        widget.pendingItem == null && 
+        _grnImages.isEmpty) {
+      SnackBarUtils.showWarning(context, message: 'Please add at least one image for GRN creation');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final grnMaterials = [
-        {
-          'material_id': widget.pendingItem.materialId,
-          'quantity': int.parse(widget.receivedQuantity),
-        }
-      ];
+      // Prepare material data for API
+      List<Map<String, dynamic>> grnMaterials;
+      
+      if (widget.selectedMaterials != null) {
+        // Material selection flow: Use selected materials
+        grnMaterials = widget.selectedMaterials!.map((material) => {
+          'material_id': material['material_id'],
+          'quantity': material['quantity'],
+        }).toList();
+      } else if (widget.pendingItem != null && widget.receivedQuantity != null) {
+        // PO flow: Use PO pending item
+        grnMaterials = [
+          {
+            'material_id': widget.pendingItem!.materialId,
+            'quantity': int.parse(widget.receivedQuantity!),
+          }
+        ];
+      } else {
+        // Photo upload flow: No materials (empty list)
+        grnMaterials = [];
+      }
 
-      // Prepare image data for API
+      // Prepare image data for API - only if images exist
       List<Map<String, dynamic>>? grnDocuments;
       if (_grnImages.isNotEmpty) {
         grnDocuments = _grnImages.map((img) => {
@@ -257,12 +304,12 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
         grnDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
         grnNumber: _grnIdController.text,
         deliveryChallanNumber: _showDeliveryChallan ? _deliveryChallanController.text : 'INV000001',
-        poId: widget.poDetail.id,
-        vendorId: widget.poDetail.vendorId,
-        siteId: widget.poDetail.siteId,
+        poId: widget.poDetail?.id ?? 0, // Use 0 for direct GRN creation
+        vendorId: widget.poDetail?.vendorId ?? 1, // Default vendor for direct GRN
+        siteId: widget.poDetail?.siteId ?? widget.site!.id,
         remarks: _remarksController.text.isEmpty ? null : _remarksController.text,
         grnMaterials: grnMaterials,
-        grnDocuments: grnDocuments,
+        grnDocuments: _grnImages.isNotEmpty ? grnDocuments : null, // Only send if images exist
       );
 
       if (response != null && response.status == 1) {

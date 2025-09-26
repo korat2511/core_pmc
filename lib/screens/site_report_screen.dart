@@ -11,7 +11,6 @@ import '../models/category_model.dart';
 import '../models/site_user_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import '../services/pdf_service.dart';
 import '../core/utils/snackbar_utils.dart';
 
 class SiteReportScreen extends StatefulWidget {
@@ -23,7 +22,7 @@ class SiteReportScreen extends StatefulWidget {
   State<SiteReportScreen> createState() => _SiteReportScreenState();
 }
 
-class _SiteReportScreenState extends State<SiteReportScreen> {
+class _SiteReportScreenState extends State<SiteReportScreen> with TickerProviderStateMixin {
   String _selectedDuration = 'Today';
   DateTime _fromDate = DateTime.now();
   DateTime _toDate = DateTime.now();
@@ -32,6 +31,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
   dynamic downloadId;
   String? status;
   late StreamSubscription progressStream;
+  bool _showProgressOverlay = false;
+  late AnimationController _overlayAnimationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  bool _isAnimating = false;
 
   // Report sections with sub-parts
   final Map<String, bool> _reportSections = {
@@ -76,8 +80,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
   final Map<String, Set<String>> _selectedSubParts = {};
 
   // Loading states
-  bool _isLoadingCategories = false;
-  bool _isLoadingUsers = false;
   bool _isLoading = false;
 
   final List<String> _durationOptions = [
@@ -90,6 +92,42 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
 
   @override
   void initState() {
+    // Initialize animation controller
+    _overlayAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    // Initialize animations
+    _scaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _overlayAnimationController,
+      curve: Curves.elasticOut,
+    ));
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _overlayAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Add status listener to handle animation completion
+    _overlayAnimationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _isAnimating = false;
+        });
+      } else if (status == AnimationStatus.dismissed) {
+        setState(() {
+          _isAnimating = false;
+        });
+      }
+    });
+    
     FlDownloader.initialize();
     progressStream = FlDownloader.progressStream.listen((event) {
       if (event.status == DownloadStatus.successful) {
@@ -99,8 +137,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
           downloadId = event.downloadId;
           status = event.status.name;
         });
+        _hideProgressOverlaySmoothly();
         // This is a way of auto-opening downloaded file right after a download is completed
         FlDownloader.openFile(filePath: event.filePath);
+        SnackBarUtils.showSuccess(
+          context,
+          message: 'PDF opened successfully!',
+        );
       } else if (event.status == DownloadStatus.running) {
         debugPrint('event.progress: ${event.progress}');
         setState(() {
@@ -108,6 +151,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
           downloadId = event.downloadId;
           status = event.status.name;
         });
+        _showProgressOverlaySmoothly();
       } else if (event.status == DownloadStatus.failed) {
         debugPrint('event: $event');
         setState(() {
@@ -115,6 +159,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
           downloadId = event.downloadId;
           status = event.status.name;
         });
+        _hideProgressOverlaySmoothly();
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to download PDF. Please try again.',
+        );
       } else if (event.status == DownloadStatus.paused) {
         debugPrint('Download paused');
         setState(() {
@@ -134,6 +183,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
           downloadId = event.downloadId;
           status = event.status.name;
         });
+        _showProgressOverlaySmoothly();
       }
     });
     super.initState();
@@ -143,6 +193,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
   @override
   void dispose() {
     progressStream.cancel();
+    _overlayAnimationController.dispose();
     super.dispose();
   }
 
@@ -158,10 +209,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
     _initializeDefaultSelections();
 
     // Load categories
-    setState(() {
-      _isLoadingCategories = true;
-    });
-
     try {
       final categories = await ApiService.getCategoriesBySite(
         apiToken: token,
@@ -181,17 +228,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       }
     } catch (e) {
       print('Error loading categories: $e');
-    } finally {
-      setState(() {
-        _isLoadingCategories = false;
-      });
     }
 
     // Load users
-    setState(() {
-      _isLoadingUsers = true;
-    });
-
     try {
       final users = await ApiService.getUsersBySite(
         apiToken: token,
@@ -209,10 +248,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       }
     } catch (e) {
       print('Error loading users: $e');
-    } finally {
-      setState(() {
-        _isLoadingUsers = false;
-      });
     }
   }
 
@@ -475,6 +510,108 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                 isLoading: _isLoading,
               ),
             ),
+          ),
+          
+          // Progress Overlay
+          AnimatedBuilder(
+            animation: _overlayAnimationController,
+            builder: (context, child) {
+              return _showProgressOverlay
+                  ? FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+                        child: Center(
+                          child: ScaleTransition(
+                            scale: _scaleAnimation,
+                            child: Container(
+                              margin: EdgeInsets.all(20),
+                              padding: EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Progress indicator
+                                  SizedBox(
+                                    width: 60,
+                                    height: 60,
+                                    child: TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(
+                                        begin: 0.0,
+                                        end: progress / 100,
+                                      ),
+                                      duration: const Duration(milliseconds: 200),
+                                      curve: Curves.easeInOut,
+                                      builder: (context, value, child) {
+                                        return CircularProgressIndicator(
+                                          value: value,
+                                          strokeWidth: 6,
+                                          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Theme.of(context).colorScheme.primary,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  
+                                  // Progress text
+                                  Text(
+                                    'Downloading PDF...',
+                                    style: AppTypography.titleMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  
+                                  // Percentage with animation
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(
+                                      begin: 0.0,
+                                      end: progress.toDouble(),
+                                    ),
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeInOut,
+                                    builder: (context, value, child) {
+                                      return Text(
+                                        '${value.round()}%',
+                                        style: AppTypography.bodyLarge.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  SizedBox(height: 4),
+                                  
+                                  // Status
+                                  Text(
+                                    _getStatusText(status),
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : SizedBox.shrink();
+            },
           ),
         ],
       ),
@@ -753,8 +890,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
       return;
     }
 
-    // Show loading
+    // Reset animation state and show loading
+    _overlayAnimationController.reset();
     setState(() {
+      _isAnimating = false;
+      _showProgressOverlay = false;
       _isLoading = true;
     });
 
@@ -837,10 +977,10 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
             print('PDF URL: $pdfUrl');
             print('PDF Name: $pdfName');
 
-            // Show success message
+            // Show success message and start download
             SnackBarUtils.showSuccess(
               context,
-              message: 'Report generated successfully! Opening PDF...',
+              message: 'Report generated successfully! Starting download...',
             );
 
             final permission = await FlDownloader.requestPermission();
@@ -850,17 +990,19 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
                 fileName: "$pdfName.pdf",
               );
 
-              if (success) {
-                SnackBarUtils.showSuccess(
-                  context,
-                  message: 'PDF opened successfully!',
-                );
-              } else {
+              if (!success) {
+                _hideProgressOverlaySmoothly();
                 SnackBarUtils.showError(
                   context,
-                  message: 'Failed to open PDF. Please try again.',
+                  message: 'Failed to start download. Please try again.',
                 );
               }
+            } else {
+              _hideProgressOverlaySmoothly();
+              SnackBarUtils.showError(
+                context,
+                message: 'Storage permission denied. Cannot download PDF.',
+              );
             }
           } else {
             SnackBarUtils.showError(
@@ -1041,5 +1183,52 @@ class _SiteReportScreenState extends State<SiteReportScreen> {
 
   bool _areAllSectionsSelected() {
     return _reportSections.values.every((isSelected) => isSelected);
+  }
+
+  String _getStatusText(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return 'Preparing download...';
+      case 'running':
+        return 'Downloading...';
+      case 'paused':
+        return 'Download paused';
+      case 'failed':
+        return 'Download failed';
+      case 'successful':
+        return 'Download completed';
+      default:
+        return 'Processing...';
+    }
+  }
+
+  void _showProgressOverlaySmoothly() {
+    if (!_isAnimating && !_showProgressOverlay) {
+      setState(() {
+        _showProgressOverlay = true;
+        _isAnimating = true;
+      });
+      // Small delay to ensure smooth appearance
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) {
+          _overlayAnimationController.forward();
+        }
+      });
+    }
+  }
+
+  void _hideProgressOverlaySmoothly() {
+    if (!_isAnimating && _showProgressOverlay) {
+      setState(() {
+        _isAnimating = true;
+      });
+      _overlayAnimationController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _showProgressOverlay = false;
+          });
+        }
+      });
+    }
   }
 }

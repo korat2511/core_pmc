@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
@@ -27,7 +28,9 @@ class MeetingScreen extends StatefulWidget {
 class _MeetingScreenState extends State<MeetingScreen> {
   List<MeetingModel> _meetings = [];
   List<MeetingModel> _filteredMeetings = [];
+  List<Map<String, dynamic>> _discussionSearchResults = [];
   bool _isLoading = false;
+  bool _isSearchingDiscussions = false;
   final _searchController = TextEditingController();
 
   @override
@@ -40,6 +43,11 @@ class _MeetingScreenState extends State<MeetingScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
   }
 
   Future<void> _loadMeetings() async {
@@ -82,21 +90,45 @@ class _MeetingScreenState extends State<MeetingScreen> {
       setState(() {
         if (query.isEmpty) {
           _filteredMeetings = _meetings;
+          _discussionSearchResults = [];
+          _isSearchingDiscussions = false;
         } else {
-          _filteredMeetings = _meetings.where((meeting) {
-            return meeting.architectCompany.toLowerCase().contains(query.toLowerCase()) ||
-                   meeting.clients.any((client) => client.toLowerCase().contains(query.toLowerCase())) ||
-                   meeting.architects.any((architect) => architect.toLowerCase().contains(query.toLowerCase())) ||
-                   meeting.pmcMembers.any((member) => member.toLowerCase().contains(query.toLowerCase())) ||
-                   meeting.meetingDiscussions.any((discussion) => 
-                       discussion.discussionAction.toLowerCase().contains(query.toLowerCase()));
-          }).toList();
+          // First, try to find discussions that match the query
+          _discussionSearchResults = [];
+          
+          for (final meeting in _meetings) {
+            for (final discussion in meeting.meetingDiscussions) {
+              if (discussion.discussionAction.toLowerCase().contains(query.toLowerCase()) ||
+                  discussion.actionBy.toLowerCase().contains(query.toLowerCase()) ||
+                  discussion.remarks.toLowerCase().contains(query.toLowerCase())) {
+                _discussionSearchResults.add({
+                  'meeting': meeting,
+                  'discussion': discussion,
+                });
+              }
+            }
+          }
+          
+          // If we found discussions, show them; otherwise show regular meeting search
+          if (_discussionSearchResults.isNotEmpty) {
+            _isSearchingDiscussions = true;
+            _filteredMeetings = []; // Clear regular meetings
+          } else {
+            _isSearchingDiscussions = false;
+            _filteredMeetings = _meetings.where((meeting) {
+              return meeting.architectCompany.toLowerCase().contains(query.toLowerCase()) ||
+                     meeting.clients.any((client) => client.toLowerCase().contains(query.toLowerCase())) ||
+                     meeting.architects.any((architect) => architect.toLowerCase().contains(query.toLowerCase())) ||
+                     meeting.pmcMembers.any((member) => member.toLowerCase().contains(query.toLowerCase()));
+            }).toList();
+          }
         }
       });
     }
   }
 
   void _createMeeting() async {
+    _dismissKeyboard();
     final result = await NavigationUtils.push(
       context,
       CreateMeetingScreen(site: widget.site),
@@ -140,18 +172,20 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Meetings',
-        showDrawer: false,
-        showBackButton: true,
-      ),
+    return WillPopScope(
+      onWillPop: () async {
+        _dismissKeyboard();
+        return true;
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Meetings',
+          showDrawer: false,
+          showBackButton: true,
+        ),
 
-      body: GestureDetector(
-        onTap: () {
-          // Close keyboard when tapping outside
-          FocusScope.of(context).unfocus();
-        },
+        body: GestureDetector(
+          onTap: _dismissKeyboard,
         child: Column(
           children: [
             // Search Bar
@@ -159,32 +193,63 @@ class _MeetingScreenState extends State<MeetingScreen> {
             Padding(
               padding: ResponsiveUtils.horizontalPadding(context),
               child: CustomSearchBar(
-                hintText: 'Search meetings...',
+                hintText: _isSearchingDiscussions 
+                    ? 'Search discussions...' 
+                    : 'Search meetings and discussions...',
                 onChanged: _filterMeetings,
                 controller: _searchController,
               ),
             ),
 
-            // Meetings List
+            // Search Results Header (when searching discussions)
+            if (_isSearchingDiscussions && _discussionSearchResults.isNotEmpty) ...[
+              Padding(
+                padding: ResponsiveUtils.horizontalPadding(context),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '${_discussionSearchResults.length} discussion${_discussionSearchResults.length != 1 ? 's' : ''} found',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 8),
+            ],
+
+            // Meetings List or Discussion Search Results
             Expanded(
               child: _isLoading
                   ? Center(child: CircularProgressIndicator(
                       color: Theme.of(context).colorScheme.primary,
                     ))
-                  : _filteredMeetings.isEmpty
-                      ? _buildEmptyState()
-                      : RefreshIndicator(
-                          onRefresh: _refreshMeetings,
-                          color: Theme.of(context).colorScheme.primary,
-                          child: ListView.builder(
-                            padding: ResponsiveUtils.responsivePadding(context),
-                            itemCount: _filteredMeetings.length,
-                            itemBuilder: (context, index) {
-                              final meeting = _filteredMeetings[index];
-                              return _buildMeetingCard(meeting);
-                            },
-                          ),
-                        ),
+                  : _isSearchingDiscussions
+                      ? _discussionSearchResults.isEmpty
+                          ? _buildEmptyState()
+                          : _buildDiscussionSearchResults()
+                      : _filteredMeetings.isEmpty
+                          ? _buildEmptyState()
+                          : RefreshIndicator(
+                              onRefresh: _refreshMeetings,
+                              color: Theme.of(context).colorScheme.primary,
+                              child: ListView.builder(
+                                padding: ResponsiveUtils.responsivePadding(context),
+                                itemCount: _filteredMeetings.length,
+                                itemBuilder: (context, index) {
+                                  final meeting = _filteredMeetings[index];
+                                  return _buildMeetingCard(meeting);
+                                },
+                              ),
+                            ),
             ),
           ],
         ),
@@ -196,6 +261,23 @@ class _MeetingScreenState extends State<MeetingScreen> {
         icon: Icon(Icons.add),
         label: Text('Create Meeting'),
       ),
+    ),);
+  }
+
+  Widget _buildDiscussionSearchResults() {
+    return RefreshIndicator(
+      onRefresh: _refreshMeetings,
+      color: Theme.of(context).colorScheme.primary,
+      child: ListView.builder(
+        padding: ResponsiveUtils.responsivePadding(context),
+        itemCount: _discussionSearchResults.length,
+        itemBuilder: (context, index) {
+          final result = _discussionSearchResults[index];
+          final meeting = result['meeting'] as MeetingModel;
+          final discussion = result['discussion'] as MeetingDiscussionModel;
+          return _buildDiscussionCard(meeting, discussion);
+        },
+      ),
     );
   }
 
@@ -205,7 +287,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.meeting_room_outlined,
+            _isSearchingDiscussions ? Icons.search_off : Icons.meeting_room_outlined,
             size: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 64,
@@ -223,7 +305,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
             ),
           ),
           Text(
-            'No meetings found',
+            _isSearchingDiscussions ? 'No discussions found' : 'No meetings found',
             style: AppTypography.titleMedium.copyWith(
               fontSize: ResponsiveUtils.responsiveFontSize(
                 context,
@@ -238,7 +320,9 @@ class _MeetingScreenState extends State<MeetingScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            'Create your first meeting to get started',
+            _isSearchingDiscussions 
+                ? 'Try searching for different keywords'
+                : 'Create your first meeting to get started',
             style: AppTypography.bodyMedium.copyWith(
               fontSize: ResponsiveUtils.responsiveFontSize(
                 context,
@@ -250,21 +334,94 @@ class _MeetingScreenState extends State<MeetingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _createMeeting,
-            icon: Icon(Icons.add),
-            label: Text('Create Meeting'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          if (!_isSearchingDiscussions) ...[
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _createMeeting,
+              icon: Icon(Icons.add),
+              label: Text('Create Meeting'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildDiscussionCard(MeetingModel meeting, MeetingDiscussionModel discussion) {
+    return Card(
+      color: Theme.of(context).colorScheme.surface,
+      margin: EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () async {
+          _dismissKeyboard();
+          final result = await NavigationUtils.push(
+            context,
+            MeetingDetailScreen(meetingId: meeting.id),
+          );
+          // If meeting was updated, refresh the specific meeting data
+          if (result == true) {
+            _updateMeetingInList(meeting.id);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Meeting number
+              Row(
+                children: [
+                  Icon(
+                    Icons.meeting_room,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Meeting #${meeting.id}',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 12),
+
+              // Discussion action
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.topic,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      discussion.discussionAction,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -275,6 +432,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
       margin: EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () async {
+          _dismissKeyboard();
           final result = await NavigationUtils.push(
             context,
             MeetingDetailScreen(meetingId: meeting.id),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:card_swiper/card_swiper.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -8,7 +9,6 @@ import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../services/session_manager.dart';
 import '../models/site_model.dart';
-import '../models/api_response.dart';
 import '../services/site_update_service.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
@@ -19,6 +19,8 @@ import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_date_picker_field.dart';
@@ -57,6 +59,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   late TextEditingController _endDateController;
   late TextEditingController _minRangeController;
   late TextEditingController _maxRangeController;
+  late TextEditingController _searchController;
+  late FocusNode _searchFocusNode;
 
   // Selected images for upload
   List<File> _selectedImages = [];
@@ -118,6 +122,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
     _maxRangeController = TextEditingController(
       text: _currentSite.maxRange.toString(),
     );
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
   }
 
   void _disposeControllers() {
@@ -131,6 +137,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
     _endDateController.dispose();
     _minRangeController.dispose();
     _maxRangeController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
   }
 
   void _initializeLocation() {
@@ -177,6 +185,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
 
   void _onMapTap(LatLng position) {
     if (_isLocationEditMode) {
+      // Dismiss keyboard when tapping on map
+      _dismissKeyboard();
+      
       setState(() {
         _currentLocation = position;
         _updateMarkers();
@@ -187,6 +198,80 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
 
       // Get address from coordinates
       _getAddressFromCoordinates(position);
+    }
+  }
+
+  void _dismissKeyboard() {
+    // Multiple methods to ensure keyboard is dismissed
+    FocusScope.of(context).unfocus();
+    _searchFocusNode.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _onPlaceSelected(Prediction prediction) async {
+    try {
+      // Dismiss keyboard and clear search field immediately
+      _dismissKeyboard();
+      _searchController.clear();
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Get place details using Google Places API
+      final String apiKey = "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ";
+      final String url = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.placeId}&key=$apiKey';
+      
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['status'] == 'OK' && data['result'] != null) {
+          final result = data['result'];
+          final geometry = result['geometry'];
+          final location = geometry['location'];
+          
+          final lat = location['lat'].toDouble();
+          final lng = location['lng'].toDouble();
+          
+          setState(() {
+            _currentLocation = LatLng(lat, lng);
+            _latitudeController.text = lat.toStringAsFixed(6);
+            _longitudeController.text = lng.toStringAsFixed(6);
+            _addressController.text = result['formatted_address'] ?? prediction.description ?? '';
+            _updateMarkers();
+            _isLoading = false;
+          });
+
+          // Animate camera to selected location
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(lat, lng),
+                15.0,
+              ),
+            );
+          }
+
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'Location selected successfully!',
+          );
+        } else {
+          throw Exception('Place details not found');
+        }
+      } else {
+        throw Exception('Failed to fetch place details');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to get place details: $e',
+      );
     }
   }
 
@@ -504,6 +589,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   }
 
   void _showImagePicker(BuildContext context) async {
+    // Dismiss keyboard when opening image picker
+    _dismissKeyboard();
+    
     final List<File> images = await ImagePickerUtils.pickImages(
       context: context,
       chooseMultiple: true,
@@ -596,6 +684,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   }
 
   Future<void> _editImage(BuildContext context, int imageId) async {
+    // Dismiss keyboard when opening image picker
+    _dismissKeyboard();
+    
     // Show image source selection dialog
     final List<File> images = await ImagePickerUtils.pickImages(
       context: context,
@@ -1460,8 +1551,34 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
     }
   }
 
+  Future<void> _showSiteLocation() async {
+    if (_currentSite.latitude != null && _currentSite.longitude != null) {
+      final siteLocation = LatLng(_currentSite.latitude!, _currentSite.longitude!);
+      
+      // Animate camera to site location
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(siteLocation, 15.0),
+        );
+      }
+      
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'Showing site location',
+      );
+    } else {
+      SnackBarUtils.showError(
+        context,
+        message: 'Site location not available',
+      );
+    }
+  }
+
   Future<void> _useCurrentLocation() async {
     try {
+      // Dismiss keyboard when getting current location
+      _dismissKeyboard();
+      
       setState(() {
         _isLoading = true;
       });
@@ -1501,16 +1618,22 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       );
 
       setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-        _latitudeController.text = position.latitude.toStringAsFixed(6);
-        _longitudeController.text = position.longitude.toStringAsFixed(6);
-        _updateMarkers();
         _isLoading = false;
       });
 
+      // Only animate camera to current location - do not update fields
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0,
+          ),
+        );
+      }
+
       SnackBarUtils.showSuccess(
         context,
-        message: 'Current location set successfully!',
+        message: 'Showing current location on map',
       );
     } catch (e) {
       setState(() {
@@ -1681,6 +1804,135 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
               desktop: 12,
             ),
           ),
+
+          // Search Location Section (only in edit mode)
+          if (_isLocationEditMode) ...[
+            Text(
+              'Search Location',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
+            GooglePlaceAutoCompleteTextField(
+              textEditingController: _searchController,
+              focusNode: _searchFocusNode,
+              googleAPIKey: "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ",
+              inputDecoration: InputDecoration(
+                hintText: 'Search for a place...',
+                hintStyle: AppTypography.bodyMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                  ),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                  ),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                  ),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                  ),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                  vertical: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                ),
+              ),
+              debounceTime: 600,
+              countries: ["in"], // Restrict to India
+              isLatLngRequired: true,
+              getPlaceDetailWithLatLng: (prediction) {
+                _onPlaceSelected(prediction);
+              },
+              itemClick: (prediction) {
+                _onPlaceSelected(prediction);
+              },
+              itemBuilder: (context, index, prediction) {
+                return Container(
+                  padding: EdgeInsets.all(
+                    ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.borderColor.withOpacity(0.5),
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: ResponsiveUtils.responsiveFontSize(context, mobile: 20, tablet: 22, desktop: 24),
+                      ),
+                      SizedBox(width: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prediction.description ?? '',
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (prediction.structuredFormatting?.secondaryText != null) ...[
+                              SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 4, tablet: 6, desktop: 8)),
+                              Text(
+                                prediction.structuredFormatting!.secondaryText!,
+                                style: AppTypography.bodySmall.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 12, tablet: 14, desktop: 16),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              seperatedBuilder: Divider(
+                height: 1,
+                color: AppColors.borderColor.withOpacity(0.5),
+              ),
+              containerHorizontalPadding: 0,
+              containerVerticalPadding: 0,
+            ),
+            SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
+          ],
                      // Map Section
            GestureDetector(
              onPanUpdate: (details) {
@@ -1694,16 +1946,22 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                  tablet: 300,
                  desktop: 350,
                ),
-               child: ClipRRect(
-                 borderRadius: BorderRadius.circular(
-                   ResponsiveUtils.responsiveSpacing(
-                     context,
-                     mobile: 12,
-                     tablet: 16,
-                     desktop: 20,
+               child: Stack(
+                 children: [
+                   ClipRRect(
+                     borderRadius: BorderRadius.circular(
+                       ResponsiveUtils.responsiveSpacing(
+                         context,
+                         mobile: 12,
+                         tablet: 16,
+                         desktop: 20,
+                       ),
+                     ),
+                     child: _buildMapWidget(context),
                    ),
-                 ),
-                 child: _buildMapWidget(context),
+                   // Map control buttons positioned outside ClipRRect
+                   _buildMapControls(context),
+                 ],
                ),
              ),
            ),
@@ -1747,42 +2005,44 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             ? LatLng(_currentSite.latitude!, _currentSite.longitude!)
             : defaultLocation);
 
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: targetLocation,
+        zoom: _currentSite.latitude != null && _currentSite.longitude != null
+            ? 15.0
+            : 5.0,
+      ),
+      onMapCreated: (GoogleMapController controller) {
+        _mapController = controller;
+      },
+      onTap: _onMapTap,
+      markers: _markers,
+      myLocationEnabled: true,
+      myLocationButtonEnabled: false, // Disable default location button
+      zoomControlsEnabled: false, // Disable default zoom controls
+      mapToolbarEnabled: false,
+      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      },
+    );
+  }
+
+  Widget _buildMapControls(BuildContext context) {
     return Stack(
       children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: targetLocation,
-            zoom: _currentSite.latitude != null && _currentSite.longitude != null
-                ? 15.0
-                : 5.0,
-          ),
-          onMapCreated: (GoogleMapController controller) {
-            _mapController = controller;
-          },
-          onTap: _onMapTap,
-          markers: _markers,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false, // Disable default location button
-          zoomControlsEnabled: false, // Disable default zoom controls
-          mapToolbarEnabled: false,
-          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-          },
-        ),
-        
-        // Custom zoom controls
+        // Zoom controls - top right
         Positioned(
           right: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 16,
-            tablet: 20,
-            desktop: 24,
+            mobile: 12,
+            tablet: 16,
+            desktop: 20,
           ),
-          bottom: ResponsiveUtils.responsiveSpacing(
+          top: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 80,
-            tablet: 100,
-            desktop: 120,
+            mobile: 12,
+            tablet: 16,
+            desktop: 20,
           ),
           child: Column(
             children: [
@@ -1922,81 +2182,150 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           ),
         ),
         
-        // Custom location button
+        // Location buttons - bottom right
         Positioned(
           right: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 16,
-            tablet: 20,
-            desktop: 24,
+            mobile: 12,
+            tablet: 16,
+            desktop: 20,
           ),
           bottom: ResponsiveUtils.responsiveSpacing(
             context,
-            mobile: 16,
-            tablet: 20,
-            desktop: 24,
+            mobile: 12,
+            tablet: 16,
+            desktop: 20,
           ),
-          child: Container(
-            width: ResponsiveUtils.responsiveFontSize(
-              context,
-              mobile: 40,
-              tablet: 44,
-              desktop: 48,
-            ),
-            height: ResponsiveUtils.responsiveFontSize(
-              context,
-              mobile: 40,
-              tablet: 44,
-              desktop: 48,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.textWhite,
-              borderRadius: BorderRadius.circular(
-                ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 8,
-                  tablet: 10,
-                  desktop: 12,
+          child: Column(
+            children: [
+              // Show Site Location Button (Pin icon)
+              if (_currentSite.latitude != null && _currentSite.longitude != null)
+                Container(
+                  width: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 40,
+                    tablet: 44,
+                    desktop: 48,
+                  ),
+                  height: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 40,
+                    tablet: 44,
+                    desktop: 48,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.textWhite,
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowColor.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(
+                          context,
+                          mobile: 8,
+                          tablet: 10,
+                          desktop: 12,
+                        ),
+                      ),
+                      onTap: _showSiteLocation,
+                      child: Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: ResponsiveUtils.responsiveFontSize(
+                          context,
+                          mobile: 20,
+                          tablet: 22,
+                          desktop: 24,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowColor.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.responsiveSpacing(
+              
+              if (_currentSite.latitude != null && _currentSite.longitude != null)
+                SizedBox(
+                  height: ResponsiveUtils.responsiveSpacing(
                     context,
                     mobile: 8,
                     tablet: 10,
                     desktop: 12,
                   ),
                 ),
-                onTap: () {
-                  if (_currentLocation != null) {
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLng(_currentLocation!),
-                    );
-                  }
-                },
-                child: Icon(
-                  Icons.my_location,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.responsiveFontSize(
+              
+              // Current Location Button (My Location)
+              if (_isLocationEditMode)
+                Container(
+                  width: ResponsiveUtils.responsiveFontSize(
                     context,
-                    mobile: 20,
-                    tablet: 22,
-                    desktop: 24,
+                    mobile: 40,
+                    tablet: 44,
+                    desktop: 48,
+                  ),
+                  height: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 40,
+                    tablet: 44,
+                    desktop: 48,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.textWhite,
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowColor.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.responsiveSpacing(
+                          context,
+                          mobile: 8,
+                          tablet: 10,
+                          desktop: 12,
+                        ),
+                      ),
+                      onTap: _useCurrentLocation,
+                      child: Icon(
+                        Icons.my_location,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: ResponsiveUtils.responsiveFontSize(
+                          context,
+                          mobile: 20,
+                          tablet: 22,
+                          desktop: 24,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
         ),
       ],
@@ -2088,17 +2417,28 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
     final images = _currentSite.images;
     final hasImages = images.isNotEmpty;
 
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Site Details',
-        showDrawer: false,
-        showBackButton: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 15),
+    return WillPopScope(
+      onWillPop: () async {
+        // Dismiss keyboard when back button is pressed
+        _dismissKeyboard();
+        return true;
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Site Details',
+          showDrawer: false,
+          showBackButton: true,
+        ),
+        body: GestureDetector(
+          onTap: () {
+            // Dismiss keyboard when tapping anywhere on the screen
+            _dismissKeyboard();
+          },
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 15),
 
             SizedBox(
               height: ResponsiveUtils.responsiveFontSize(
@@ -2464,6 +2804,6 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           ],
         ),
       ),
-    );
+      )));
   }
 }
