@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:developer';
+
+import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/theme/app_typography.dart';
@@ -16,16 +20,14 @@ import 'create_meeting_screen.dart';
 class MeetingScreen extends StatefulWidget {
   final SiteModel site;
 
-  const MeetingScreen({
-    super.key,
-    required this.site,
-  });
+  const MeetingScreen({super.key, required this.site});
 
   @override
   State<MeetingScreen> createState() => _MeetingScreenState();
 }
 
-class _MeetingScreenState extends State<MeetingScreen> {
+class _MeetingScreenState extends State<MeetingScreen>
+    with TickerProviderStateMixin {
   List<MeetingModel> _meetings = [];
   List<MeetingModel> _filteredMeetings = [];
   List<Map<String, dynamic>> _discussionSearchResults = [];
@@ -33,8 +35,98 @@ class _MeetingScreenState extends State<MeetingScreen> {
   bool _isSearchingDiscussions = false;
   final _searchController = TextEditingController();
 
+  int progress = 0;
+  dynamic downloadId;
+  String? status;
+  late StreamSubscription progressStream;
+  bool _showProgressOverlay = false;
+  late AnimationController _overlayAnimationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  bool _isAnimating = false;
+
   @override
   void initState() {
+    // Initialize animation controller
+    _overlayAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    // Initialize animations
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _overlayAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _overlayAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Add status listener to handle animation completion
+    _overlayAnimationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _isAnimating = false;
+        });
+      } else if (status == AnimationStatus.dismissed) {
+        setState(() {
+          _isAnimating = false;
+        });
+      }
+    });
+
+    FlDownloader.initialize();
+    progressStream = FlDownloader.progressStream.listen((event) {
+      setState(() {
+        progress = event.progress;
+        downloadId = event.downloadId;
+        status = event.status.name;
+      });
+
+      if (event.status == DownloadStatus.successful) {
+        debugPrint('event.progress: ${event.progress}');
+        _hideProgressOverlaySmoothly();
+        // This is a way of auto-opening downloaded file right after a download is completed
+        FlDownloader.openFile(filePath: event.filePath);
+        SnackBarUtils.showSuccess(context, message: 'PDF opened successfully!');
+      } else if (event.status == DownloadStatus.running) {
+        debugPrint('event.progress: ${event.progress}');
+        _showProgressOverlaySmoothly();
+
+        // Close overlay when progress reaches 100%
+        if (event.progress >= 100) {
+          debugPrint('Progress reached 100%, closing overlay');
+          // Add a small delay to ensure smooth transition
+          Future.delayed(Duration(milliseconds: 500), () {
+            if (mounted) {
+              _hideProgressOverlaySmoothly();
+            }
+          });
+        }
+      } else if (event.status == DownloadStatus.failed) {
+        debugPrint('event: $event');
+        _hideProgressOverlaySmoothly();
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to download PDF. Please try again.',
+        );
+      } else if (event.status == DownloadStatus.paused) {
+        debugPrint('Download paused');
+        Future.delayed(
+          const Duration(milliseconds: 250),
+          () => FlDownloader.attachDownloadProgress(event.downloadId),
+        );
+      } else if (event.status == DownloadStatus.pending) {
+        debugPrint('Download pending');
+        _showProgressOverlaySmoothly();
+      }
+    });
     super.initState();
     _loadMeetings();
   }
@@ -62,7 +154,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           apiToken: token,
           siteId: widget.site.id,
         );
-        
+
         if (response != null && response.status == 1) {
           setState(() {
             _meetings = response.meetingList;
@@ -95,12 +187,18 @@ class _MeetingScreenState extends State<MeetingScreen> {
         } else {
           // First, try to find discussions that match the query
           _discussionSearchResults = [];
-          
+
           for (final meeting in _meetings) {
             for (final discussion in meeting.meetingDiscussions) {
-              if (discussion.discussionAction.toLowerCase().contains(query.toLowerCase()) ||
-                  discussion.actionBy.toLowerCase().contains(query.toLowerCase()) ||
-                  discussion.remarks.toLowerCase().contains(query.toLowerCase())) {
+              if (discussion.discussionAction.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  discussion.actionBy.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  discussion.remarks.toLowerCase().contains(
+                    query.toLowerCase(),
+                  )) {
                 _discussionSearchResults.add({
                   'meeting': meeting,
                   'discussion': discussion,
@@ -108,7 +206,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
               }
             }
           }
-          
+
           // If we found discussions, show them; otherwise show regular meeting search
           if (_discussionSearchResults.isNotEmpty) {
             _isSearchingDiscussions = true;
@@ -116,10 +214,21 @@ class _MeetingScreenState extends State<MeetingScreen> {
           } else {
             _isSearchingDiscussions = false;
             _filteredMeetings = _meetings.where((meeting) {
-              return meeting.architectCompany.toLowerCase().contains(query.toLowerCase()) ||
-                     meeting.clients.any((client) => client.toLowerCase().contains(query.toLowerCase())) ||
-                     meeting.architects.any((architect) => architect.toLowerCase().contains(query.toLowerCase())) ||
-                     meeting.pmcMembers.any((member) => member.toLowerCase().contains(query.toLowerCase()));
+              return meeting.architectCompany.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  meeting.clients.any(
+                    (client) =>
+                        client.toLowerCase().contains(query.toLowerCase()),
+                  ) ||
+                  meeting.architects.any(
+                    (architect) =>
+                        architect.toLowerCase().contains(query.toLowerCase()),
+                  ) ||
+                  meeting.pmcMembers.any(
+                    (member) =>
+                        member.toLowerCase().contains(query.toLowerCase()),
+                  );
             }).toList();
           }
         }
@@ -147,7 +256,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           apiToken: token,
           meetingId: meetingId,
         );
-        
+
         if (response != null && response.status == 1) {
           setState(() {
             // Update the specific meeting in the list
@@ -155,9 +264,11 @@ class _MeetingScreenState extends State<MeetingScreen> {
             if (index != -1) {
               _meetings[index] = response.meetingDetail;
             }
-            
+
             // Also update in filtered list
-            final filteredIndex = _filteredMeetings.indexWhere((m) => m.id == meetingId);
+            final filteredIndex = _filteredMeetings.indexWhere(
+              (m) => m.id == meetingId,
+            );
             if (filteredIndex != -1) {
               _filteredMeetings[filteredIndex] = response.meetingDetail;
             }
@@ -186,82 +297,86 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
         body: GestureDetector(
           onTap: _dismissKeyboard,
-        child: Column(
-          children: [
-            // Search Bar
-            SizedBox(height: 8),
-            Padding(
-              padding: ResponsiveUtils.horizontalPadding(context),
-              child: CustomSearchBar(
-                hintText: _isSearchingDiscussions 
-                    ? 'Search discussions...' 
-                    : 'Search meetings and discussions...',
-                onChanged: _filterMeetings,
-                controller: _searchController,
-              ),
-            ),
-
-            // Search Results Header (when searching discussions)
-            if (_isSearchingDiscussions && _discussionSearchResults.isNotEmpty) ...[
+          child: Column(
+            children: [
+              // Search Bar
+              SizedBox(height: 8),
               Padding(
                 padding: ResponsiveUtils.horizontalPadding(context),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      '${_discussionSearchResults.length} discussion${_discussionSearchResults.length != 1 ? 's' : ''} found',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: CustomSearchBar(
+                  hintText: _isSearchingDiscussions
+                      ? 'Search discussions...'
+                      : 'Search meetings and discussions...',
+                  onChanged: _filterMeetings,
+                  controller: _searchController,
                 ),
               ),
-              SizedBox(height: 8),
-            ],
 
-            // Meetings List or Discussion Search Results
-            Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator(
-                      color: Theme.of(context).colorScheme.primary,
-                    ))
-                  : _isSearchingDiscussions
-                      ? _discussionSearchResults.isEmpty
+              // Search Results Header (when searching discussions)
+              if (_isSearchingDiscussions &&
+                  _discussionSearchResults.isNotEmpty) ...[
+                Padding(
+                  padding: ResponsiveUtils.horizontalPadding(context),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '${_discussionSearchResults.length} discussion${_discussionSearchResults.length != 1 ? 's' : ''} found',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+              ],
+
+              // Meetings List or Discussion Search Results
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : _isSearchingDiscussions
+                    ? _discussionSearchResults.isEmpty
                           ? _buildEmptyState()
                           : _buildDiscussionSearchResults()
-                      : _filteredMeetings.isEmpty
-                          ? _buildEmptyState()
-                          : RefreshIndicator(
-                              onRefresh: _refreshMeetings,
-                              color: Theme.of(context).colorScheme.primary,
-                              child: ListView.builder(
-                                padding: ResponsiveUtils.responsivePadding(context),
-                                itemCount: _filteredMeetings.length,
-                                itemBuilder: (context, index) {
-                                  final meeting = _filteredMeetings[index];
-                                  return _buildMeetingCard(meeting);
-                                },
-                              ),
-                            ),
-            ),
-          ],
+                    : _filteredMeetings.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _refreshMeetings,
+                        color: Theme.of(context).colorScheme.primary,
+                        child: ListView.builder(
+                          padding: ResponsiveUtils.responsivePadding(context),
+                          itemCount: _filteredMeetings.length,
+                          itemBuilder: (context, index) {
+                            final meeting = _filteredMeetings[index];
+                            return _buildMeetingCard(meeting);
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _createMeeting,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          icon: Icon(Icons.add),
+          label: Text('Create Meeting'),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createMeeting,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        icon: Icon(Icons.add),
-        label: Text('Create Meeting'),
-      ),
-    ),);
+    );
   }
 
   Widget _buildDiscussionSearchResults() {
@@ -287,7 +402,9 @@ class _MeetingScreenState extends State<MeetingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _isSearchingDiscussions ? Icons.search_off : Icons.meeting_room_outlined,
+            _isSearchingDiscussions
+                ? Icons.search_off
+                : Icons.meeting_room_outlined,
             size: ResponsiveUtils.responsiveFontSize(
               context,
               mobile: 64,
@@ -305,7 +422,9 @@ class _MeetingScreenState extends State<MeetingScreen> {
             ),
           ),
           Text(
-            _isSearchingDiscussions ? 'No discussions found' : 'No meetings found',
+            _isSearchingDiscussions
+                ? 'No discussions found'
+                : 'No meetings found',
             style: AppTypography.titleMedium.copyWith(
               fontSize: ResponsiveUtils.responsiveFontSize(
                 context,
@@ -320,7 +439,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            _isSearchingDiscussions 
+            _isSearchingDiscussions
                 ? 'Try searching for different keywords'
                 : 'Create your first meeting to get started',
             style: AppTypography.bodyMedium.copyWith(
@@ -355,7 +474,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
     );
   }
 
-  Widget _buildDiscussionCard(MeetingModel meeting, MeetingDiscussionModel discussion) {
+  Widget _buildDiscussionCard(
+    MeetingModel meeting,
+    MeetingDiscussionModel discussion,
+  ) {
     return Card(
       color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
@@ -437,7 +559,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
             context,
             MeetingDetailScreen(meetingId: meeting.id),
           );
-          // If meeting was updated, refresh the specific meeting data
+
           if (result == true) {
             _updateMeetingInList(meeting.id);
           }
@@ -466,23 +588,39 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               meeting.formattedDate,
                               style: AppTypography.bodyMedium.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             SizedBox(width: 16),
-                            Icon(Icons.access_time, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             SizedBox(width: 8),
-                                                          Text(
-                                meeting.formattedTime,
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                            Text(
+                              meeting.formattedTime,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
+                            ),
                           ],
                         ),
                       ],
@@ -490,11 +628,49 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   ),
                   if (meeting.pdfReportUrl.isNotEmpty)
                     IconButton(
-                      onPressed: () {
-                        // TODO: Open PDF report
-                        SnackBarUtils.showInfo(context, message: 'PDF report opening coming soon');
+                      onPressed: () async{
+                        final pdfUrl = meeting.pdfReportUrl;
+                        final pdfName = "${widget.site.name.replaceAll(' ', '_')}_meeting_${meeting.id}";
+
+                        log("pdfUrl = $pdfUrl");
+                        log("pdfName = $pdfName");
+
+                        print('PDF URL: $pdfUrl');
+                        print('PDF Name: $pdfName');
+
+                        // Show success message and start download
+                        SnackBarUtils.showSuccess(
+                          context,
+                          message: 'Meeting report generated successfully! Starting download...',
+                        );
+
+                        final permission = await FlDownloader.requestPermission();
+                        if (permission == StoragePermissionStatus.granted) {
+                          var success = await FlDownloader.download(
+                            pdfUrl,
+                            fileName: "$pdfName.pdf",
+                          );
+
+                          if (!success) {
+                            _hideProgressOverlaySmoothly();
+                            SnackBarUtils.showError(
+                              context,
+                              message: 'Failed to start download. Please try again.',
+                            );
+                          }
+                        } else {
+                          _hideProgressOverlaySmoothly();
+                          SnackBarUtils.showError(
+                            context,
+                            message: 'Storage permission denied. Cannot download PDF.',
+                          );
+                        }
+
                       },
-                      icon: Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.error),
+                      icon: Icon(
+                        Icons.picture_as_pdf,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       tooltip: 'View PDF Report',
                     ),
                 ],
@@ -502,18 +678,18 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
               SizedBox(height: 12),
 
-
-              Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outline,
-              ),
+              Divider(height: 1, color: Theme.of(context).colorScheme.outline),
 
               SizedBox(height: 12),
 
               // Architect Company
               Row(
                 children: [
-                  Icon(Icons.business, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.business,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -532,7 +708,11 @@ class _MeetingScreenState extends State<MeetingScreen> {
               // Participants
               Row(
                 children: [
-                  Icon(Icons.people, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.people,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -550,10 +730,15 @@ class _MeetingScreenState extends State<MeetingScreen> {
               SizedBox(height: 8),
 
               // Meeting Place (if available)
-              if (meeting.meetingPlace != null && meeting.meetingPlace!.isNotEmpty)
+              if (meeting.meetingPlace != null &&
+                  meeting.meetingPlace!.isNotEmpty)
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -573,7 +758,11 @@ class _MeetingScreenState extends State<MeetingScreen> {
               // Discussions count
               Row(
                 children: [
-                  Icon(Icons.chat_bubble_outline, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     '${meeting.meetingDiscussions.length} discussion${meeting.meetingDiscussions.length != 1 ? 's' : ''}',
@@ -596,5 +785,35 @@ class _MeetingScreenState extends State<MeetingScreen> {
         ),
       ),
     );
+  }
+
+  void _showProgressOverlaySmoothly() {
+    if (!_isAnimating && !_showProgressOverlay) {
+      setState(() {
+        _showProgressOverlay = true;
+        _isAnimating = true;
+      });
+      // Small delay to ensure smooth appearance
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) {
+          _overlayAnimationController.forward();
+        }
+      });
+    }
+  }
+
+  void _hideProgressOverlaySmoothly() {
+    if (!_isAnimating && _showProgressOverlay) {
+      setState(() {
+        _isAnimating = true;
+      });
+      _overlayAnimationController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _showProgressOverlay = false;
+          });
+        }
+      });
+    }
   }
 }

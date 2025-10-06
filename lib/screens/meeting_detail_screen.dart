@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -537,25 +538,56 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Future<void> _addAttachment(int discussionId) async {
-    try {
-      // Show file picker dialog
-      final files = await ImagePickerUtils.pickDocumentsWithSource(
-        context: context,
-        maxFiles: 1,
-        allowedExtensions: [
-          'pdf',
-          'doc',
-          'docx',
-          'xls',
-          'xlsx',
-          'txt',
-          'rtf',
-          'jpg',
-          'jpeg',
-          'png',
-          'gif',
+    // Show options dialog for file type selection
+    final String? selectedType = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select File Type'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.image, color: Colors.blue),
+              title: Text('Choose Image'),
+              subtitle: Text('JPG, PNG, GIF'),
+              onTap: () => Navigator.of(context).pop('image'),
+            ),
+            ListTile(
+              leading: Icon(Icons.description, color: Colors.green),
+              title: Text('Choose Document'),
+              subtitle: Text('PDF, DOC, XLS, TXT'),
+              onTap: () => Navigator.of(context).pop('document'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
         ],
-      );
+      ),
+    );
+
+    if (selectedType == null) return;
+
+    try {
+      List<File> files = [];
+      
+      if (selectedType == 'image') {
+        // Pick images (includes camera and gallery options)
+        final file = await ImagePickerUtils.showImageSourceDialog(context: context);
+        if (file != null) {
+          files = [file];
+        }
+      } else {
+        // Pick documents
+        files = await ImagePickerUtils.pickDocumentsWithSource(
+          context: context,
+          maxFiles: 1,
+          allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'rtf'],
+        );
+      }
 
       if (files.isEmpty) return;
 
@@ -1579,6 +1611,8 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                             fontWeight: FontWeight.w600,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
+                          maxLines: 3,
+                          overflow: TextOverflow.visible,
                         ),
                       SizedBox(height: 5),
                       if (isEditable)
@@ -1630,11 +1664,15 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                               ).colorScheme.onSurfaceVariant,
                             ),
                             SizedBox(width: 6),
-                            Text(
-                              discussion.actionBy,
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.primary,
+                            Expanded(
+                              child: Text(
+                                discussion.actionBy,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                             ),
                           ],
@@ -1739,98 +1777,134 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         SizedBox(width: 4),
-        Text(
-          'Attachment:',
-          style: AppTypography.bodySmall.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Row(
+            children: [
+              Text(
+                'Attachment:',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(width: 8),
+              if (discussion.meetingAttachment != null)
+                // Show existing attachment
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Show appropriate icon based on file type
+                      _buildAttachmentIcon(discussion.meetingAttachment!.file),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          discussion.meetingAttachment!.file.split('/').last,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          NavigationUtils.push(
+                            context,
+                            MeetingAttachmentViewer(
+                              attachment: discussion.meetingAttachment!,
+                              onAttachmentDeleted: () {
+                                // Refresh the meeting details when attachment is deleted
+                                _loadMeetingDetail();
+                              },
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          Icons.open_in_new,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        tooltip: 'Open Attachment',
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            _deleteAttachment(discussion.meetingAttachment!.id),
+                        icon: Icon(
+                          Icons.delete,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        tooltip: 'Delete Attachment',
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // Show add attachment option
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _addAttachment(discussion.id),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.add,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Add Attachment',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        SizedBox(width: 8),
-        if (discussion.meetingAttachment != null)
-          // Show existing attachment
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.description,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    discussion.meetingAttachment!.file.split('/').last,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    NavigationUtils.push(
-                      context,
-                      MeetingAttachmentViewer(
-                        attachment: discussion.meetingAttachment!,
-                        onAttachmentDeleted: () {
-                          // Refresh the meeting details when attachment is deleted
-                          _loadMeetingDetail();
-                        },
-                      ),
-                    );
-                  },
-                  icon: Icon(
-                    Icons.open_in_new,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  tooltip: 'Open Attachment',
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
-                ),
-                IconButton(
-                  onPressed: () =>
-                      _deleteAttachment(discussion.meetingAttachment!.id),
-                  icon: Icon(
-                    Icons.delete,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  tooltip: 'Delete Attachment',
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
-                ),
-              ],
-            ),
-          )
-        else
-          // Show add attachment option
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _addAttachment(discussion.id),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.add,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Add Attachment',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
+    );
+  }
+
+  Widget _buildAttachmentIcon(String filePath) {
+    final fileName = filePath.toLowerCase();
+    final IconData iconData;
+    final Color iconColor;
+
+    if (fileName.contains('.jpg') || fileName.contains('.jpeg') || 
+        fileName.contains('.png') || fileName.contains('.gif')) {
+      iconData = Icons.image;
+      iconColor = Colors.blue;
+    } else if (fileName.contains('.pdf')) {
+      iconData = Icons.picture_as_pdf;
+      iconColor = Colors.red;
+    } else if (fileName.contains('.doc') || fileName.contains('.docx')) {
+      iconData = Icons.description;
+      iconColor = Colors.blue;
+    } else if (fileName.contains('.xls') || fileName.contains('.xlsx')) {
+      iconData = Icons.table_chart;
+      iconColor = Colors.green;
+    } else {
+      iconData = Icons.attach_file;
+      iconColor = Theme.of(context).colorScheme.primary;
+    }
+
+    return Icon(
+      iconData,
+      size: 14,
+      color: iconColor,
     );
   }
 }

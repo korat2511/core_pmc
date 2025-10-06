@@ -7282,11 +7282,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Future<void> _handleAcceptTask() async {
-    // Check if there is any progress for this task
-    if (_taskDetail?.progressDetails.isEmpty ?? true) {
-      SnackBarUtils.showError(context, message: 'There is no any update for this task yet');
-      return;
-    }
+
 
     // Controllers for the form
     final remarkController = TextEditingController();
@@ -7371,10 +7367,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           ),
           ElevatedButton(
             onPressed: () {
-              if (remarkController.text.trim().isEmpty) {
-                SnackBarUtils.showError(context, message: 'Please enter a remark');
-                return;
-              }
+
               Navigator.pop(context, {
                 'remark': remarkController.text.trim(),
                 'date': dateController.text,

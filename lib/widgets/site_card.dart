@@ -47,6 +47,9 @@ class _SiteCardState extends State<SiteCard> {
   }
 
   void _handleMenuAction(BuildContext context, String action) {
+    // Dismiss keyboard when menu action is triggered
+    FocusScope.of(context).unfocus();
+    
     switch (action) {
       case 'details':
         // Navigate to site details screen
@@ -146,12 +149,20 @@ class _SiteCardState extends State<SiteCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Dismiss keyboard when tapping site card
         FocusScope.of(context).unfocus();
+        // Clear any search focus
+        FocusManager.instance.primaryFocus?.unfocus();
         // Navigate to site details screen with bottom navigation
         NavigationUtils.push(
           context,
           SiteDetailsWithBottomNav(site: widget.site),
-        );
+        ).then((_) {
+          // When returning from navigation, ensure keyboard is dismissed
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            FocusScope.of(context).unfocus();
+          });
+        });
       },
       child: Container(
         margin: EdgeInsets.only(
@@ -186,6 +197,8 @@ class _SiteCardState extends State<SiteCard> {
                   // Site Image (Square thumbnail) - Click to open SiteDetailsScreen
                   GestureDetector(
                     onTap: () {
+                      // Dismiss keyboard when tapping site image
+                      FocusScope.of(context).unfocus();
                       // Navigate to site details screen (without bottom nav)
                       NavigationUtils.push(
                 context,
@@ -193,7 +206,12 @@ class _SiteCardState extends State<SiteCard> {
                           site: widget.site,
                           onSiteUpdated: widget.onSiteUpdated,
                         ),
-                      );
+                      ).then((_) {
+                        // When returning from navigation, ensure keyboard is dismissed
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          FocusScope.of(context).unfocus();
+                        });
+                      });
                     },
                     child: Container(
                       width: 60,

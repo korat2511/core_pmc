@@ -64,7 +64,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
     'Decision': ['PMC', 'Client', 'Architect', 'Vendor', 'Structure', 'Other'],
     'Drawing': ['Architect', 'Structure', 'Other'],
     'Quotation': ['Architect', 'Structure', 'Other'],
-    'Selection': ['Architect', 'Client'],
+    'Selection': ['Architect', 'Client', 'Other'],
     'Work Updates': [],
     'Material': [],
     'Survey': [],
@@ -130,13 +130,14 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
     
     FlDownloader.initialize();
     progressStream = FlDownloader.progressStream.listen((event) {
+      setState(() {
+        progress = event.progress;
+        downloadId = event.downloadId;
+        status = event.status.name;
+      });
+
       if (event.status == DownloadStatus.successful) {
         debugPrint('event.progress: ${event.progress}');
-        setState(() {
-          progress = event.progress;
-          downloadId = event.downloadId;
-          status = event.status.name;
-        });
         _hideProgressOverlaySmoothly();
         // This is a way of auto-opening downloaded file right after a download is completed
         FlDownloader.openFile(filePath: event.filePath);
@@ -146,19 +147,20 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         );
       } else if (event.status == DownloadStatus.running) {
         debugPrint('event.progress: ${event.progress}');
-        setState(() {
-          progress = event.progress;
-          downloadId = event.downloadId;
-          status = event.status.name;
-        });
         _showProgressOverlaySmoothly();
+        
+        // Close overlay when progress reaches 100%
+        if (event.progress >= 100) {
+          debugPrint('Progress reached 100%, closing overlay');
+          // Add a small delay to ensure smooth transition
+          Future.delayed(Duration(milliseconds: 500), () {
+            if (mounted) {
+              _hideProgressOverlaySmoothly();
+            }
+          });
+        }
       } else if (event.status == DownloadStatus.failed) {
         debugPrint('event: $event');
-        setState(() {
-          progress = event.progress;
-          downloadId = event.downloadId;
-          status = event.status.name;
-        });
         _hideProgressOverlaySmoothly();
         SnackBarUtils.showError(
           context,
@@ -166,23 +168,12 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         );
       } else if (event.status == DownloadStatus.paused) {
         debugPrint('Download paused');
-        setState(() {
-          progress = event.progress;
-          downloadId = event.downloadId;
-          status = event.status.name;
-        });
-
         Future.delayed(
           const Duration(milliseconds: 250),
           () => FlDownloader.attachDownloadProgress(event.downloadId),
         );
       } else if (event.status == DownloadStatus.pending) {
         debugPrint('Download pending');
-        setState(() {
-          progress = event.progress;
-          downloadId = event.downloadId;
-          status = event.status.name;
-        });
         _showProgressOverlaySmoothly();
       }
     });
@@ -516,6 +507,15 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           AnimatedBuilder(
             animation: _overlayAnimationController,
             builder: (context, child) {
+              // Auto-hide overlay when progress reaches 100%
+              if (progress >= 100 && _showProgressOverlay) {
+                Future.delayed(Duration(milliseconds: 800), () {
+                  if (mounted) {
+                    _hideProgressOverlaySmoothly();
+                  }
+                });
+              }
+              
               return _showProgressOverlay
                   ? FadeTransition(
                       opacity: _fadeAnimation,
@@ -568,7 +568,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                                   
                                   // Progress text
                                   Text(
-                                    'Downloading PDF...',
+                                    progress >= 100 ? 'Download completed' : 'Downloading PDF...',
                                     style: AppTypography.titleMedium.copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: Theme.of(context).colorScheme.onSurface,
@@ -598,7 +598,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                                   
                                   // Status
                                   Text(
-                                    _getStatusText(status),
+                                    progress >= 100 ? 'Opening PDF...' : _getStatusText(status),
                                     style: AppTypography.bodySmall.copyWith(
                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),

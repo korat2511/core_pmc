@@ -15,6 +15,7 @@ import 'models/task_model.dart';
 import 'services/session_manager.dart';
 import 'services/force_update_manager.dart';
 import 'providers/theme_provider.dart';
+import 'widgets/dismiss_keyboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,10 +85,13 @@ class ForceUpdateWrapper extends StatefulWidget {
   State<ForceUpdateWrapper> createState() => _ForceUpdateWrapperState();
 }
 
-class _ForceUpdateWrapperState extends State<ForceUpdateWrapper> {
+class _ForceUpdateWrapperState extends State<ForceUpdateWrapper> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // Add lifecycle observer to handle app state changes
+    WidgetsBinding.instance.addObserver(this);
+    
     // Check for updates after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ForceUpdateManager.checkForUpdates(context);
@@ -95,7 +99,26 @@ class _ForceUpdateWrapperState extends State<ForceUpdateWrapper> {
   }
 
   @override
+  void dispose() {
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Dismiss keyboard when app goes to background or becomes inactive
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      dismissAllFocus(context);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return widget.child;
+    return DismissKeyboard(
+      child: widget.child,
+    );
   }
 }

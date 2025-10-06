@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class NavigationUtils {
+  // Helper method to dismiss keyboard
+  static void _dismissKeyboard(BuildContext context) {
+    FocusScope.of(context).unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.clearClient');
+  }
+
   // Push to new screen
   static Future<T?> push<T extends Object?>(BuildContext context, Widget screen) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).push<T>(
       MaterialPageRoute<T>(
         builder: (context) => screen,
@@ -12,6 +22,9 @@ class NavigationUtils {
 
   // Push and replace current screen
   static Future<T?> pushReplacement<T extends Object?>(BuildContext context, Widget screen) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).pushReplacement<T, void>(
       MaterialPageRoute<T>(
         builder: (context) => screen,
@@ -21,6 +34,9 @@ class NavigationUtils {
 
   // Push and remove all previous screens
   static Future<T?> pushAndRemoveAll<T extends Object?>(BuildContext context, Widget screen) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).pushAndRemoveUntil<T>(
       MaterialPageRoute<T>(
         builder: (context) => screen,
@@ -35,6 +51,9 @@ class NavigationUtils {
     Widget screen,
     RoutePredicate predicate,
   ) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).pushAndRemoveUntil<T>(
       MaterialPageRoute<T>(
         builder: (context) => screen,
@@ -45,16 +64,22 @@ class NavigationUtils {
 
   // Pop current screen
   static void pop<T extends Object?>(BuildContext context, [T? result]) {
+    // Dismiss keyboard before popping
+    _dismissKeyboard(context);
     Navigator.of(context).pop<T>(result);
   }
 
   // Pop until specific route
   static void popUntil(BuildContext context, RoutePredicate predicate) {
+    // Dismiss keyboard before popping
+    _dismissKeyboard(context);
     Navigator.of(context).popUntil(predicate);
   }
 
   // Pop to first route
   static void popToFirst(BuildContext context) {
+    // Dismiss keyboard before popping
+    _dismissKeyboard(context);
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -81,6 +106,9 @@ class NavigationUtils {
     bool maintainState = true,
     bool fullscreenDialog = false,
   }) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).push<T>(
       PageRouteBuilder<T>(
         settings: settings,
@@ -111,6 +139,9 @@ class NavigationUtils {
     bool maintainState = true,
     bool fullscreenDialog = false,
   }) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).push<T>(
       PageRouteBuilder<T>(
         settings: settings,
@@ -135,6 +166,9 @@ class NavigationUtils {
     bool maintainState = true,
     bool fullscreenDialog = false,
   }) {
+    // Dismiss keyboard before navigation
+    _dismissKeyboard(context);
+    
     return Navigator.of(context).push<T>(
       PageRouteBuilder<T>(
         settings: settings,

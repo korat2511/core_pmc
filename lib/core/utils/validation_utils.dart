@@ -81,7 +81,7 @@ class ValidationUtils {
     if (currentUser == null) return false;
     
     // Check if this is a simple task (cat_sub_id 2,3,4,6)
-    final simpleTaskCategories = ['decision', 'drawing', 'quotation', 'selection'];
+    final simpleTaskCategories = ['decision', 'drawing', 'quatation', 'selection'];
     final isSimpleTask = simpleTaskCategories.contains(task.categoryName.toLowerCase());
     
     if (!isSimpleTask) {

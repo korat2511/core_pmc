@@ -373,11 +373,6 @@ class _VendorDialogState extends State<_VendorDialog> {
   
   bool _isLoading = false;
   bool _isDialogClosing = false;
-  bool _isLoadingContacts = false;
-  List<Contact> _contacts = [];
-  List<Contact> _filteredContacts = [];
-  bool _showContacts = false;
-  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -396,19 +391,14 @@ class _VendorDialogState extends State<_VendorDialog> {
     _mobileController.dispose();
     _emailController.dispose();
     _gstController.dispose();
-    _searchController.dispose();
     _isDialogClosing = true;
     super.dispose();
   }
 
 
 
-  Future<void> _loadContacts() async {
+  Future<void> _openNativeContacts() async {
     try {
-      setState(() {
-        _isLoadingContacts = true;
-      });
-
       // Check if widget is still mounted
       if (!mounted || _isDialogClosing) return;
 
@@ -418,38 +408,26 @@ class _VendorDialogState extends State<_VendorDialog> {
       // If permission is not granted, return silently
       if (!hasPermission) {
         if (!mounted) return;
-        setState(() {
-          _isLoadingContacts = false;
-        });
+        SnackBarUtils.showError(
+          context,
+          message: 'Contacts permission denied',
+        );
         return;
       }
 
-      // Get all contacts
-      final contacts = await FlutterContacts.getContacts(
-        withProperties: true,
-        withPhoto: false,
-      );
-
-      // Check if widget is still mounted after async operation
-      if (!mounted) return;
-
-      setState(() {
-        _contacts = contacts;
-        _filteredContacts = contacts;
-        _showContacts = true;
-        _isLoadingContacts = false;
-      });
+      // Open native contact picker
+      final Contact? contact = await FlutterContacts.openExternalPick();
+      
+      if (contact != null && mounted) {
+        _selectContact(contact);
+      }
     } catch (e) {
       // Check if widget is still mounted before showing error
       if (!mounted) return;
       
-      setState(() {
-        _isLoadingContacts = false;
-      });
-      
       SnackBarUtils.showError(
         context,
-        message: 'Error accessing contacts: ${e.toString()}',
+        message: 'Error opening contacts: ${e.toString()}',
       );
     }
   }
@@ -467,34 +445,6 @@ class _VendorDialogState extends State<_VendorDialog> {
       if (contact.emails.isNotEmpty) {
         _emailController.text = contact.emails.first.address;
       }
-      
-      _showContacts = false;
-    });
-  }
-
-  void _hideContacts() {
-    setState(() {
-      _showContacts = false;
-      _searchController.clear();
-    });
-  }
-
-  void _filterContacts(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredContacts = _contacts;
-      } else {
-        _filteredContacts = _contacts.where((contact) {
-          final name = contact.displayName.toLowerCase();
-          final phones = contact.phones.map((p) => p.number).join(' ').toLowerCase();
-          final emails = contact.emails.map((e) => e.address).join(' ').toLowerCase();
-          final searchQuery = query.toLowerCase();
-          
-          return name.contains(searchQuery) || 
-                 phones.contains(searchQuery) || 
-                 emails.contains(searchQuery);
-        }).toList();
-      }
     });
   }
 
@@ -511,7 +461,7 @@ class _VendorDialogState extends State<_VendorDialog> {
               siteId: widget.site.id,
               name: _nameController.text.trim(),
               mobile: _mobileController.text.trim(),
-              email: _emailController.text.trim().isEmpty ? '' : _emailController.text.trim(),
+              email: _emailController.text.trim(),
               gstNo: _gstController.text.trim().isEmpty ? null : _gstController.text.trim(),
             )
           : await ApiService.updateSiteVendor(
@@ -519,7 +469,7 @@ class _VendorDialogState extends State<_VendorDialog> {
               siteId: widget.site.id,
               name: _nameController.text.trim(),
               mobile: _mobileController.text.trim(),
-              email: _emailController.text.trim().isEmpty ? '' : _emailController.text.trim(),
+              email: _emailController.text.trim(),
               gstNo: _gstController.text.trim().isEmpty ? null : _gstController.text.trim(),
             );
 
@@ -628,9 +578,9 @@ class _VendorDialogState extends State<_VendorDialog> {
 
                     // Contact Selection Section (only for Add mode)
                     if (widget.vendor == null) ...[
-                      // Load Contacts Button
+                      // Open Native Contacts Button
                       GestureDetector(
-                        onTap: _showContacts ? _hideContacts : _loadContacts,
+                        onTap: _openNativeContacts,
                         child: Container(
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -642,184 +592,29 @@ class _VendorDialogState extends State<_VendorDialog> {
                           child: Row(
                             children: [
                               Icon(
-                                _showContacts ? Icons.contacts : Icons.contacts_outlined,
+                                Icons.contacts,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                               SizedBox(width: 12),
                               Text(
-                                _isLoadingContacts 
-                                  ? 'Loading contacts...' 
-                                  : _showContacts 
-                                    ? 'Hide Contacts' 
-                                    : 'Load Contacts',
+                                'Select from Contacts',
                                 style: AppTypography.bodyMedium.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Spacer(),
-                              if (_isLoadingContacts)
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Theme.of(context).colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ],
                           ),
                         ),
                       ),
                       SizedBox(height: 16),
 
-                      // Contact List
-                      if (_showContacts && _contacts.isNotEmpty) ...[
-                        Container(
-                          width: double.infinity,
-                          height: 350,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: AppColors.borderColor),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceVariant,
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(8),
-                                    topRight: Radius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Select a contact (${_filteredContacts.length} of ${_contacts.length} found)',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              // Search Field
-                              Padding(
-                                padding: EdgeInsets.all(8),
-                                child: TextField(
-                                  controller: _searchController,
-                                  onChanged: _filterContacts,
-                                  decoration: InputDecoration(
-                                    hintText: 'Search contacts...',
-                                    prefixIcon: Icon(Icons.search, size: 20),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: Icon(Icons.clear, size: 20),
-                                            onPressed: () {
-                                              _searchController.clear();
-                                              _filterContacts('');
-                                            },
-                                          )
-                                        : null,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: AppColors.borderColor),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: AppColors.borderColor),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
-                                    ),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                              // Contact List
-                              Expanded(
-                                child: _filteredContacts.isEmpty
-                                    ? Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.search_off,
-                                              size: 48,
-                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'No contacts found',
-                                              style: AppTypography.bodyMedium.copyWith(
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              ),
-                                            ),
-                                            Text(
-                                              'Try a different search term',
-                                              style: AppTypography.bodySmall.copyWith(
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : ListView.builder(
-                                        itemCount: _filteredContacts.length,
-                                        itemBuilder: (context, index) {
-                                          final contact = _filteredContacts[index];
-                                    final name = contact.displayName;
-                                    final phones = contact.phones.map((p) => p.number).toList();
-                                    final emails = contact.emails.map((e) => e.address).toList();
-                                    
-                                    return ListTile(
-                                      dense: true,
-                                      leading: CircleAvatar(
-                                        radius: 16,
-                                        child: Text(
-                                          name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        name.isNotEmpty ? name : 'Unknown',
-                                        style: AppTypography.bodySmall.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (phones.isNotEmpty) 
-                                            Text(
-                                              '📞 ${phones.first}',
-                                              style: AppTypography.bodySmall,
-                                            ),
-                                          if (emails.isNotEmpty) 
-                                            Text(
-                                              '📧 ${emails.first}',
-                                              style: AppTypography.bodySmall,
-                                            ),
-                                        ],
-                                      ),
-                                      onTap: () => _selectContact(contact),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                      ],
                     ],
 
                     // Name Field
@@ -854,14 +649,15 @@ class _VendorDialogState extends State<_VendorDialog> {
                     // Email Field
                     CustomTextField(
                       controller: _emailController,
-                      label: 'Email',
-                      hintText: 'Enter email address (optional)',
+                      label: 'Email *',
+                      hintText: 'Enter email address',
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value != null && value.trim().isNotEmpty) {
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                            return 'Please enter a valid email address';
-                          }
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter email address';
+                        }
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                          return 'Please enter a valid email address';
                         }
                         return null;
                       },

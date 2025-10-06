@@ -40,17 +40,6 @@ class SiteService {
 
       if (response.isSuccess) {
         _allSites = response.data;
-        
-        // Sort sites: pinned sites first, then by name
-        _allSites.sort((a, b) {
-          // First, sort by pin status (pinned sites first)
-          if (a.isPinned == 1 && b.isPinned != 1) return -1;
-          if (a.isPinned != 1 && b.isPinned == 1) return 1;
-          
-          // If both have same pin status, sort by name
-          return a.name.compareTo(b.name);
-        });
-        
         _sites = _allSites;
         _isLoading = false;
         return true;
@@ -170,16 +159,6 @@ class SiteService {
               filteredSites = _allSites.where((site) => site.status.toLowerCase() == status.toLowerCase()).toList();
             }
             
-            // Sort sites: pinned sites first, then by name
-            filteredSites.sort((a, b) {
-              // First, sort by pin status (pinned sites first)
-              if (a.isPinned == 1 && b.isPinned != 1) return -1;
-              if (a.isPinned != 1 && b.isPinned == 1) return 1;
-              
-              // If both have same pin status, sort by name
-              return a.name.compareTo(b.name);
-            });
-            
             _sites = filteredSites;
           }
 
@@ -222,17 +201,7 @@ class SiteService {
                   );
                   _allSites[siteIndex] = updatedSite;
 
-                  // Re-sort all sites after pin status change
-                  _allSites.sort((a, b) {
-                    // First, sort by pin status (pinned sites first)
-                    if (a.isPinned == 1 && b.isPinned != 1) return -1;
-                    if (a.isPinned != 1 && b.isPinned == 1) return 1;
-                    
-                    // If both have same pin status, sort by name
-                    return a.name.compareTo(b.name);
-                  });
-
-                  // Re-apply current filter and sorting
+                  // Re-apply current filter
                   updateFilteredSites(currentStatus);
                 }
                 return true;

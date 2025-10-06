@@ -21,16 +21,41 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _selectedStatus = '';
   String _searchQuery = '';
   bool _isLoading = false;
+  late TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
+    WidgetsBinding.instance.addObserver(this);
     _loadSites();
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Dismiss keyboard when app becomes active again
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          FocusScope.of(context).unfocus();
+        }
+      });
+    }
+  }
+
 
   Future<void> _loadSites() async {
     setState(() {
@@ -106,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: ResponsiveUtils.responsivePadding(context),
                 child: CustomSearchBar(
                   hintText: 'Search sites...',
+                  controller: _searchController,
                   onChanged: (value) {
                     setState(() {
                       _searchQuery = value;
@@ -278,9 +304,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   else
                     ..._getFilteredSites().map((site) => SiteCard(
                       site: site,
-                      onTap: () {
-                        // TODO: Navigate to site details
-                      },
                       onSiteUpdated: _updateSite,
                       currentStatus: _selectedStatus,
                     )),
@@ -378,6 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = _selectedStatus == status;
     return GestureDetector(
       onTap: () {
+        // Dismiss keyboard when tapping status chips
         FocusScope.of(context).unfocus();
         setState(() {
           _selectedStatus = isSelected ? '' : status;

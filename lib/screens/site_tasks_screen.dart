@@ -92,7 +92,9 @@ class _FilterSearchWidgetState<T> extends State<_FilterSearchWidget<T>> {
             itemCount: _filteredItems.length,
             itemBuilder: (context, index) {
               final item = _filteredItems[index];
-              final isSelected = widget.selectedIds.contains(widget.idExtractor(item));
+              final isSelected = widget.selectedIds.contains(
+                widget.idExtractor(item),
+              );
               return CheckboxListTile(
                 title: Text(
                   widget.itemBuilder(item),
@@ -118,10 +120,7 @@ class _FilterSearchWidgetState<T> extends State<_FilterSearchWidget<T>> {
 class SiteTasksScreen extends StatefulWidget {
   final SiteModel site;
 
-  const SiteTasksScreen({
-    super.key,
-    required this.site,
-  });
+  const SiteTasksScreen({super.key, required this.site});
 
   @override
   State<SiteTasksScreen> createState() => _SiteTasksScreenState();
@@ -129,7 +128,7 @@ class SiteTasksScreen extends StatefulWidget {
 
 class _SiteTasksScreenState extends State<SiteTasksScreen> {
   String _searchQuery = '';
-  String _selectedStatus = '';
+  String _selectedStatus = 'all'; // Set default to 'all' to show all tasks
 
   // Filter data
   List<TagModel> _tags = [];
@@ -146,7 +145,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   List<int> _selectedUpdatedBy = [];
   DateTime? _startDate;
   DateTime? _endDate;
-  
+
   // Sub-category selections
   List<String> _selectedDecisionByAgency = [];
   List<String> _selectedDrawingByAgency = [];
@@ -160,18 +159,19 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   // Task list
   List<TaskModel> _tasks = [];
   int _totalTasks = 0;
-  
+
   // Pagination
   int _currentPage = 1;
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
   // Selected filter for right column
-  String _selectedFilterType = 'assign'; // Set default to show Assign To initially
+  String _selectedFilterType =
+      'assign'; // Set default to show Assign To initially
 
   // Scroll controller for pagination
   late ScrollController _scrollController;
-  
+
   // Search debounce timer
   Timer? _searchDebounceTimer;
 
@@ -192,7 +192,8 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       _loadMoreTasks();
     }
   }
@@ -205,7 +206,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     try {
       final String? apiToken = LocalStorageService.getToken();
       if (apiToken == null) {
-        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
         return;
       }
 
@@ -218,7 +222,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       }
 
       // Load users (getUserBySite)
-      final userResponse = await ApiService.getUsersBySite(apiToken: apiToken, siteId: widget.site.id);
+      final userResponse = await ApiService.getUsersBySite(
+        apiToken: apiToken,
+        siteId: widget.site.id,
+      );
       if (userResponse.isSuccess) {
         setState(() {
           _users = userResponse.users;
@@ -226,7 +233,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       }
 
       // Load categories (getCategoryBySiteId)
-      final categoryResponse = await ApiService.getCategoriesBySite(apiToken: apiToken, siteId: widget.site.id);
+      final categoryResponse = await ApiService.getCategoriesBySite(
+        apiToken: apiToken,
+        siteId: widget.site.id,
+      );
       if (categoryResponse.isSuccess) {
         setState(() {
           _categories = categoryResponse.categories;
@@ -234,15 +244,19 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       }
 
       // Load QC categories (qcCategories)
-      final qcCategoryResponse = await ApiService.getQcCategories(apiToken: apiToken);
+      final qcCategoryResponse = await ApiService.getQcCategories(
+        apiToken: apiToken,
+      );
       if (qcCategoryResponse.isSuccess) {
         setState(() {
           _qcCategories = qcCategoryResponse.points;
         });
       }
-
     } catch (e) {
-      SnackBarUtils.showError(context, message: 'Failed to load filter data: $e');
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to load filter data: $e',
+      );
     } finally {
       setState(() {
         _isLoadingFilters = false;
@@ -266,38 +280,50 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     try {
       final String? apiToken = await LocalStorageService.getToken();
       if (apiToken == null) {
-        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        SnackBarUtils.showError(
+          context,
+          message: 'Authentication token not found',
+        );
         return;
       }
 
       // Build filters map
       Map<String, dynamic> filters = {};
-      
+
       // Add search query to filters
       if (_searchQuery.isNotEmpty) {
         filters['search'] = _searchQuery.trim();
       }
-      
+
       if (_selectedStatus.isNotEmpty) {
-        // Map UI status to API status values
-        String apiStatus = '';
-        switch (_selectedStatus) {
-          case 'pending':
-            apiStatus = 'Pending';
-            break;
-          case 'in_progress':
-            apiStatus = 'Active';
-            break;
-          case 'completed':
-            apiStatus = 'Complete';
-            break;
-          case 'overdue':
-            apiStatus = 'Overdue';
-            break;
-          default:
-            apiStatus = _selectedStatus;
+        // Handle Survey filter separately (sub_cat = 1)
+        if (_selectedStatus == 'survey') {
+          filters['showSurvey'] = '1';
+        } else {
+          // Map UI status to API status values
+          String apiStatus = '';
+          switch (_selectedStatus) {
+            case 'all':
+              apiStatus = '';
+              break;
+            case 'pending':
+              apiStatus = 'Pending';
+              break;
+            case 'in_progress':
+              apiStatus = 'Active';
+              break;
+            case 'completed':
+              apiStatus = 'Complete';
+              break;
+            case 'overdue':
+              apiStatus = 'Overdue';
+              break;
+            default:
+              apiStatus = _selectedStatus;
+          }
+          filters['status'] = apiStatus;
+          filters['showSurvey'] = '2';
         }
-        filters['status'] = apiStatus;
       }
       if (_selectedAssignTo.isNotEmpty) {
         filters['assign_to'] = _selectedAssignTo.join(',');
@@ -346,6 +372,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       print('📍 Site ID: ${widget.site.id}');
       print('📄 Current Page: $_currentPage');
       print('🔍 Search Query: "${_searchQuery}"');
+      print('🏷️ Selected Status: "${_selectedStatus}"');
       print('📊 Total Filters: ${filters.length}');
       print('📋 Filters Map:');
       filters.forEach((key, value) {
@@ -381,9 +408,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
             _tasks.addAll(taskResponse.data);
           }
           _totalTasks = taskResponse.totalTasks;
-          
+
           // Check if there are more pages
-          _hasMorePages = taskResponse.data.isNotEmpty && _tasks.length < _totalTasks;
+          _hasMorePages =
+              taskResponse.data.isNotEmpty && _tasks.length < _totalTasks;
         });
       } else {
         // Only show error if we have no data and status is not 1
@@ -406,11 +434,11 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
 
   Future<void> _loadMoreTasks() async {
     if (_isLoadingMore || !_hasMorePages) return;
-    
+
     setState(() {
       _currentPage++;
     });
-    
+
     await _loadTasks(isLoadMore: true);
   }
 
@@ -435,17 +463,20 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       setState(() {
                         _searchQuery = value;
                       });
-                      
+
                       // Cancel previous timer
                       _searchDebounceTimer?.cancel();
-                      
+
                       // Set new timer for debounced search
-                      _searchDebounceTimer = Timer(Duration(milliseconds: 500), () {
-                        // Reset pagination and reload tasks when search changes
-                        _currentPage = 1;
-                        _hasMorePages = true;
-                        _loadTasks();
-                      });
+                      _searchDebounceTimer = Timer(
+                        Duration(milliseconds: 500),
+                        () {
+                          // Reset pagination and reload tasks when search changes
+                          _currentPage = 1;
+                          _hasMorePages = true;
+                          _loadTasks();
+                        },
+                      );
                     },
                   ),
                 ),
@@ -496,7 +527,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                             children: [
                               Icon(
                                 Icons.filter_list,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 size: ResponsiveUtils.responsiveFontSize(
                                   context,
                                   mobile: 16,
@@ -512,18 +545,20 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                                   desktop: 8,
                                 ),
                               ),
-                                                          Text(
-                                  'Filters',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    fontSize: ResponsiveUtils.responsiveFontSize(
-                                      context,
-                                      mobile: 12,
-                                      tablet: 14,
-                                      desktop: 16,
-                                    ),
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              Text(
+                                'Filters',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 12,
+                                    tablet: 14,
+                                    desktop: 16,
                                   ),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
+                              ),
                             ],
                           ),
                         ),
@@ -544,7 +579,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _buildFilterChip('All', ''),
+                              _buildFilterChip('All', 'all'),
                               SizedBox(
                                 width: ResponsiveUtils.responsiveSpacing(
                                   context,
@@ -581,6 +616,15 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                                 ),
                               ),
                               _buildFilterChip('Overdue', 'overdue'),
+                              SizedBox(
+                                width: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 8,
+                                  tablet: 12,
+                                  desktop: 16,
+                                ),
+                              ),
+                              _buildFilterChip('Survey', 'survey'),
                             ],
                           ),
                         ),
@@ -590,9 +634,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                 ),
 
                 // Task List
-                Expanded(
-                  child: _buildTaskList(),
-                ),
+                Expanded(child: _buildTaskList()),
               ],
             ),
             Align(
@@ -602,7 +644,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                 width: double.infinity,
                 child: CustomButton(
                   onPressed: () async {
-                    final result = await NavigationUtils.push(context, CreateTaskScreen(site: widget.site));
+                    final result = await NavigationUtils.push(
+                      context,
+                      CreateTaskScreen(site: widget.site),
+                    );
                     // If task was created successfully, refresh the task list
                     if (result == true) {
                       setState(() {
@@ -619,7 +664,6 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
             ),
           ],
         ),
-
       ),
     );
   }
@@ -640,7 +684,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
   // Get comma-separated sub-category data
   String _getSubCategoryData() {
     List<String> data = [];
-    
+
     if (_selectedDecisionByAgency.isNotEmpty) {
       data.add('decision_by_agency: ${_selectedDecisionByAgency.join(", ")}');
     }
@@ -653,7 +697,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     if (_selectedQuotationByAgency.isNotEmpty) {
       data.add('quotation_by_agency: ${_selectedQuotationByAgency.join(", ")}');
     }
-    
+
     return data.join(" | ");
   }
 
@@ -663,7 +707,12 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       onTap: () {
         FocusScope.of(context).unfocus(); // Dismiss keyboard
         setState(() {
-          _selectedStatus = isSelected ? '' : status;
+          // For 'all' status, don't allow deselecting (always keep it selected)
+          if (status == 'all') {
+            _selectedStatus = 'all';
+          } else {
+            _selectedStatus = isSelected ? 'all' : status;
+          }
         });
         // Reload tasks when status filter changes
         _loadTasks();
@@ -684,7 +733,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           ),
         ),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(
             ResponsiveUtils.responsiveSpacing(
               context,
@@ -707,7 +758,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               tablet: 14,
               desktop: 16,
             ),
-            color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -721,17 +774,12 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return Container(
-            height: MediaQuery
-                .of(context)
-                .size
-                .height * 0.8,
+            height: MediaQuery.of(context).size.height * 0.8,
             padding: ResponsiveUtils.responsivePadding(context),
             child: Column(
               children: [
@@ -772,7 +820,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           _selectedUpdatedBy.clear();
                           _startDate = null;
                           _endDate = null;
-                          _selectedStatus = '';
+                          _selectedStatus = 'all'; // Reset to 'all' instead of empty
                           _selectedDecisionByAgency.clear();
                           _selectedDrawingByAgency.clear();
                           _selectedSelectionByAgency.clear();
@@ -804,123 +852,186 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildFilterTitle(
-                                  'Assign To', _selectedAssignTo.length, () {
-                                _selectFilter('assign');
-                                setModalState(() {}); // Force modal rebuild
-                              }),
-                              _buildFilterTitle('Work Categories',
-                                  _selectedCategories.length, () {
-                                    _selectFilter('categories');
-                                    setModalState(() {}); // Force modal rebuild
-                                  }),
+                                'Assign To',
+                                _selectedAssignTo.length,
+                                () {
+                                  _selectFilter('assign');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
                               _buildFilterTitle(
-                                  'Tags', _selectedTags.length, () {
-                                _selectFilter('tags');
-                                setModalState(() {}); // Force modal rebuild
-                              }),
-                              _buildFilterTitle('QC Categories',
-                                  _selectedQcCategories.length, () {
-                                    _selectFilter('qc_categories');
-                                    setModalState(() {}); // Force modal rebuild
-                                  }),
+                                'Work Categories',
+                                _selectedCategories.length,
+                                () {
+                                  _selectFilter('categories');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
                               _buildFilterTitle(
-                                  'Created By', _selectedCreatedBy.length, () {
-                                _selectFilter('created_by');
-                                setModalState(() {}); // Force modal rebuild
-                              }),
+                                'Tags',
+                                _selectedTags.length,
+                                () {
+                                  _selectFilter('tags');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
                               _buildFilterTitle(
-                                   'Updated By', _selectedUpdatedBy.length, () {
-                                 _selectFilter('updated_by');
-                                 setModalState(() {}); // Force modal rebuild
-                               }),
- 
-                               // Sub-category filters - show only when corresponding category is selected
-                               ...(() {
-                                 List<Widget> widgets = [];
+                                'QC Categories',
+                                _selectedQcCategories.length,
+                                () {
+                                  _selectFilter('qc_categories');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
+                              _buildFilterTitle(
+                                'Created By',
+                                _selectedCreatedBy.length,
+                                () {
+                                  _selectFilter('created_by');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
+                              _buildFilterTitle(
+                                'Updated By',
+                                _selectedUpdatedBy.length,
+                                () {
+                                  _selectFilter('updated_by');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
 
-                                 // Check for Decision
-                                 if (_selectedCategories.any((id) {
-                                   try {
-                                     final category = _categories.firstWhere((cat) => cat.id == id);
-                                     final result = category.name.toLowerCase() == 'decision';
+                              // Sub-category filters - show only when corresponding category is selected
+                              ...(() {
+                                List<Widget> widgets = [];
 
-                                     return result;
-                                   } catch (e) {
+                                // Check for Decision
+                                if (_selectedCategories.any((id) {
+                                  try {
+                                    final category = _categories.firstWhere(
+                                      (cat) => cat.id == id,
+                                    );
+                                    final result =
+                                        category.name.toLowerCase() ==
+                                        'decision';
 
-                                     return false;
-                                   }
-                                 })) {
+                                    return result;
+                                  } catch (e) {
+                                    return false;
+                                  }
+                                })) {
+                                  widgets.add(
+                                    _buildFilterTitle(
+                                      'Decision by Agency',
+                                      _selectedDecisionByAgency.length,
+                                      () {
+                                        _selectFilter('decision_by_agency');
+                                        setModalState(
+                                          () {},
+                                        ); // Force modal rebuild
+                                      },
+                                    ),
+                                  );
+                                }
 
-                                   widgets.add(_buildFilterTitle('Decision by Agency',
-                                       _selectedDecisionByAgency.length, () {
-                                     _selectFilter('decision_by_agency');
-                                     setModalState(() {}); // Force modal rebuild
-                                   }));
-                                 }
-                                 
-                                 // Check for Drawing
-                                 if (_selectedCategories.any((id) {
-                                   try {
-                                     final category = _categories.firstWhere((cat) => cat.id == id);
-                                     return category.name.toLowerCase() == 'drawing';
-                                   } catch (e) {
-                                     return false;
-                                   }
-                                 })) {
-                                   widgets.add(_buildFilterTitle('Drawing by Agency',
-                                       _selectedDrawingByAgency.length, () {
-                                     _selectFilter('drawing_by_agency');
-                                     setModalState(() {}); // Force modal rebuild
-                                   }));
-                                 }
-                                 
-                                 // Check for Selection
-                                 if (_selectedCategories.any((id) {
-                                   try {
-                                     final category = _categories.firstWhere((cat) => cat.id == id);
-                                     return category.name.toLowerCase() == 'selection';
-                                   } catch (e) {
-                                     return false;
-                                   }
-                                 })) {
-                                   widgets.add(_buildFilterTitle('Selection by Agency',
-                                       _selectedSelectionByAgency.length, () {
-                                     _selectFilter('selection_by_agency');
-                                     setModalState(() {}); // Force modal rebuild
-                                   }));
-                                 }
-                                 
-                                 // Check for Quotation
-                                 if (_selectedCategories.any((id) {
-                                   try {
-                                     final category = _categories.firstWhere((cat) => cat.id == id);
-                                     return category.name.toLowerCase() == 'quotation';
-                                   } catch (e) {
-                                     return false;
-                                   }
-                                 })) {
-                                   widgets.add(_buildFilterTitle('Quotation by Agency',
-                                       _selectedQuotationByAgency.length, () {
-                                     _selectFilter('quotation_by_agency');
-                                     setModalState(() {}); // Force modal rebuild
-                                   }));
-                                 }
-                                 
-                                 return widgets;
-                               })(),
- 
-                               _buildFilterTitle('Date Range',
-                                   (_startDate != null || _endDate != null)
-                                       ? 1
-                                       : 0, () {
-                                     _selectFilter('date_range');
-                                     setModalState(() {}); // Force modal rebuild
-                                   }),
+                                // Check for Drawing
+                                if (_selectedCategories.any((id) {
+                                  try {
+                                    final category = _categories.firstWhere(
+                                      (cat) => cat.id == id,
+                                    );
+                                    return category.name.toLowerCase() ==
+                                        'drawing';
+                                  } catch (e) {
+                                    return false;
+                                  }
+                                })) {
+                                  widgets.add(
+                                    _buildFilterTitle(
+                                      'Drawing by Agency',
+                                      _selectedDrawingByAgency.length,
+                                      () {
+                                        _selectFilter('drawing_by_agency');
+                                        setModalState(
+                                          () {},
+                                        ); // Force modal rebuild
+                                      },
+                                    ),
+                                  );
+                                }
+
+                                // Check for Selection
+                                if (_selectedCategories.any((id) {
+                                  try {
+                                    final category = _categories.firstWhere(
+                                      (cat) => cat.id == id,
+                                    );
+                                    return category.name.toLowerCase() ==
+                                        'selection';
+                                  } catch (e) {
+                                    return false;
+                                  }
+                                })) {
+                                  widgets.add(
+                                    _buildFilterTitle(
+                                      'Selection by Agency',
+                                      _selectedSelectionByAgency.length,
+                                      () {
+                                        _selectFilter('selection_by_agency');
+                                        setModalState(
+                                          () {},
+                                        ); // Force modal rebuild
+                                      },
+                                    ),
+                                  );
+                                }
+
+                                // Check for Quotation
+                                if (_selectedCategories.any((id) {
+                                  try {
+                                    final category = _categories.firstWhere(
+                                      (cat) => cat.id == id,
+                                    );
+                                    return category.name.toLowerCase() ==
+                                        'quotation';
+                                  } catch (e) {
+                                    return false;
+                                  }
+                                })) {
+                                  widgets.add(
+                                    _buildFilterTitle(
+                                      'Quotation by Agency',
+                                      _selectedQuotationByAgency.length,
+                                      () {
+                                        _selectFilter('quotation_by_agency');
+                                        setModalState(
+                                          () {},
+                                        ); // Force modal rebuild
+                                      },
+                                    ),
+                                  );
+                                }
+
+                                return widgets;
+                              })(),
+
+                              _buildFilterTitle(
+                                'Date Range',
+                                (_startDate != null || _endDate != null)
+                                    ? 1
+                                    : 0,
+                                () {
+                                  _selectFilter('date_range');
+                                  setModalState(() {}); // Force modal rebuild
+                                },
+                              ),
                               SizedBox(
-                                  height: ResponsiveUtils.responsiveSpacing(
-                                      context, mobile: 12,
-                                      tablet: 16,
-                                      desktop: 20)),
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 12,
+                                  tablet: 16,
+                                  desktop: 20,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -930,9 +1041,14 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       Container(
                         width: 1,
                         color: AppColors.borderColor,
-                        margin: EdgeInsets.symmetric(horizontal: ResponsiveUtils
-                            .responsiveSpacing(
-                            context, mobile: 8, tablet: 12, desktop: 16)),
+                        margin: EdgeInsets.symmetric(
+                          horizontal: ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 8,
+                            tablet: 12,
+                            desktop: 16,
+                          ),
+                        ),
                       ),
 
                       // Right Column - Filter Options
@@ -943,20 +1059,20 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     ],
                   ),
                 ),
-                                 // Apply Button
-                 SizedBox(
-                   width: double.infinity,
-                   child: ElevatedButton(
-                     onPressed: () {
-                       // Get all selected data
-                       String subCategoryData = _getSubCategoryData();
-                       if (subCategoryData.isNotEmpty) {
-                         print('Sub-category data: $subCategoryData');
-                       }
-                       Navigator.pop(context);
-                       // Reload tasks with applied filters
-                       _loadTasks();
-                     },
+                // Apply Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Get all selected data
+                      String subCategoryData = _getSubCategoryData();
+                      if (subCategoryData.isNotEmpty) {
+                        print('Sub-category data: $subCategoryData');
+                      }
+                      Navigator.pop(context);
+                      // Reload tasks with applied filters
+                      _loadTasks();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryColor,
                       foregroundColor: AppColors.textWhite,
@@ -977,13 +1093,16 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               ],
             ),
           );
-        }
-          ));
+        },
+      ),
+    );
   }
 
-
-
-  Widget _buildFilterTitle(String title, int selectedCount, VoidCallback onTap) {
+  Widget _buildFilterTitle(
+    String title,
+    int selectedCount,
+    VoidCallback onTap,
+  ) {
     // Map title to filter type for proper matching
     String getFilterType(String title) {
       switch (title) {
@@ -1024,7 +1143,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         margin: EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primaryColor : AppColors.borderColor,
@@ -1038,8 +1159,15 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               child: Text(
                 title,
                 style: AppTypography.bodyMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 12, tablet: 14, desktop: 16),
-                  color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+                  fontSize: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 12,
+                    tablet: 14,
+                    desktop: 16,
+                  ),
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurface,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 maxLines: 2,
@@ -1053,14 +1181,19 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                   color: AppColors.primaryColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                                  child: Text(
-                    selectedCount.toString(),
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 10, tablet: 12, desktop: 14),
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                child: Text(
+                  selectedCount.toString(),
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 10,
+                      tablet: 12,
+                      desktop: 14,
                     ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
               ),
           ],
         ),
@@ -1097,7 +1230,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           });
         });
       case 'tags':
-        return _buildTagOptions( _selectedTags, (tagId) {
+        return _buildTagOptions(_selectedTags, (tagId) {
           setModalState(() {
             if (_selectedTags.contains(tagId)) {
               _selectedTags.remove(tagId);
@@ -1127,7 +1260,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           });
         });
       case 'updated_by':
-        return _buildUserOptions( _selectedUpdatedBy, (userId) {
+        return _buildUserOptions(_selectedUpdatedBy, (userId) {
           setModalState(() {
             if (_selectedUpdatedBy.contains(userId)) {
               _selectedUpdatedBy.remove(userId);
@@ -1137,45 +1270,61 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           });
         });
       case 'decision_by_agency':
-        return _buildAgencyOptions('Decision by Agency', _selectedDecisionByAgency, (agency) {
-          setModalState(() {
-            if (_selectedDecisionByAgency.contains(agency)) {
-              _selectedDecisionByAgency.remove(agency);
-            } else {
-              _selectedDecisionByAgency.add(agency);
-            }
-          });
-        });
+        return _buildAgencyOptions(
+          'Decision by Agency',
+          _selectedDecisionByAgency,
+          (agency) {
+            setModalState(() {
+              if (_selectedDecisionByAgency.contains(agency)) {
+                _selectedDecisionByAgency.remove(agency);
+              } else {
+                _selectedDecisionByAgency.add(agency);
+              }
+            });
+          },
+        );
       case 'drawing_by_agency':
-        return _buildAgencyOptions('Drawing by Agency', _selectedDrawingByAgency, (agency) {
-          setModalState(() {
-            if (_selectedDrawingByAgency.contains(agency)) {
-              _selectedDrawingByAgency.remove(agency);
-            } else {
-              _selectedDrawingByAgency.add(agency);
-            }
-          });
-        });
+        return _buildAgencyOptions(
+          'Drawing by Agency',
+          _selectedDrawingByAgency,
+          (agency) {
+            setModalState(() {
+              if (_selectedDrawingByAgency.contains(agency)) {
+                _selectedDrawingByAgency.remove(agency);
+              } else {
+                _selectedDrawingByAgency.add(agency);
+              }
+            });
+          },
+        );
       case 'selection_by_agency':
-        return _buildAgencyOptions('Selection by Agency', _selectedSelectionByAgency, (agency) {
-          setModalState(() {
-            if (_selectedSelectionByAgency.contains(agency)) {
-              _selectedSelectionByAgency.remove(agency);
-            } else {
-              _selectedSelectionByAgency.add(agency);
-            }
-          });
-        });
+        return _buildAgencyOptions(
+          'Selection by Agency',
+          _selectedSelectionByAgency,
+          (agency) {
+            setModalState(() {
+              if (_selectedSelectionByAgency.contains(agency)) {
+                _selectedSelectionByAgency.remove(agency);
+              } else {
+                _selectedSelectionByAgency.add(agency);
+              }
+            });
+          },
+        );
       case 'quotation_by_agency':
-        return _buildAgencyOptions('Quotation by Agency', _selectedQuotationByAgency, (agency) {
-          setModalState(() {
-            if (_selectedQuotationByAgency.contains(agency)) {
-              _selectedQuotationByAgency.remove(agency);
-            } else {
-              _selectedQuotationByAgency.add(agency);
-            }
-          });
-        });
+        return _buildAgencyOptions(
+          'Quotation by Agency',
+          _selectedQuotationByAgency,
+          (agency) {
+            setModalState(() {
+              if (_selectedQuotationByAgency.contains(agency)) {
+                _selectedQuotationByAgency.remove(agency);
+              } else {
+                _selectedQuotationByAgency.add(agency);
+              }
+            });
+          },
+        );
       case 'date_range':
         return _buildDateRangeOptions();
       default:
@@ -1185,14 +1334,31 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
             children: [
               Icon(
                 Icons.filter_list_outlined,
-                size: ResponsiveUtils.responsiveFontSize(context, mobile: 48, tablet: 56, desktop: 64),
+                size: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 48,
+                  tablet: 56,
+                  desktop: 64,
+                ),
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
+              SizedBox(
+                height: ResponsiveUtils.responsiveSpacing(
+                  context,
+                  mobile: 12,
+                  tablet: 16,
+                  desktop: 20,
+                ),
+              ),
               Text(
                 'Select a filter from the left',
                 style: AppTypography.bodyLarge.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                  fontSize: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 14,
+                    tablet: 16,
+                    desktop: 18,
+                  ),
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
@@ -1225,12 +1391,23 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     );
   }
 
-  Widget _buildAgencyOptions(String title, List<String> selectedOptions, Function(String) onToggle) {
+  Widget _buildAgencyOptions(
+    String title,
+    List<String> selectedOptions,
+    Function(String) onToggle,
+  ) {
     List<String> options = [];
-    
+
     switch (title) {
       case 'Decision by Agency':
-        options = ["PMC", "Client", "Architect", "Vendor", "Structure", "Other"];
+        options = [
+          "PMC",
+          "Client",
+          "Architect",
+          "Vendor",
+          "Structure",
+          "Other",
+        ];
         break;
       case 'Drawing by Agency':
         options = ["Architect", "Structure", "Other"];
@@ -1244,7 +1421,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       default:
         options = [];
     }
-    
+
     return _FilterSearchWidget<String>(
       items: options,
       selectedIds: selectedOptions.map((e) => e.hashCode).toList(),
@@ -1269,7 +1446,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
     );
   }
 
-  Widget _buildQcCategoryOptions(List<int> selectedIds, Function(int) onToggle) {
+  Widget _buildQcCategoryOptions(
+    List<int> selectedIds,
+    Function(int) onToggle,
+  ) {
     return _FilterSearchWidget<QcCategoryModel>(
       items: _qcCategories,
       selectedIds: selectedIds,
@@ -1296,12 +1476,24 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     Text(
                       'Start Date',
                       style: AppTypography.bodyMedium.copyWith(
-                        fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                        fontSize: ResponsiveUtils.responsiveFontSize(
+                          context,
+                          mobile: 14,
+                          tablet: 16,
+                          desktop: 18,
+                        ),
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
+                    SizedBox(
+                      height: ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                    ),
                     GestureDetector(
                       onTap: () async {
                         final DateTime? picked = await showDatePicker(
@@ -1321,7 +1513,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.borderColor),
                           borderRadius: BorderRadius.circular(8),
@@ -1331,39 +1526,68 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           children: [
                             Text(
                               _startDate != null
-                                ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                                : 'Select Start Date',
+                                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                                  : 'Select Start Date',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: _startDate != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: _startDate != null
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             Icon(
                               Icons.calendar_today,
                               color: AppColors.textSecondary,
-                              size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                              size: ResponsiveUtils.responsiveFontSize(
+                                context,
+                                mobile: 16,
+                                tablet: 18,
+                                desktop: 20,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
 
-                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 24, tablet: 28, desktop: 32)),
+                    SizedBox(
+                      height: ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 24,
+                        tablet: 28,
+                        desktop: 32,
+                      ),
+                    ),
 
                     // End Date
                     Text(
                       'End Date',
                       style: AppTypography.bodyMedium.copyWith(
-                        fontSize: ResponsiveUtils.responsiveFontSize(context, mobile: 14, tablet: 16, desktop: 18),
+                        fontSize: ResponsiveUtils.responsiveFontSize(
+                          context,
+                          mobile: 14,
+                          tablet: 16,
+                          desktop: 18,
+                        ),
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 10, desktop: 12)),
+                    SizedBox(
+                      height: ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 8,
+                        tablet: 10,
+                        desktop: 12,
+                      ),
+                    ),
                     GestureDetector(
                       onTap: () async {
                         final DateTime? picked = await showDatePicker(
                           context: context,
-                          initialDate: _endDate ?? (_startDate ?? DateTime.now()),
+                          initialDate:
+                              _endDate ?? (_startDate ?? DateTime.now()),
                           firstDate: _startDate ?? DateTime(2020),
                           lastDate: DateTime(2030),
                         );
@@ -1378,7 +1602,10 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.borderColor),
                           borderRadius: BorderRadius.circular(8),
@@ -1388,16 +1615,25 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           children: [
                             Text(
                               _endDate != null
-                                ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                                : 'Select End Date',
+                                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                  : 'Select End Date',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: _endDate != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: _endDate != null
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             Icon(
                               Icons.calendar_today,
                               color: AppColors.textSecondary,
-                              size: ResponsiveUtils.responsiveFontSize(context, mobile: 16, tablet: 18, desktop: 20),
+                              size: ResponsiveUtils.responsiveFontSize(
+                                context,
+                                mobile: 16,
+                                tablet: 18,
+                                desktop: 20,
+                              ),
                             ),
                           ],
                         ),
@@ -1412,8 +1648,6 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
       },
     );
   }
-
-
 
   Widget _buildTaskList() {
     if (_isLoadingTasks) {
@@ -1456,16 +1690,16 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-                              Icon(
-                  Icons.task_outlined,
-                  size: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 64,
-                    tablet: 80,
-                    desktop: 96,
-                  ),
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Icon(
+                Icons.task_outlined,
+                size: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 64,
+                  tablet: 80,
+                  desktop: 96,
                 ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               SizedBox(
                 height: ResponsiveUtils.responsiveSpacing(
                   context,
@@ -1496,7 +1730,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                 ),
               ),
               Text(
-                'Total: $_totalTasks | Search: "$_searchQuery" | Status: "$_selectedStatus" | Filters: ${_getFilterCount()}',
+                'Total: $_totalTasks | Search: "$_searchQuery" | Status: "$_selectedStatus"${_selectedStatus == 'survey' ? ' (Sub Cat: 1)' : ''} | Filters: ${_getFilterCount()}',
                 style: AppTypography.bodySmall.copyWith(
                   fontSize: ResponsiveUtils.responsiveFontSize(
                     context,
@@ -1524,16 +1758,18 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
         children: [
           // Task count header
           Padding(
-            padding: EdgeInsets.only(bottom: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 12,
-              tablet: 16,
-              desktop: 20,
-            )),
+            padding: EdgeInsets.only(
+              bottom: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 12,
+                tablet: 16,
+                desktop: 20,
+              ),
+            ),
             child: Text(
-              _searchQuery.isNotEmpty 
-                ? 'Search Results (${filteredTasks.length} tasks)'
-                : 'Tasks (${filteredTasks.length}/${_totalTasks})',
+              _searchQuery.isNotEmpty
+                  ? 'Search Results (${filteredTasks.length} tasks)'
+                  : 'Tasks (${filteredTasks.length}/${_totalTasks})',
               style: AppTypography.titleMedium.copyWith(
                 fontSize: ResponsiveUtils.responsiveFontSize(
                   context,
@@ -1546,7 +1782,7 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
               ),
             ),
           ),
-          
+
           // Task list
           Expanded(
             child: RefreshIndicator(
@@ -1583,7 +1819,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                           child: Text(
                             'Scroll to load more',
                             style: AppTypography.bodyMedium.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -1604,7 +1842,9 @@ class _SiteTasksScreenState extends State<SiteTasksScreen> {
                     onTaskUpdated: (updatedTask) {
                       // Update the task in the local list
                       setState(() {
-                        final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
+                        final index = _tasks.indexWhere(
+                          (t) => t.id == updatedTask.id,
+                        );
                         if (index != -1) {
                           _tasks[index] = updatedTask;
                         }
