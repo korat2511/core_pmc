@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
@@ -117,34 +118,40 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
     
     // Add status listener to handle animation completion
     _overlayAnimationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() {
-          _isAnimating = false;
-        });
-      } else if (status == AnimationStatus.dismissed) {
-        setState(() {
-          _isAnimating = false;
-        });
+      if (mounted) {
+        if (status == AnimationStatus.completed) {
+          setState(() {
+            _isAnimating = false;
+          });
+        } else if (status == AnimationStatus.dismissed) {
+          setState(() {
+            _isAnimating = false;
+          });
+        }
       }
     });
     
     FlDownloader.initialize();
     progressStream = FlDownloader.progressStream.listen((event) {
-      setState(() {
-        progress = event.progress;
-        downloadId = event.downloadId;
-        status = event.status.name;
-      });
+      if (mounted) {
+        setState(() {
+          progress = event.progress;
+          downloadId = event.downloadId;
+          status = event.status.name;
+        });
+      }
 
       if (event.status == DownloadStatus.successful) {
         debugPrint('event.progress: ${event.progress}');
         _hideProgressOverlaySmoothly();
         // This is a way of auto-opening downloaded file right after a download is completed
         FlDownloader.openFile(filePath: event.filePath);
-        SnackBarUtils.showSuccess(
-          context,
-          message: 'PDF opened successfully!',
-        );
+        if (mounted) {
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'PDF opened successfully!',
+          );
+        }
       } else if (event.status == DownloadStatus.running) {
         debugPrint('event.progress: ${event.progress}');
         _showProgressOverlaySmoothly();
@@ -162,10 +169,12 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       } else if (event.status == DownloadStatus.failed) {
         debugPrint('event: $event');
         _hideProgressOverlaySmoothly();
-        SnackBarUtils.showError(
-          context,
-          message: 'Failed to download PDF. Please try again.',
-        );
+        if (mounted) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Failed to download PDF. Please try again.',
+          );
+        }
       } else if (event.status == DownloadStatus.paused) {
         debugPrint('Download paused');
         Future.delayed(
@@ -892,11 +901,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
 
     // Reset animation state and show loading
     _overlayAnimationController.reset();
-    setState(() {
-      _isAnimating = false;
-      _showProgressOverlay = false;
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isAnimating = false;
+        _showProgressOverlay = false;
+        _isLoading = true;
+      });
+    }
 
     try {
       // Prepare parameters
@@ -934,7 +945,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           selectionByAgency: params['selectionByAgency'] ?? '',
           workUpdate: params['workUpdate'] ?? '',
         );
-      } else {
+      } else
+      {
         // Weekly report
         final startDateStr = _formatDateForAPI(_fromDate);
         final endDateStr = _formatDateForAPI(_toDate);
@@ -962,71 +974,99 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         );
       }
 
-      if (response != null) {
-        final status = response['status'] ?? 0;
-        final message = response['message'] ?? 'Report generated successfully';
 
-        if (status == 1) {
-          print('Report generated successfully: $message');
+
+
+
+      if (response != null) {
+        final status = response['status'];
+
+
+        
+        if (status == 1 ) {
+
 
           // Handle PDF response
           final pdfUrl = response['pdfurl'];
           final pdfName = response['pdf_name'];
 
+
+
           if (pdfUrl != null && pdfName != null) {
-            print('PDF URL: $pdfUrl');
-            print('PDF Name: $pdfName');
 
-            // Show success message and start download
-            SnackBarUtils.showSuccess(
-              context,
-              message: 'Report generated successfully! Starting download...',
-            );
 
+
+             // Don't show success message here - it will be shown when download completes
+
+            // Fallback to download method
             final permission = await FlDownloader.requestPermission();
             if (permission == StoragePermissionStatus.granted) {
-              var success = await FlDownloader.download(
-                pdfUrl,
-                fileName: "$pdfName.pdf",
-              );
 
-              if (!success) {
+              
+               var downloadId = await FlDownloader.download(
+                 pdfUrl,
+                 fileName: "$pdfName.pdf",
+               );
+
+
+               
+               if (downloadId == null || downloadId <= 0) {
                 _hideProgressOverlaySmoothly();
-                SnackBarUtils.showError(
-                  context,
-                  message: 'Failed to start download. Please try again.',
-                );
+                if (mounted) {
+                  SnackBarUtils.showError(
+                    context,
+                    message: 'Failed to start download. Please try again.',
+                  );
+                }
               }
             } else {
               _hideProgressOverlaySmoothly();
-              SnackBarUtils.showError(
-                context,
-                message: 'Storage permission denied. Cannot download PDF.',
-              );
+              if (mounted) {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Storage permission denied. Cannot download PDF.',
+                );
+              }
             }
           } else {
-            SnackBarUtils.showError(
-              context,
-              message: 'Invalid PDF response from server.',
-            );
+            if (mounted) {
+              SnackBarUtils.showError(
+                context,
+                message: 'Invalid PDF response from server.',
+              );
+            }
           }
         } else {
-          print('Report generation failed: $message');
-          SnackBarUtils.showError(context, message: message);
+
+          if (mounted) {
+            SnackBarUtils.showError(context, message: "Failed to generate report. Please try again.");
+          }
         }
       } else {
-        print('Failed to generate report');
-        SnackBarUtils.showError(
-          context,
-          message: 'Failed to generate report. Please try again.',
-        );
+        if (mounted) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Failed to generate report. Please try again.',
+          );
+        }
       }
     } catch (e) {
-      print('Error generating report: $e');
+
+      if (e is TypeError) {
+        print('TypeError details: ${e.toString()}');
+      }
+      if (mounted) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Error generating report: ${e.toString()}',
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -1203,7 +1243,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
   }
 
   void _showProgressOverlaySmoothly() {
-    if (!_isAnimating && !_showProgressOverlay) {
+    if (!_isAnimating && !_showProgressOverlay && mounted) {
       setState(() {
         _showProgressOverlay = true;
         _isAnimating = true;
@@ -1218,7 +1258,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
   }
 
   void _hideProgressOverlaySmoothly() {
-    if (!_isAnimating && _showProgressOverlay) {
+    if (!_isAnimating && _showProgressOverlay && mounted) {
       setState(() {
         _isAnimating = true;
       });

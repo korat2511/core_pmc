@@ -384,7 +384,12 @@ class _MeetingScreenState extends State<MeetingScreen>
       onRefresh: _refreshMeetings,
       color: Theme.of(context).colorScheme.primary,
       child: ListView.builder(
-        padding: ResponsiveUtils.responsivePadding(context),
+        padding: EdgeInsets.only(
+          left: ResponsiveUtils.responsivePadding(context).left,
+          right: ResponsiveUtils.responsivePadding(context).right,
+          top: ResponsiveUtils.responsivePadding(context).top,
+          bottom: ResponsiveUtils.responsivePadding(context).bottom + 100, // Add extra padding for FAB
+        ),
         itemCount: _discussionSearchResults.length,
         itemBuilder: (context, index) {
           final result = _discussionSearchResults[index];
@@ -541,6 +546,58 @@ class _MeetingScreenState extends State<MeetingScreen>
                   ),
                 ],
               ),
+
+              SizedBox(height: 8),
+
+              // Action by
+              Row(
+                children: [
+                  Icon(
+                    Icons.person,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      discussion.actionBy,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Remarks (if available)
+              if (discussion.remarks.isNotEmpty && discussion.remarks != 'NA') ...[
+                SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.notes,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        discussion.remarks,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -638,20 +695,16 @@ class _MeetingScreenState extends State<MeetingScreen>
                         print('PDF URL: $pdfUrl');
                         print('PDF Name: $pdfName');
 
-                        // Show success message and start download
-                        SnackBarUtils.showSuccess(
-                          context,
-                          message: 'Meeting report generated successfully! Starting download...',
-                        );
+                        // Don't show success message here - it will be shown when download completes
 
                         final permission = await FlDownloader.requestPermission();
                         if (permission == StoragePermissionStatus.granted) {
-                          var success = await FlDownloader.download(
+                          var downloadId = await FlDownloader.download(
                             pdfUrl,
                             fileName: "$pdfName.pdf",
                           );
 
-                          if (!success) {
+                          if (downloadId == null || downloadId <= 0) {
                             _hideProgressOverlaySmoothly();
                             SnackBarUtils.showError(
                               context,

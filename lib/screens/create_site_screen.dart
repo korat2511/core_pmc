@@ -70,7 +70,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     final String? selectedDate = await DatePickerUtils.pickDate(
       context: context,
       initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)), // Allow dates from last 5 years
       lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
     );
     
@@ -88,7 +88,7 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     final String? selectedDate = await DatePickerUtils.pickDate(
       context: context,
       initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-      firstDate: _startDate ?? DateTime.now(),
+      firstDate: _startDate ?? DateTime.now().subtract(const Duration(days: 365 * 5)), // If start date selected, use it; otherwise allow from last 5 years
       lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
     );
     
@@ -328,17 +328,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
       return;
     }
 
-    if (_startDate == null) {
-      SnackBarUtils.showError(context, message: 'Please select start date');
-      return;
-    }
-
-    if (_endDate == null) {
-      SnackBarUtils.showError(context, message: 'Please select end date');
-      return;
-    }
-
-    if (_endDate!.isBefore(_startDate!)) {
+    // Only validate end date if both start date and end date are selected
+    if (_startDate != null && _endDate != null && _endDate!.isBefore(_startDate!)) {
       SnackBarUtils.showError(context, message: 'End date cannot be before start date');
       return;
     }

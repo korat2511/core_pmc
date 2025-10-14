@@ -689,15 +689,15 @@ class __AgencyDialogState extends State<_AgencyDialog> {
                     // Email Field
                     CustomTextField(
                       controller: _emailController,
-                      label: 'Email *',
-                      hintText: 'Enter email address',
+                      label: 'Email',
+                      hintText: 'Enter email address (optional)',
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter email address';
-                        }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                          return 'Please enter a valid email address';
+                        // Email is optional, but if provided, it must be valid
+                        if (value != null && value.trim().isNotEmpty) {
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            return 'Please enter a valid email address';
+                          }
                         }
                         return null;
                       },

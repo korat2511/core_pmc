@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class MeetingDiscussionModel {
   final int id;
   final int meetingId;
@@ -99,6 +101,7 @@ class MeetingModel {
   final String updatedAt;
   final String? deletedAt;
   final String pdfReportUrl;
+  final String? voiceNoteUrl;
   final List<MeetingDiscussionModel> meetingDiscussions;
 
   MeetingModel({
@@ -116,6 +119,7 @@ class MeetingModel {
     required this.updatedAt,
     this.deletedAt,
     required this.pdfReportUrl,
+    this.voiceNoteUrl,
     required this.meetingDiscussions,
   });
 
@@ -123,11 +127,11 @@ class MeetingModel {
     return MeetingModel(
       id: json['id'] ?? 0,
       siteId: json['site_id'] ?? 0,
-      clients: List<String>.from(json['clients'] ?? []),
+      clients: _parseStringList(json['clients']),
       userId: json['user_id'] ?? 0,
-      architects: List<String>.from(json['architects'] ?? []),
-      pmcMembers: List<String>.from(json['pmc_members'] ?? []),
-      contractors: List<String>.from(json['contractors'] ?? []),
+      architects: _parseStringList(json['architects']),
+      pmcMembers: _parseStringList(json['pmc_members']),
+      contractors: _parseStringList(json['contractors']),
       architectCompany: json['architect_company'] ?? '',
       meetingDateTime: json['meeting_date_time'] ?? '',
       meetingPlace: json['meeting_place'],
@@ -135,11 +139,44 @@ class MeetingModel {
       updatedAt: json['updated_at'] ?? '',
       deletedAt: json['deleted_at'],
       pdfReportUrl: json['pdf_report_url'] ?? '',
+      voiceNoteUrl: json['voice_note_url'],
       meetingDiscussions: (json['meeting_discussions'] as List<dynamic>?)
               ?.map((item) => MeetingDiscussionModel.fromJson(item))
               .toList() ??
           [],
     );
+  }
+
+  // Helper method to parse string list (handles both JSON string and array)
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    
+    // If it's already a list, convert it to List<String>
+    if (value is List) {
+      return value.map((item) => item.toString()).toList();
+    }
+    
+    // If it's a string, try to parse it as JSON
+    if (value is String) {
+      try {
+        // Remove any extra whitespace
+        final trimmed = value.trim();
+        
+        // If it's an empty string or "[]", return empty list
+        if (trimmed.isEmpty || trimmed == '[]') return [];
+        
+        // Try to parse as JSON
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          return decoded.map((item) => item.toString()).toList();
+        }
+      } catch (e) {
+        print('Error parsing string list: $e, value: $value');
+        return [];
+      }
+    }
+    
+    return [];
   }
 
   Map<String, dynamic> toJson() {
@@ -158,6 +195,7 @@ class MeetingModel {
       'updated_at': updatedAt,
       'deleted_at': deletedAt,
       'pdf_report_url': pdfReportUrl,
+      'voice_note_url': voiceNoteUrl,
       'meeting_discussions': meetingDiscussions.map((d) => d.toJson()).toList(),
     };
   }

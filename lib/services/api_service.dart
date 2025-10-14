@@ -3522,44 +3522,50 @@ class ApiService {
   }) async {
     try {
       final Map<String, dynamic> requestData = {
-        'api_token': apiToken,
+        'api_token': apiToken.toString(),
         'site_id': siteId.toString(),
-        'date': date,
-        'category_id': categoryId,
-        'photos': photos,
-        'material': material,
-        'manpower': manpower,
-        'survey': survey,
-        'user_id': userId,
-        'task': task,
-        'decision': decision,
-        'decision_by_agency': decisionByAgency,
-        'drawing': drawing,
-        'drawing_by_agency': drawingByAgency,
-        'quotation': quotation,
-        'quotation_by_agency': quotationByAgency,
-        'selection': selection,
-        'selection_by_agency': selectionByAgency,
-        'work_update': workUpdate,
+        'date': date.toString(),
+        'category_id': categoryId.toString(),
+        'photos': photos.toString(),
+        'material': material.toString(),
+        'manpower': manpower.toString(),
+        'survey': survey.toString(),
+        'user_id': userId.toString(),
+        'task': task.toString(),
+        'decision': decision.toString(),
+        'decision_by_agency': decisionByAgency.toString(),
+        'drawing': drawing.toString(),
+        'drawing_by_agency': drawingByAgency.toString(),
+        'quotation': quotation.toString(),
+        'quotation_by_agency': quotationByAgency.toString(),
+        'selection': selection.toString(),
+        'selection_by_agency': selectionByAgency.toString(),
+        'work_update': workUpdate.toString(),
       };
 
+      final queryString = Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query;
+
+      
       final response = await http.post(
         Uri.parse('$baseUrl/api/dailyTaskReport'),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         },
-        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+        body: queryString,
       ).timeout(timeout);
 
 
+      
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         return jsonData;
       } else {
+
         return null;
       }
     } catch (e) {
+
       return null;
     }
   }
@@ -3589,45 +3595,52 @@ class ApiService {
   }) async {
     try {
       final Map<String, dynamic> requestData = {
-        'api_token': apiToken,
+        'api_token': apiToken.toString(),
         'site_id': siteId.toString(),
-        'start_date': startDate,
-        'end_date': endDate,
-        'category_id': categoryId,
-        'photos': photos,
-        'material': material,
-        'manpower': manpower,
-        'survey': survey,
-        'user_id': userId,
-        'task': task,
-        'decision': decision,
-        'decision_by_agency': decisionByAgency,
-        'drawing': drawing,
-        'drawing_by_agency': drawingByAgency,
-        'quotation': quotation,
-        'quotation_by_agency': quotationByAgency,
-        'selection': selection,
-        'selection_by_agency': selectionByAgency,
-        'work_update': workUpdate,
+        'start_date': startDate.toString(),
+        'end_date': endDate.toString(),
+        'category_id': categoryId.toString(),
+        'photos': photos.toString(),
+        'material': material.toString(),
+        'manpower': manpower.toString(),
+        'survey': survey.toString(),
+        'user_id': userId.toString(),
+        'task': task.toString(),
+        'decision': decision.toString(),
+        'decision_by_agency': decisionByAgency.toString(),
+        'drawing': drawing.toString(),
+        'drawing_by_agency': drawingByAgency.toString(),
+        'quotation': quotation.toString(),
+        'quotation_by_agency': quotationByAgency.toString(),
+        'selection': selection.toString(),
+        'selection_by_agency': selectionByAgency.toString(),
+        'work_update': workUpdate.toString(),
       };
 
+      final queryString = Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query;
+      print('Weekly Report Request Data: $requestData');
+      print('Weekly Report Query String: $queryString');
+      
       final response = await http.post(
         Uri.parse('$baseUrl/api/weeklyReport'),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         },
-        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+        body: queryString,
       ).timeout(timeout);
 
-
+      print('Weekly Report API Response: ${response.statusCode} - ${response.body}');
+      
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         return jsonData;
       } else {
+        print('Weekly Report API Error: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
+      print('Weekly Report API Exception: $e');
       return null;
     }
   }
@@ -3864,7 +3877,7 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
-      print('Get Meeting Detail API Response: ${response.statusCode} - ${response.body}');
+
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -4234,6 +4247,118 @@ class ApiService {
     }
   }
 
+
+  // Update Meeting API
+  static Future<Map<String, dynamic>?> updateMeeting(Map<String, dynamic> updateData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/meeting/updateMeeting'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(updateData),
+      ).timeout(timeout);
+
+      print('Update Meeting with Files Request Fields: ${updateData}');
+      print('Update Meeting API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        print('Error updating meeting: ${response.statusCode}');
+
+        return null;
+      }
+    } catch (e) {
+      print('Exception updating meeting: $e');
+      return null;
+    }
+  }
+
+  // Update Meeting with Files API (multipart)
+  static Future<Map<String, dynamic>?> updateMeetingWithFiles({
+    required Map<String, dynamic> updateData,
+    required List<File?> discussionFiles,
+    File? voiceNoteFile,
+  }) async
+  {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/meeting/updateMeeting'),
+      );
+
+      // Add all text fields
+      request.fields['api_token'] = updateData['api_token'].toString();
+      request.fields['site_id'] = updateData['site_id'].toString();
+      request.fields['meeting_id'] = updateData['meeting_id'].toString();
+      request.fields['architect_company'] = updateData['architect_company'].toString();
+      request.fields['meeting_date_time'] = updateData['meeting_date_time'].toString();
+
+      // ✅ Encode lists as JSON so backend can parse them as arrays
+      request.fields['clients'] = json.encode(updateData['clients']);
+      request.fields['architects'] = json.encode(updateData['architects']);
+      request.fields['pmc_members'] = json.encode(updateData['pmc_members']);
+      request.fields['contractors'] = json.encode(updateData['contractors']);
+
+      // Add meeting discussions text fields and files
+      for (int i = 0; i < (updateData['meeting_discussions'] as List).length; i++) {
+        final discussion = updateData['meeting_discussions'][i];
+        
+        // Add discussion text fields including ID for existing discussions
+        if (discussion['id'] != null) {
+          request.fields['meeting_discussions[$i][id]'] = discussion['id'].toString();
+        }
+        request.fields['meeting_discussions[$i][discussion_action]'] = discussion['discussion_action'];
+        request.fields['meeting_discussions[$i][action_by]'] = discussion['action_by'];
+        request.fields['meeting_discussions[$i][remarks]'] = discussion['remarks'];
+        
+        // If there's a file for this discussion, add it with the key meeting_discussions[i][document]
+        if (i < discussionFiles.length && discussionFiles[i] != null) {
+          final file = discussionFiles[i]!;
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'meeting_discussions[$i][document]',
+              file.path,
+            ),
+          );
+        }
+      }
+
+      // Add voice note file if provided
+      if (voiceNoteFile != null && voiceNoteFile.existsSync()) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'voice_note',
+            voiceNoteFile.path,
+          ),
+        );
+      }
+
+      print('Update Meeting with Files Request Fields: ${request.fields}');
+      print('Update Meeting with Files Request Files: ${request.files.length} files');
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('Update Meeting with Files API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error updating meeting with files: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception updating meeting with files: $e');
+      return null;
+    }
+  }
+
+
+
   // Save Meeting API
   static Future<Map<String, dynamic>?> saveMeeting(Map<String, dynamic> meetingData) async {
     try {
@@ -4259,6 +4384,108 @@ class ApiService {
       return null;
     }
   }
+
+  static Future<Map<String, dynamic>?> saveMeetingWithFiles({
+    required Map<String, dynamic> meetingData,
+    required List<File?> discussionFiles,
+    File? voiceNoteFile,
+  }) async
+  {
+    try {
+      final uri = Uri.parse('$baseUrl/api/meeting/saveMeeting');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Required text fields
+      if (meetingData['api_token'] != null) {
+        request.fields['api_token'] = meetingData['api_token'].toString();
+      }
+      if (meetingData['site_id'] != null) {
+        request.fields['site_id'] = meetingData['site_id'].toString();
+      }
+      if (meetingData['architect_company'] != null) {
+        request.fields['architect_company'] = meetingData['architect_company'].toString();
+      }
+      if (meetingData['meeting_date_time'] != null) {
+        request.fields['meeting_date_time'] = meetingData['meeting_date_time'].toString();
+      }
+      if (meetingData['meeting_place'] != null) {
+        request.fields['meeting_place'] = meetingData['meeting_place'].toString();
+      }
+
+      // ✅ Encode lists as JSON so backend can parse them as arrays
+      if (meetingData['clients'] != null) {
+        request.fields['clients'] = json.encode(meetingData['clients']);
+      }
+      if (meetingData['architects'] != null) {
+        request.fields['architects'] = json.encode(meetingData['architects']);
+      }
+      if (meetingData['pmc_members'] != null) {
+        request.fields['pmc_members'] = json.encode(meetingData['pmc_members']);
+      }
+      if (meetingData['contractors'] != null) {
+        request.fields['contractors'] = json.encode(meetingData['contractors']);
+      }
+
+      // ✅ Handle meeting discussions
+      final discussions = meetingData['meeting_discussions'] as List?;
+      if (discussions != null && discussions.isNotEmpty) {
+        for (int i = 0; i < discussions.length; i++) {
+          final discussion = discussions[i];
+          if (discussion['discussion_action'] != null) {
+            request.fields['meeting_discussions[$i][discussion_action]'] =
+                discussion['discussion_action'].toString();
+          }
+          if (discussion['action_by'] != null) {
+            request.fields['meeting_discussions[$i][action_by]'] =
+                discussion['action_by'].toString();
+          }
+          if (discussion['remarks'] != null) {
+            request.fields['meeting_discussions[$i][remarks]'] =
+                discussion['remarks'].toString();
+          }
+
+          // Attach discussion file (if exists)
+          if (i < discussionFiles.length && discussionFiles[i] != null) {
+            final file = discussionFiles[i]!;
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'meeting_discussions[$i][document]',
+                file.path,
+              ),
+            );
+          }
+        }
+      }
+
+      // ✅ Add voice note if available
+      if (voiceNoteFile != null && voiceNoteFile.existsSync()) {
+        request.files.add(
+          await http.MultipartFile.fromPath('voice_note', voiceNoteFile.path),
+        );
+      }
+
+      print('--- Save Meeting with Files Request ---');
+      print('Fields: ${request.fields}');
+      print('Files: ${request.files.length} attached');
+      print('--------------------------------------');
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('Save Meeting with Files API Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Error saving meeting with files: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception saving meeting with files: $e');
+      return null;
+    }
+  }
+
 
   // Save Meeting Attachment API
   static Future<Map<String, dynamic>?> saveMeetingAttachment({
@@ -4744,30 +4971,5 @@ class ApiService {
     }
   }
 
-  // Update Meeting API
-  static Future<Map<String, dynamic>?> updateMeeting(Map<String, dynamic> updateData) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/meeting/updateMeeting'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(updateData),
-      ).timeout(timeout);
 
-      print('Update Meeting API Response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        return jsonData;
-      } else {
-        print('Error updating meeting: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Exception updating meeting: $e');
-      return null;
-    }
-  }
 } 

@@ -67,7 +67,7 @@ class ResponsiveUtils {
   // Responsive padding and margins
   static EdgeInsets responsivePadding(BuildContext context) {
     if (isMobile(context)) {
-      return const EdgeInsets.all(16.0);
+      return const EdgeInsets.all(12.0);
     } else if (isTablet(context)) {
       return const EdgeInsets.all(24.0);
     } else {

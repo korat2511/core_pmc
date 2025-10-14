@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../models/meeting_model.dart';
+import '../models/category_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/meeting_attachment_viewer.dart';
+import '../widgets/action_by_picker.dart';
 import '../core/utils/image_picker_utils.dart';
 
 class MeetingDetailScreen extends StatefulWidget {
@@ -37,6 +40,25 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   late List<String> _editablePmcMembers;
   late List<String> _editableContractors;
   late List<MeetingDiscussionModel> _editableDiscussions;
+  
+  // Map to store new document attachments for new discussions (key is discussion ID)
+  final Map<int, File> _newDiscussionDocuments = {};
+  
+  // Audio player for voice notes
+  late AudioPlayer _audioPlayer;
+  bool _isPlayingVoiceNote = false;
+  Duration _voiceNoteDuration = Duration.zero;
+  Duration _voiceNotePosition = Duration.zero;
+  
+  // Voice note editing
+  File? _newVoiceNoteFile;
+  bool _isVoiceNoteRemoved = false;
+  
+  // Categories for action by picker
+  List<CategoryModel> _categories = [];
+  
+  // Map to track action by names for each discussion during editing
+  final Map<int, List<String>> _discussionActionByNames = {};
 
   @override
   void initState() {
@@ -44,7 +66,38 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     _architectCompanyController = TextEditingController();
     _meetingPlaceController = TextEditingController();
     _meetingDateTimeController = TextEditingController();
+    
+    // Initialize audio player
+    _audioPlayer = AudioPlayer();
+    _initializeAudioPlayer();
+    
     _loadMeetingDetail();
+  }
+
+  void _initializeAudioPlayer() {
+    _audioPlayer.onDurationChanged.listen((duration) {
+      if (mounted) {
+        setState(() {
+          _voiceNoteDuration = duration;
+        });
+      }
+    });
+
+    _audioPlayer.onPositionChanged.listen((position) {
+      if (mounted) {
+        setState(() {
+          _voiceNotePosition = position;
+        });
+      }
+    });
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlayingVoiceNote = state == PlayerState.playing;
+        });
+      }
+    });
   }
 
   @override
@@ -52,7 +105,76 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     _architectCompanyController.dispose();
     _meetingPlaceController.dispose();
     _meetingDateTimeController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    if (_meeting == null) {
+      print('Meeting is null, cannot load categories');
+      return;
+    }
+
+    try {
+      final token = await AuthService.currentToken;
+      if (token != null) {
+        final response = await ApiService.getCategoriesBySite(
+          apiToken: token,
+          siteId: _meeting!.siteId,
+        );
+        
+        if (response.status == 1) {
+          setState(() {
+            _categories = response.categories;
+          });
+          print('Loaded ${_categories.length} categories for meeting detail screen');
+        } else {
+          print('Failed to load categories: ${response.message}');
+        }
+      }
+    } catch (e) {
+      print('Error loading categories: $e');
+    }
+  }
+
+  List<String> _getActionByNames(int discussionId) {
+    if (!_discussionActionByNames.containsKey(discussionId)) {
+      // Initialize from the discussion's actionBy string
+      final discussion = _editableDiscussions.firstWhere(
+        (d) => d.id == discussionId,
+        orElse: () => _meeting!.meetingDiscussions.firstWhere(
+          (d) => d.id == discussionId,
+        ),
+      );
+      final actionBy = discussion.actionBy;
+      _discussionActionByNames[discussionId] = actionBy.isEmpty 
+          ? [] 
+          : actionBy.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    return _discussionActionByNames[discussionId]!;
+  }
+
+  void _updateActionByNames(int discussionId, List<String> names) {
+    setState(() {
+      _discussionActionByNames[discussionId] = names;
+      
+      // Update the discussion in _editableDiscussions
+      final discussionIndex = _editableDiscussions.indexWhere((d) => d.id == discussionId);
+      if (discussionIndex != -1) {
+        final discussion = _editableDiscussions[discussionIndex];
+        _editableDiscussions[discussionIndex] = MeetingDiscussionModel(
+          id: discussion.id,
+          meetingId: discussion.meetingId,
+          discussionAction: discussion.discussionAction,
+          actionBy: names.join(', '),
+          remarks: discussion.remarks,
+          createdAt: discussion.createdAt,
+          updatedAt: discussion.updatedAt,
+          deletedAt: discussion.deletedAt,
+          meetingAttachment: discussion.meetingAttachment,
+        );
+      }
+    });
   }
 
   void _initializeEditableFields() {
@@ -90,31 +212,6 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     }
   }
 
-  void _updateLocalMeetingData() {
-    if (_meeting != null) {
-      // Update the meeting model with new data from controllers
-      final updatedMeeting = MeetingModel(
-        id: _meeting!.id,
-        siteId: _meeting!.siteId,
-        userId: _meeting!.userId,
-        architectCompany: _architectCompanyController.text.trim(),
-        meetingPlace: _meetingPlaceController.text.trim().isEmpty ? null : _meetingPlaceController.text.trim(),
-        meetingDateTime: _meetingDateTimeController.text.trim(),
-        clients: _editableClients,
-        architects: _editableArchitects,
-        pmcMembers: _editablePmcMembers,
-        contractors: _editableContractors,
-        meetingDiscussions: _editableDiscussions.where((d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty).toList(),
-        createdAt: _meeting!.createdAt,
-        updatedAt: DateTime.now().toIso8601String(),
-        pdfReportUrl: _meeting!.pdfReportUrl,
-      );
-      
-      setState(() {
-        _meeting = updatedMeeting;
-      });
-    }
-  }
 
   void _removeDiscussionPointLocally(int discussionId) {
     if (_meeting != null) {
@@ -296,9 +393,11 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   Future<void> _updateMeeting() async {
     if (_meeting == null) return;
 
+    if (mounted) {
     setState(() {
       _isUpdating = true;
     });
+    }
 
     try {
       final token = await AuthService.currentToken;
@@ -310,40 +409,6 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         return;
       }
 
-      // Prepare the update data
-      final updateData = {
-        'api_token': token,
-        'site_id': _meeting!.siteId.toString(),
-        'meeting_id': _meeting!.id.toString(),
-        'architect_company': _architectCompanyController.text.trim(),
-        'meeting_date_time': _meetingDateTimeController.text.trim(),
-        'clients': _editableClients,
-        'architects': _editableArchitects,
-        'pmc_members': _editablePmcMembers,
-        'contractors': _editableContractors,
-        'meeting_discussions': _editableDiscussions
-            .where(
-              (d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty,
-            ) // Filter out empty discussions
-            .where(
-              (d) => d.id > 999999999, // Only new discussions (temporary IDs)
-            ) // Only send new discussion points
-            .map(
-              (d) => {
-                'discussion_action': d.discussionAction,
-                'action_by': d.actionBy,
-                'remarks': d.remarks,
-                'meeting_attachment': d.meetingAttachment != null
-                    ? {
-                        'id': d.meetingAttachment!.id,
-                        'file': d.meetingAttachment!.file,
-                      }
-                    : null,
-              },
-            )
-            .toList(),
-      };
-
       // Validate date format before sending to API
       final dateTimeString = _meetingDateTimeController.text.trim();
       if (!_isValidDateTimeFormat(dateTimeString)) {
@@ -354,28 +419,81 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         return;
       }
 
-      // Debug: Print the date format being sent
-      print('Meeting date time being sent: "$dateTimeString"');
-      
-      // Debug: Print new discussion points count
-      final newDiscussions = _editableDiscussions
-          .where((d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty)
-          .where((d) => d.id > 999999999)
-          .toList();
-      print('Sending ${newDiscussions.length} new discussion points');
+      // Validate action by names for all editable discussions
+      for (int i = 0; i < _editableDiscussions.length; i++) {
+        final discussion = _editableDiscussions[i];
+        final actionByNames = _getActionByNames(discussion.id);
+        if (discussion.discussionAction.isNotEmpty && actionByNames.isEmpty) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Please select or enter at least one name for discussion point ${i + 1}',
+          );
+          return;
+        }
+      }
 
-      final response = await ApiService.updateMeeting(updateData);
+      // Get all valid discussions (both existing and new)
+      final allDiscussions = _editableDiscussions
+          .where((d) => d.discussionAction.isNotEmpty && d.actionBy.isNotEmpty)
+          .toList();
+
+      // Separate new discussions (with temporary IDs) for file handling
+      final newDiscussions = allDiscussions
+          .where((d) => d.id > 999999999) // Only new discussions (temporary IDs)
+          .toList();
+
+      // Prepare the update data
+      final updateData = {
+        'api_token': token,
+        'site_id': _meeting!.siteId.toString(),
+        'meeting_id': _meeting!.id.toString(),
+        'architect_company': _architectCompanyController.text.trim(),
+        'meeting_date_time': dateTimeString,
+        'clients': _editableClients,
+        'architects': _editableArchitects,
+        'pmc_members': _editablePmcMembers,
+        'contractors': _editableContractors,
+        'meeting_discussions': allDiscussions.map(
+              (d) => {
+                'id': d.id > 999999999 ? null : d.id,
+                'discussion_action': d.discussionAction,
+                'action_by': d.actionBy,
+                'remarks': d.remarks,
+              },
+            )
+            .toList(),
+      };
+      
+
+      print('Sending ${allDiscussions.length} total discussion points (${newDiscussions.length} new, ${allDiscussions.length - newDiscussions.length} existing)');
+
+
+      final hasFiles = newDiscussions.any((d) => _newDiscussionDocuments.containsKey(d.id));
+      final hasVoiceNoteChanges = _newVoiceNoteFile != null || _isVoiceNoteRemoved;
+
+      final response = (hasFiles || hasVoiceNoteChanges)
+          ? await ApiService.updateMeetingWithFiles(
+              updateData: updateData,
+              discussionFiles: newDiscussions.map((d) => _newDiscussionDocuments[d.id]).toList(),
+              voiceNoteFile: _newVoiceNoteFile,
+            )
+          : await ApiService.updateMeeting(updateData);
 
       if (response != null && response['status'] == 1) {
         SnackBarUtils.showSuccess(
           context,
           message: 'Meeting updated successfully',
         );
+        if (mounted) {
         setState(() {
           _isEditing = false;
+            _newDiscussionDocuments.clear(); // Clear the attachments map
+            _newVoiceNoteFile = null; // Clear the voice note file
+            _isVoiceNoteRemoved = false; // Reset removal flag
         });
-        // Update local data without full reload
-        _updateLocalMeetingData();
+        }
+        // Reload meeting data from server to get updated discussions
+        await _loadMeetingDetail();
         // Return true to indicate meeting was updated
         Navigator.of(context).pop(true);
       } else {
@@ -387,16 +505,20 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     } catch (e) {
       SnackBarUtils.showError(context, message: 'Error updating meeting: $e');
     } finally {
+      if (mounted) {
       setState(() {
         _isUpdating = false;
       });
+      }
     }
   }
 
   Future<void> _loadMeetingDetail() async {
+    if (mounted) {
     setState(() {
       _isLoading = true;
     });
+    }
 
     try {
       final token = await AuthService.currentToken;
@@ -407,10 +529,14 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         );
 
         if (response != null && response.status == 1) {
+          if (mounted) {
           setState(() {
             _meeting = response.meetingDetail;
           });
+          }
           _initializeEditableFields();
+          // Load categories after meeting data is available
+          _loadCategories();
         } else {
           SnackBarUtils.showError(
             context,
@@ -424,20 +550,26 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         message: 'Error loading meeting details: $e',
       );
     } finally {
+      if (mounted) {
       setState(() {
         _isLoading = false;
       });
+      }
     }
   }
 
   Future<void> _refreshMeetingDetail() async {
+    if (mounted) {
     setState(() {
     });
+    }
 
     await _loadMeetingDetail();
 
+    if (mounted) {
     setState(() {
     });
+    }
   }
 
 
@@ -448,16 +580,214 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       meetingId: _meeting!.id,
       discussionAction: '',
       actionBy: '',
-      remarks: 'NA',
+      remarks: '', // Empty instead of 'NA'
       createdAt: DateTime.now().toIso8601String(),
       updatedAt: DateTime.now().toIso8601String(),
       deletedAt: null,
       meetingAttachment: null,
     );
 
+    if (mounted) {
     setState(() {
-      _editableDiscussions.add(newDiscussion);
+        // Insert at the beginning (index 0) to show new discussions at the top
+        _editableDiscussions.insert(0, newDiscussion);
+      });
+    }
+  }
+
+  Future<void> _pickDocumentForNewDiscussion(int discussionId) async {
+    // Show options dialog for file type selection
+    final String? selectedType = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select File Type'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.image, color: Colors.blue),
+              title: Text('Choose Image'),
+              subtitle: Text('JPG, PNG, GIF'),
+              onTap: () => Navigator.of(context).pop('image'),
+            ),
+            ListTile(
+              leading: Icon(Icons.description, color: Colors.green),
+              title: Text('Choose Document'),
+              subtitle: Text('PDF, DOC, XLS, TXT'),
+              onTap: () => Navigator.of(context).pop('document'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedType == null) return;
+
+    try {
+      List<File> files = [];
+      
+      if (selectedType == 'image') {
+        // Pick images (includes camera and gallery options)
+        final file = await ImagePickerUtils.showImageSourceDialog(context: context);
+        if (file != null) {
+          files = [file];
+        }
+      } else {
+        // Pick documents
+        files = await ImagePickerUtils.pickDocumentsWithSource(
+          context: context,
+          maxFiles: 1,
+          allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'rtf'],
+        );
+      }
+
+      if (files.isEmpty) return;
+
+      setState(() {
+        _newDiscussionDocuments[discussionId] = files.first;
+      });
+
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'Document attached successfully',
+      );
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Error selecting file: $e',
+      );
+    }
+  }
+
+  void _removeDocumentForNewDiscussion(int discussionId) {
+    setState(() {
+      _newDiscussionDocuments.remove(discussionId);
     });
+    SnackBarUtils.showSuccess(
+      context,
+      message: 'Document removed',
+    );
+  }
+
+  Future<void> _playVoiceNote() async {
+    if (_meeting?.voiceNoteUrl == null || _meeting!.voiceNoteUrl!.isEmpty) {
+      SnackBarUtils.showError(context, message: 'No voice note available');
+      return;
+    }
+
+    try {
+      if (_isPlayingVoiceNote) {
+        await _audioPlayer.pause();
+      } else {
+        await _audioPlayer.play(UrlSource(_meeting!.voiceNoteUrl!));
+      }
+    } catch (e) {
+      SnackBarUtils.showError(context, message: 'Error playing voice note: $e');
+    }
+  }
+
+  Future<void> _stopVoiceNote() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      print('Error stopping voice note: $e');
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
+  Future<void> _pickNewVoiceNote() async {
+    try {
+      // Show options dialog for audio file selection
+      final String? selectedType = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Select Audio File'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.audiotrack, color: Colors.purple),
+                title: Text('Choose Audio File'),
+                subtitle: Text('MP3, WAV, M4A, AAC'),
+                onTap: () => Navigator.of(context).pop('audio'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+
+      if (selectedType == null) return;
+
+      // Pick audio files
+      final files = await ImagePickerUtils.pickDocumentsWithSource(
+        context: context,
+        maxFiles: 1,
+        allowedExtensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'],
+      );
+
+      if (files.isEmpty) return;
+
+      if (mounted) {
+        setState(() {
+          _newVoiceNoteFile = files.first;
+          _isVoiceNoteRemoved = false; // Reset removal flag when new file is selected
+        });
+      }
+
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'New voice note selected',
+      );
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Error selecting voice note: $e',
+      );
+    }
+  }
+
+  void _removeVoiceNote() {
+    if (mounted) {
+      setState(() {
+        _newVoiceNoteFile = null;
+        _isVoiceNoteRemoved = true;
+      });
+    }
+    SnackBarUtils.showSuccess(
+      context,
+      message: 'Voice note will be removed',
+    );
+  }
+
+  void _cancelVoiceNoteChanges() {
+    if (mounted) {
+      setState(() {
+        _newVoiceNoteFile = null;
+        _isVoiceNoteRemoved = false;
+      });
+    }
+    SnackBarUtils.showSuccess(
+      context,
+      message: 'Voice note changes cancelled',
+    );
   }
 
   Future<void> _deleteDiscussionPoint(int discussionId) async {
@@ -770,11 +1100,13 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildMeetingHeader(),
-                    SizedBox(height: 16),
+                    SizedBox(height: 10),
                     _buildMeetingInfo(),
-                    SizedBox(height: 16),
+                    SizedBox(height: 10),
                     _buildParticipantsSection(),
-                    SizedBox(height: 16),
+                    SizedBox(height: 10),
+                    _buildVoiceNoteSection(),
+                    SizedBox(height: 10),
                     _buildDiscussionsSection(),
                     // Add bottom padding to ensure content is not hidden behind FAB
                     SizedBox(height: 100),
@@ -897,20 +1229,6 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Meeting Information',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-
             // Architect Company
             _buildEditableInfoRow(
               icon: Icons.business,
@@ -1211,21 +1529,18 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Widget _buildParticipantsSection() {
-    return Card(
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+        borderRadius: BorderRadius.circular(12)
+      ),
+     
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Participants',
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            SizedBox(height: 12),
+
 
             // Editable participants
             if (_isEditing)
@@ -1233,13 +1548,13 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             else
               _buildReadOnlyParticipants(),
           ],
-        ),
       ),
     );
   }
 
   Widget _buildReadOnlyParticipants() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_meeting!.clients.isNotEmpty)
           _buildSimpleParticipantGroup('Clients', _meeting!.clients),
@@ -1262,6 +1577,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Widget _buildEditableParticipants() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildEditableParticipantGroup('Clients', _editableClients),
         SizedBox(height: 8),
@@ -1278,6 +1594,8 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     String title,
     List<String> participants,
   ) {
+    final controller = TextEditingController();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1288,74 +1606,34 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          child: Wrap(
-            spacing: ResponsiveUtils.isPhone(context) ? 4 : 8,
-            runSpacing: ResponsiveUtils.isPhone(context) ? 2 : 4,
+        SizedBox(height: 8),
+        
+        // Inline text field for adding participants
+        Row(
             children: [
-              ...participants.map(
-                (participant) => ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: ResponsiveUtils.isPhone(context) ? 120 : 150,
+            Expanded(
+              child: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Enter $title name',
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Chip(
-                    label: Text(
-                      participant,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: ResponsiveUtils.isPhone(context) ? 12 : 14,
-                      ),
-                    ),
-                    deleteIcon: Icon(
-                      Icons.close,
-                      size: ResponsiveUtils.isPhone(context) ? 14 : 16,
-                    ),
-                    onDeleted: () {
+                ),
+                onSubmitted: (value) {
+                  final name = value.trim();
+                  if (name.isNotEmpty) {
                       setState(() {
-                        participants.remove(participant);
+                      participants.add(name);
                       });
+                    controller.clear();
+                  }
                     },
                   ),
                 ),
-              ),
-              ActionChip(
-                label: Text('+ Add'),
-                onPressed: () => _addParticipant(title, participants),
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  fontSize: ResponsiveUtils.isPhone(context) ? 12 : 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _addParticipant(String groupTitle, List<String> participants) {
-    final TextEditingController controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add $groupTitle'),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: 'Name',
-            hintText: 'Enter $groupTitle name',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
+            SizedBox(width: 8),
           ElevatedButton(
             onPressed: () {
               final name = controller.text.trim();
@@ -1363,39 +1641,72 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 setState(() {
                   participants.add(name);
                 });
-                Navigator.of(context).pop();
-              }
-            },
-            child: Text('Add'),
+                  controller.clear();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Icon(Icons.add, size: 20),
           ),
         ],
       ),
+        
+        if (participants.isNotEmpty) ...[
+          SizedBox(height: 8),
+          Wrap(
+            spacing: 4,
+            children: participants.map((participant) => Chip(
+              label: Text(participant),
+              deleteIcon: Icon(Icons.close, size: 16),
+              onDeleted: () {
+                setState(() {
+                  participants.remove(participant);
+                });
+              },
+            )).toList(),
+          ),
+        ],
+      ],
     );
   }
+
 
   Widget _buildSimpleParticipantGroup(String title, List<String> participants) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
+          Text(
               '$title:',
               style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-          ),
-          Expanded(
-            child: Text(
-              participants.join(', '),
-              style: AppTypography.bodyMedium.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
+          SizedBox(height: 4),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: participants.map((participant) => Chip(
+              label: Text(
+                participant,
+                style: AppTypography.bodySmall,
               ),
-            ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              labelStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 12,
+              ),
+            )).toList(),
           ),
         ],
       ),
@@ -1406,7 +1717,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     return Card(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1415,12 +1726,12 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               children: [
                 Text(
                   'Discussion Points',
-                  style: AppTypography.titleMedium.copyWith(
+                  style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                SizedBox(height: 8),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1443,10 +1754,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                       ),
                   ],
                 ),
+                SizedBox(height: 8,)
               ],
             ),
-            SizedBox(height: 16),
-
             _buildDiscussionsList(),
           ],
         ),
@@ -1458,15 +1768,20 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     if (_isEditing) {
       // Show editable discussions
       if (_editableDiscussions.isEmpty) {
-        return Center(
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16),
+          margin: EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            ),
+          ),
           child: Column(
             children: [
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              SizedBox(height: 8),
+
               Text(
                 'No discussion points yet',
                 style: AppTypography.bodyMedium.copyWith(
@@ -1499,15 +1814,20 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     } else {
       // Show read-only discussions
       if (_meeting!.meetingDiscussions.isEmpty) {
-        return Center(
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16),
+          margin: EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            ),
+          ),
           child: Column(
             children: [
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              SizedBox(height: 8),
+
               Text(
                 'No discussion points yet',
                 style: AppTypography.bodyMedium.copyWith(
@@ -1567,6 +1887,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(height: 4),
                       if (isEditable)
                         TextFormField(
                           initialValue: discussion.discussionAction,
@@ -1574,7 +1895,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                             isDense: true,
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 4,
+                              vertical: 8,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(4),
@@ -1614,66 +1935,53 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                           maxLines: 3,
                           overflow: TextOverflow.visible,
                         ),
-                      SizedBox(height: 5),
+                      SizedBox(height: 10),
                       if (isEditable)
-                        TextFormField(
-                          initialValue: discussion.actionBy,
-                          decoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                            ActionByPicker(
+                              selectedNames: _getActionByNames(discussion.id),
+                              categories: _categories,
+                              siteId: _meeting!.siteId,
+                              discussionId: discussion.id, // Pass the discussion ID
+                              hintText: 'Select Action By *',
+                              onChanged: (selectedNames) {
+                                _updateActionByNames(discussion.id, selectedNames);
+                              },
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                            hintText: 'Action by',
-                          ),
-                          onChanged: (value) {
-                            if (discussionIndex != -1) {
-                              final discussion =
-                                  _editableDiscussions[discussionIndex];
-                              _editableDiscussions[discussionIndex] =
-                                  MeetingDiscussionModel(
-                                    id: discussion.id,
-                                    meetingId: discussion.meetingId,
-                                    discussionAction:
-                                        discussion.discussionAction,
-                                    actionBy: value,
-                                    remarks: discussion.remarks,
-                                    createdAt: discussion.createdAt,
-                                    updatedAt: discussion.updatedAt,
-                                    deletedAt: discussion.deletedAt,
-                                    meetingAttachment:
-                                        discussion.meetingAttachment,
-                                  );
-                            }
-                          },
+
+                          ],
                         )
                       else
-                        Row(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.person,
-                              size: 14,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                discussion.actionBy,
-                                style: AppTypography.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+
+
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: discussion.actionBy
+                                  .split(',')
+                                  .map((name) => name.trim())
+                                  .where((name) => name.isNotEmpty)
+                                  .map((name) => Chip(
+                                    label: Text(
+                                      name,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    labelStyle: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ))
+                                  .toList(),
                             ),
                           ],
                         ),
@@ -1708,7 +2016,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               ],
             ),
 
-            SizedBox(height: 6),
+            SizedBox(height: 12),
 
             // Remarks
             if (isEditable)
@@ -1720,7 +2028,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 8,
-                    vertical: 4,
+                    vertical: 8,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
@@ -1757,8 +2065,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 ),
               ),
 
-            SizedBox(height: 8),
-
+            SizedBox(height: 12),
             // Attachment Section
             _buildAttachmentSection(discussion),
             SizedBox(height: 8),
@@ -1769,6 +2076,10 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Widget _buildAttachmentSection(MeetingDiscussionModel discussion) {
+    // Check if this is a new discussion (temporary ID) with a new document
+    final isNewDiscussion = discussion.id > 999999999;
+    final hasNewDocument = isNewDiscussion && _newDiscussionDocuments.containsKey(discussion.id);
+    
     return Row(
       children: [
         Icon(
@@ -1780,25 +2091,28 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         Flexible(
           child: Row(
             children: [
-              Text(
-                'Attachment:',
-                style: AppTypography.bodySmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(width: 8),
-              if (discussion.meetingAttachment != null)
-                // Show existing attachment
+        Text(
+          'Attachment:',
+          style: AppTypography.bodySmall.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(width: 8),
+              if (hasNewDocument)
+                // Show newly attached document (not yet uploaded)
                 Expanded(
                   child: Row(
                     children: [
-                      // Show appropriate icon based on file type
-                      _buildAttachmentIcon(discussion.meetingAttachment!.file),
+                      Icon(
+                        _getFileIconFromPath(_newDiscussionDocuments[discussion.id]!.path),
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          discussion.meetingAttachment!.file.split('/').last,
+                          _newDiscussionDocuments[discussion.id]!.path.split('/').last,
                           style: AppTypography.bodySmall.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
@@ -1808,73 +2122,403 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () {
-                          NavigationUtils.push(
-                            context,
-                            MeetingAttachmentViewer(
-                              attachment: discussion.meetingAttachment!,
-                              onAttachmentDeleted: () {
-                                // Refresh the meeting details when attachment is deleted
-                                _loadMeetingDetail();
-                              },
-                            ),
-                          );
-                        },
+                        onPressed: () => _removeDocumentForNewDiscussion(discussion.id),
                         icon: Icon(
-                          Icons.open_in_new,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        tooltip: 'Open Attachment',
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                      ),
-                      IconButton(
-                        onPressed: () =>
-                            _deleteAttachment(discussion.meetingAttachment!.id),
-                        icon: Icon(
-                          Icons.delete,
+                          Icons.close,
                           size: 14,
                           color: Theme.of(context).colorScheme.error,
                         ),
-                        tooltip: 'Delete Attachment',
+                        tooltip: 'Remove Attachment',
                         padding: EdgeInsets.zero,
                         constraints: BoxConstraints(minWidth: 24, minHeight: 24),
                       ),
                     ],
                   ),
                 )
-              else
-                // Show add attachment option
+              else if (discussion.meetingAttachment != null)
+          // Show existing attachment
+          Expanded(
+            child: Row(
+              children: [
+                // Show appropriate icon based on file type
+                _buildAttachmentIcon(discussion.meetingAttachment!.file),
+                SizedBox(width: 4),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => _addAttachment(discussion.id),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.add,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        SizedBox(width: 4),
+                  child: Text(
+                    discussion.meetingAttachment!.file.split('/').last,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    NavigationUtils.push(
+                      context,
+                      MeetingAttachmentViewer(
+                        attachment: discussion.meetingAttachment!,
+                        onAttachmentDeleted: () {
+                          // Refresh the meeting details when attachment is deleted
+                          _loadMeetingDetail();
+                        },
+                      ),
+                    );
+                  },
+                  icon: Icon(
+                    Icons.open_in_new,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  tooltip: 'Open Attachment',
+                  padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                ),
+                IconButton(
+                  onPressed: () =>
+                      _deleteAttachment(discussion.meetingAttachment!.id),
+                  icon: Icon(
+                    Icons.delete,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  tooltip: 'Delete Attachment',
+                  padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                ),
+              ],
+            ),
+          )
+        else
+          // Show add attachment option
+          Expanded(
+            child: GestureDetector(
+                    onTap: () {
+                      if (isNewDiscussion && _isEditing) {
+                        // For new discussions in edit mode, use the new document picker
+                        _pickDocumentForNewDiscussion(discussion.id);
+                      } else {
+                        // For existing discussions, use the existing attachment method
+                        _addAttachment(discussion.id);
+                      }
+                    },
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.add,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            'Add Attachment',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w500,
+                    'Add Attachment',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+                  ),
+                ),
+            ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  IconData _getFileIconFromPath(String filePath) {
+    final fileName = filePath.toLowerCase();
+    if (fileName.endsWith('.pdf')) {
+      return Icons.picture_as_pdf;
+    } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+      return Icons.description;
+    } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+      return Icons.table_chart;
+    } else if (fileName.endsWith('.jpg') || 
+               fileName.endsWith('.jpeg') || 
+               fileName.endsWith('.png') || 
+               fileName.endsWith('.gif')) {
+      return Icons.image;
+    } else {
+      return Icons.insert_drive_file;
+    }
+  }
+
+  Widget _buildVoiceNoteSection() {
+    return Card(
+      color: Theme.of(context).colorScheme.surface,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.audiotrack,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Voice Note',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                Spacer(),
+                if (_isEditing && (_meeting?.voiceNoteUrl != null && _meeting!.voiceNoteUrl!.isNotEmpty)) ...[
+                  // Replace voice note button (only show if voice note exists)
+                  IconButton(
+                    onPressed: _pickNewVoiceNote,
+                    icon: Icon(Icons.edit, size: 18),
+                    tooltip: 'Replace Voice Note',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  // Remove voice note button (only show if voice note exists)
+                  IconButton(
+                    onPressed: _removeVoiceNote,
+                    icon: Icon(Icons.delete, size: 18),
+                    tooltip: 'Remove Voice Note',
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(height: 12),
+            
+            // Voice note content based on state
+            if (_isVoiceNoteRemoved)
+              // Voice note removed state
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 24,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Voice note will be removed',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _cancelVoiceNoteChanges,
+                      child: Text('Cancel'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_newVoiceNoteFile != null)
+              // New voice note selected state
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.audiotrack,
+                      size: 24,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'New voice note selected',
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            _newVoiceNoteFile!.path.split('/').last,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _cancelVoiceNoteChanges,
+                      child: Text('Cancel'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_meeting?.voiceNoteUrl != null && _meeting!.voiceNoteUrl!.isNotEmpty)
+              // Original voice note player (only if voice note exists)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Audio controls
+                    Row(
+                      children: [
+                        // Play/Pause button
+                        IconButton(
+                          onPressed: _playVoiceNote,
+                          icon: Icon(
+                            _isPlayingVoiceNote ? Icons.pause_circle : Icons.play_circle,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        
+                        SizedBox(width: 16),
+                        
+                        // Stop button
+                        IconButton(
+                          onPressed: _stopVoiceNote,
+                          icon: Icon(
+                            Icons.stop_circle,
+                            size: 32,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        
+                        SizedBox(width: 16),
+                        
+                        // Progress info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Voice Note',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '${_formatDuration(_voiceNotePosition)} / ${_formatDuration(_voiceNoteDuration)}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
+                    
+                    // Progress bar
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: Theme.of(context).colorScheme.primary,
+                        inactiveTrackColor: Theme.of(context).colorScheme.outline,
+                        thumbColor: Theme.of(context).colorScheme.primary,
+                        overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      ),
+                      child: Slider(
+                        value: _voiceNoteDuration.inMilliseconds > 0
+                            ? _voiceNotePosition.inMilliseconds / _voiceNoteDuration.inMilliseconds
+                            : 0.0,
+                        onChanged: (value) {
+                          final position = Duration(
+                            milliseconds: (value * _voiceNoteDuration.inMilliseconds).round(),
+                          );
+                          _audioPlayer.seek(position);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              // No voice note - show add option
+              InkWell(
+                onTap: _isEditing ? _pickNewVoiceNote : null,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isEditing 
+                          ? Theme.of(context).colorScheme.outline
+                          : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        _isEditing ? Icons.add : Icons.audiotrack_outlined,
+                        size: 32,
+                        color: _isEditing 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _isEditing ? 'Attach Voice Note' : 'No Voice Note',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: _isEditing
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: _isEditing ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                      ),
+                      if (_isEditing) ...[
+                        SizedBox(height: 4),
+                        Text(
+                          'Upload audio file (MP3, WAV, M4A, AAC)',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
