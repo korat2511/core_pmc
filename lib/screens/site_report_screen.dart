@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
@@ -167,12 +166,22 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           });
         }
       } else if (event.status == DownloadStatus.failed) {
-        debugPrint('event: $event');
+        debugPrint('Download failed - Full event: $event');
+        debugPrint('Download ID: ${event.downloadId}');
+        debugPrint('Progress: ${event.progress}');
+        debugPrint('File Path: ${event.filePath}');
+        debugPrint('Status Reason: ${event.statusReason}');
         _hideProgressOverlaySmoothly();
         if (mounted) {
+          String errorMessage = 'Failed to download PDF. ';
+          if (event.statusReason != null) {
+            errorMessage += 'Reason: ${event.statusReason.toString()}';
+          } else {
+            errorMessage += 'Please check your internet connection and try again.';
+          }
           SnackBarUtils.showError(
             context,
-            message: 'Failed to download PDF. Please try again.',
+            message: errorMessage,
           );
         }
       } else if (event.status == DownloadStatus.paused) {
@@ -979,43 +988,65 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
 
 
       if (response != null) {
+        debugPrint('API Response received: $response');
         final status = response['status'];
-
-
+        debugPrint('Response status: $status');
         
         if (status == 1 ) {
-
-
           // Handle PDF response
           final pdfUrl = response['pdfurl'];
           final pdfName = response['pdf_name'];
+          debugPrint('Extracted pdfUrl: $pdfUrl');
+          debugPrint('Extracted pdfName: $pdfName');
 
 
 
           if (pdfUrl != null && pdfName != null) {
+            debugPrint('PDF URL: $pdfUrl');
+            debugPrint('PDF Name: $pdfName');
 
+            // Validate URL
+            if (pdfUrl.toString().isEmpty || !pdfUrl.toString().startsWith('http')) {
+              debugPrint('Invalid PDF URL: $pdfUrl');
+              if (mounted) {
+                SnackBarUtils.showError(
+                  context,
+                  message: 'Invalid PDF URL received from server.',
+                );
+              }
+              return;
+            }
 
-
-             // Don't show success message here - it will be shown when download completes
-
-            // Fallback to download method
+            // Request permission
             final permission = await FlDownloader.requestPermission();
+            debugPrint('Storage permission status: $permission');
+            
             if (permission == StoragePermissionStatus.granted) {
-
-              
-               var downloadId = await FlDownloader.download(
-                 pdfUrl,
-                 fileName: "$pdfName.pdf",
-               );
-
-
-               
-               if (downloadId == null || downloadId <= 0) {
+              try {
+                debugPrint('Starting download...');
+                var downloadId = await FlDownloader.download(
+                  pdfUrl.toString(),
+                  fileName: "$pdfName.pdf",
+                );
+                
+                debugPrint('Download ID: $downloadId');
+                
+                if (downloadId == null || downloadId <= 0) {
+                  _hideProgressOverlaySmoothly();
+                  if (mounted) {
+                    SnackBarUtils.showError(
+                      context,
+                      message: 'Failed to start download. Please check your internet connection.',
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Download error: $e');
                 _hideProgressOverlaySmoothly();
                 if (mounted) {
                   SnackBarUtils.showError(
                     context,
-                    message: 'Failed to start download. Please try again.',
+                    message: 'Download failed: ${e.toString()}',
                   );
                 }
               }
@@ -1029,6 +1060,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               }
             }
           } else {
+            debugPrint('Invalid PDF response - URL: $pdfUrl, Name: $pdfName');
             if (mounted) {
               SnackBarUtils.showError(
                 context,

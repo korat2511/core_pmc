@@ -463,7 +463,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
             )
             .toList(),
       };
-      
+
 
       print('Sending ${allDiscussions.length} total discussion points (${newDiscussions.length} new, ${allDiscussions.length - newDiscussions.length} existing)');
 
@@ -574,6 +574,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
 
   void _addNewDiscussionPoint() {
+    // Dismiss keyboard before adding new discussion point
+    FocusScope.of(context).unfocus();
+    
     final newDiscussion = MeetingDiscussionModel(
       id: DateTime.now().millisecondsSinceEpoch,
       // Temporary ID
@@ -593,9 +596,25 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         _editableDiscussions.insert(0, newDiscussion);
       });
     }
+    
+    // Multiple safety checks to ensure keyboard stays dismissed
+    Future.delayed(Duration(milliseconds: 50), () {
+      FocusScope.of(context).unfocus();
+    });
+    
+    Future.delayed(Duration(milliseconds: 150), () {
+      FocusScope.of(context).unfocus();
+    });
+    
+    Future.delayed(Duration(milliseconds: 300), () {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   Future<void> _pickDocumentForNewDiscussion(int discussionId) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     // Show options dialog for file type selection
     final String? selectedType = await showDialog<String>(
       context: context,
@@ -709,6 +728,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
 
   Future<void> _pickNewVoiceNote() async {
     try {
+      // Dismiss keyboard before showing dialog
+      FocusScope.of(context).unfocus();
+      
       // Show options dialog for audio file selection
       final String? selectedType = await showDialog<String>(
         context: context,
@@ -791,6 +813,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Future<void> _deleteDiscussionPoint(int discussionId) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -868,6 +893,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Future<void> _addAttachment(int discussionId) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     // Show options dialog for file type selection
     final String? selectedType = await showDialog<String>(
       context: context,
@@ -996,6 +1024,9 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
   }
 
   Future<void> _deleteAttachment(int attachmentId) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1081,9 +1112,19 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         title: 'Meeting Details',
         showDrawer: false,
         showBackButton: true,
+        onBackPressed: () {
+          // Dismiss keyboard before navigating back
+          FocusScope.of(context).unfocus();
+          Navigator.of(context).pop();
+        },
       ),
 
-      body: _isLoading
+      body: GestureDetector(
+        onTap: () {
+          // Dismiss keyboard when tapping outside
+          FocusScope.of(context).unfocus();
+        },
+        child: _isLoading
           ? Center(
               child: CircularProgressIndicator(
                 color: Theme.of(context).colorScheme.primary,
@@ -1100,17 +1141,18 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildMeetingHeader(),
-                    SizedBox(height: 10),
+                      SizedBox(height: 10),
                     _buildMeetingInfo(),
-                    SizedBox(height: 10),
+                      SizedBox(height: 10),
                     _buildParticipantsSection(),
-                    SizedBox(height: 10),
-                    _buildVoiceNoteSection(),
-                    SizedBox(height: 10),
+                      SizedBox(height: 10),
+                      _buildVoiceNoteSection(),
+                      SizedBox(height: 10),
                     _buildDiscussionsSection(),
                     // Add bottom padding to ensure content is not hidden behind FAB
                     SizedBox(height: 100),
                   ],
+                  ),
                 ),
               ),
             ),
@@ -1891,6 +1933,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                       if (isEditable)
                         TextFormField(
                           initialValue: discussion.discussionAction,
+                          autofocus: false, // Prevent auto-focus to avoid keyboard opening
                           decoration: InputDecoration(
                             isDense: true,
                             contentPadding: EdgeInsets.symmetric(
@@ -2024,6 +2067,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
                 initialValue: discussion.remarks == 'NA'
                     ? ''
                     : discussion.remarks,
+                autofocus: false, // Prevent auto-focus to avoid keyboard opening
                 decoration: InputDecoration(
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(

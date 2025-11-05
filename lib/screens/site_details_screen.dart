@@ -73,6 +73,9 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
   // Location state for editing
   LatLng? _currentLocation;
   Set<Marker> _markers = {};
+  
+  // Track if location has been modified but not saved
+  bool _hasUnsavedLocationChanges = false;
 
   @override
   void initState() {
@@ -176,6 +179,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       // Update the text controllers
       _latitudeController.text = newPosition.latitude.toStringAsFixed(6);
       _longitudeController.text = newPosition.longitude.toStringAsFixed(6);
+      // Mark as having unsaved changes
+      _hasUnsavedLocationChanges = true;
     });
 
     // Get address from coordinates
@@ -193,6 +198,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         // Update the text controllers
         _latitudeController.text = position.latitude.toStringAsFixed(6);
         _longitudeController.text = position.longitude.toStringAsFixed(6);
+        // Mark as having unsaved changes
+        _hasUnsavedLocationChanges = true;
       });
 
       // Get address from coordinates
@@ -241,6 +248,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
             _addressController.text = result['formatted_address'] ?? prediction.description ?? '';
             _updateMarkers();
             _isLoading = false;
+            // Mark as having unsaved changes
+            _hasUnsavedLocationChanges = true;
           });
 
           // Animate camera to selected location
@@ -364,6 +373,7 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       
       setState(() {
         _isLocationEditMode = false;
+        _hasUnsavedLocationChanges = false; // Reset unsaved changes flag after saving
       });
     } else {
       SnackBarUtils.showError(
@@ -386,6 +396,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         setState(() {
           _currentLocation = LatLng(lat, lng);
           _updateMarkers();
+          // Mark as having unsaved changes
+          _hasUnsavedLocationChanges = true;
         });
       }
     }
@@ -476,6 +488,8 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
         _maxRangeController.text = _currentSite.maxRange.toString();
         // Reset location to original values
         _initializeLocation();
+        // Reset unsaved changes flag
+        _hasUnsavedLocationChanges = false;
       } else {
         // Enable marker dragging in location edit mode
         _updateMarkers();
@@ -1526,21 +1540,23 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           currentLocation: _currentLocation ?? 
               (_currentSite.latitude != null && _currentSite.longitude != null
                   ? LatLng(_currentSite.latitude!, _currentSite.longitude!)
-                  : const LatLng(20.5937, 78.9629)),
+                  : null),
           siteName: _currentSite.name,
           onLocationSelected: (LatLng location, String address) {
-            // Update the current location and address
+            // Update the current location and address immediately
             setState(() {
               _currentLocation = location;
               _latitudeController.text = location.latitude.toStringAsFixed(6);
               _longitudeController.text = location.longitude.toStringAsFixed(6);
               _addressController.text = address;
               _updateMarkers();
+              // Mark as having unsaved changes
+              _hasUnsavedLocationChanges = true;
             });
             
             SnackBarUtils.showSuccess(
               context,
-              message: 'Location updated successfully!',
+              message: 'Location selected! Don\'t forget to save your changes.',
             );
           },
         );
@@ -2244,6 +2260,34 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
       onWillPop: () async {
         // Dismiss keyboard when back button is pressed
         _dismissKeyboard();
+        
+        // Check for unsaved location changes
+        if (_hasUnsavedLocationChanges) {
+          final bool? shouldPop = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Unsaved Changes'),
+                content: Text('You have unsaved location changes. Do you want to discard them and go back?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    child: Text('Discard'),
+                  ),
+                ],
+              );
+            },
+          );
+          return shouldPop ?? false;
+        }
+        
         return true;
       },
       child: Scaffold(
@@ -2251,6 +2295,38 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
           title: 'Site Details',
           showDrawer: false,
           showBackButton: true,
+          onBackPressed: () async {
+            // Check for unsaved location changes
+            if (_hasUnsavedLocationChanges) {
+              final bool? shouldPop = await showDialog<bool>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Unsaved Changes'),
+                    content: Text('You have unsaved location changes. Do you want to discard them and go back?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        child: Text('Discard'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (shouldPop == true) {
+                Navigator.of(context).pop();
+              }
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         body: GestureDetector(
           onTap: () {
@@ -2604,25 +2680,35 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
                         ),
                       Row(
                         children: [
-                          TextButton(
+                          (_isLocationEditMode) ? TextButton(
                             onPressed: _showFullScreenMap,
                             child: Text('Select and View Map'),
-                          ),
+                          ) : Container(),
                           SizedBox(width: 8),
                           TextButton(
                             onPressed: _toggleLocationEditMode, 
-                            child: Text(_isLocationEditMode ? 'Cancel' : 'Edit Location'),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_isLocationEditMode ? 'Cancel' : 'Edit Location'),
+                                if (_hasUnsavedLocationChanges) ...[
+                                  SizedBox(width: 4),
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.error,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
-
                     ],
                   ),
-
-
-
-
-
                   // Map Section
                   _buildMapSection(context),
                   SizedBox(
@@ -2644,12 +2730,12 @@ class _SiteDetailsScreenState extends State<SiteDetailsScreen> {
 }
 
 class _FullScreenMapDialog extends StatefulWidget {
-  final LatLng currentLocation;
+  final LatLng? currentLocation;
   final String siteName;
   final Function(LatLng location, String address) onLocationSelected;
 
   const _FullScreenMapDialog({
-    required this.currentLocation,
+    this.currentLocation,
     required this.siteName,
     required this.onLocationSelected,
   });
@@ -2671,6 +2757,11 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
     super.initState();
     _selectedLocation = widget.currentLocation;
     _updateMarkers();
+    
+    // If no current location provided, get user's current location
+    if (widget.currentLocation == null) {
+      _getCurrentLocation();
+    }
   }
 
   @override
@@ -2831,6 +2922,8 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
       );
 
       setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+        _updateMarkers();
         _isLoading = false;
       });
 
@@ -2923,7 +3016,7 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
             // Map
             GoogleMap(
               initialCameraPosition: CameraPosition(
-                target: widget.currentLocation,
+                target: widget.currentLocation ?? const LatLng(0.0, 0.0),
                 zoom: 15.0,
               ),
               onMapCreated: (GoogleMapController controller) {

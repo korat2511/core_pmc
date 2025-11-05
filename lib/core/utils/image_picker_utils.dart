@@ -94,6 +94,9 @@ class ImagePickerUtils {
       return null;
     }
 
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final ImageSource? result = await showDialog<ImageSource?>(
       context: context,
       barrierDismissible: true,
@@ -194,6 +197,9 @@ class ImagePickerUtils {
       // Show source selection dialog
       if (chooseMultiple) {
         // For multiple images, show custom dialog
+        // Dismiss keyboard before showing dialog
+        FocusScope.of(context).unfocus();
+        
         final result = await showDialog<ImageSource?>(
           context: context,
           barrierDismissible: true,
@@ -375,6 +381,9 @@ class ImagePickerUtils {
       return [];
     }
 
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final result = await showDialog<String?>(
       context: context,
       barrierDismissible: true,

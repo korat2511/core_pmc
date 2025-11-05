@@ -8,6 +8,7 @@ environment:
   sdk: ^3.8.1
 
 dependencies:
+  sentry_flutter: ^9.7.0
   flutter:
     sdk: flutter
 
@@ -43,6 +44,7 @@ dependencies:
   audioplayers: ^6.5.1
 
 dev_dependencies:
+  sentry_dart_plugin: ^3.1.1
   flutter_test:
     sdk: flutter
 
@@ -84,3 +86,8 @@ flutter:
           weight: 200
         - asset: assets/fonts/Lexend-Thin.ttf
           weight: 100
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: true
+  project: corepmc
+  org: excellence-it-solution

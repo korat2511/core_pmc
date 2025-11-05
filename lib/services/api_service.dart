@@ -290,6 +290,8 @@ class ApiService {
           )
           .timeout(timeout);
 
+      log("RES == ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         final siteListResponse = SiteListResponse.fromJson(jsonData);
@@ -2099,6 +2101,8 @@ class ApiService {
     required double latitude,
     required double longitude,
     required String address,
+    required int minRange,
+    required int maxRange,
   }) async {
     try {
       // Create multipart request
@@ -2123,6 +2127,8 @@ class ApiService {
         'latitude': latitude.toString(),
         'longitude': longitude.toString(),
         'address': address,
+        'min_range': minRange.toString(),
+        'max_range': maxRange.toString(),
         'company': "Core PMC",
       });
 

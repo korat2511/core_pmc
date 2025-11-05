@@ -35,6 +35,8 @@ class _ActionByPickerState extends State<ActionByPicker> {
     super.dispose();
   }
 
+
+
   void _removeName(String name) {
     final updatedNames = List<String>.from(widget.selectedNames);
     updatedNames.remove(name);
@@ -49,6 +51,10 @@ class _ActionByPickerState extends State<ActionByPicker> {
     // Dismiss keyboard before opening modal
     FocusScope.of(context).unfocus();
     
+    // Additional aggressive keyboard dismissal
+    await Future.delayed(Duration(milliseconds: 50));
+    FocusScope.of(context).unfocus();
+    
     // Create a temporary list for the modal
     List<String> tempSelectedNames = List.from(widget.selectedNames);
 
@@ -56,6 +62,8 @@ class _ActionByPickerState extends State<ActionByPicker> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => _ActionByModalContent(
           selectedNames: tempSelectedNames,
@@ -91,6 +99,11 @@ class _ActionByPickerState extends State<ActionByPicker> {
     );
     
     // Additional safety: ensure keyboard is dismissed after modal is closed
+    await Future.delayed(Duration(milliseconds: 100));
+    FocusScope.of(context).unfocus();
+    
+    // Extra safety with another delay
+    await Future.delayed(Duration(milliseconds: 200));
     FocusScope.of(context).unfocus();
   }
 
@@ -243,10 +256,8 @@ class _ActionByModalContentState extends State<_ActionByModalContent> {
       
       if (option == 'Other') {
         _showOtherTextField = true;
-        // Focus on text field after a short delay to ensure UI is updated
-        Future.delayed(Duration(milliseconds: 100), () {
-          _otherTextFocusNode.requestFocus();
-        });
+        // Don't auto-focus the text field to prevent keyboard opening
+        // User can manually tap to focus if needed
       } else {
         // For direct selections (PMC, Client, Architect, Structure), add them immediately
         if (!['Agency', 'Vendor'].contains(option)) {
@@ -257,6 +268,7 @@ class _ActionByModalContentState extends State<_ActionByModalContent> {
             widget.onChanged(widget.selectedNames.where((name) => name != option).toList());
           }
           _selectedParentOption = null; // Reset selection
+          FocusScope.of(context).unfocus(); // Dismiss keyboard
         }
       }
     });
@@ -274,6 +286,8 @@ class _ActionByModalContentState extends State<_ActionByModalContent> {
       }
       
       // Don't reset parent selection - keep the sub-list open for multiple selections
+      // Dismiss keyboard after selection
+      FocusScope.of(context).unfocus();
     }
   }
 
@@ -291,6 +305,7 @@ class _ActionByModalContentState extends State<_ActionByModalContent> {
         _selectedParentOption = null;
         _showOtherTextField = false;
       });
+      FocusScope.of(context).unfocus(); // Dismiss keyboard after adding other option
     }
   }
 
@@ -308,11 +323,17 @@ class _ActionByModalContentState extends State<_ActionByModalContent> {
 
   @override
   Widget build(BuildContext context) {
+    // Dismiss keyboard when modal content builds
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
+    
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
       },
       child: DraggableScrollableSheet(
+
         initialChildSize: 0.7,
         minChildSize: 0.5,
         maxChildSize: 1,

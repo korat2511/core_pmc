@@ -16,15 +16,32 @@ import 'services/session_manager.dart';
 import 'services/force_update_manager.dart';
 import 'providers/theme_provider.dart';
 import 'widgets/dismiss_keyboard.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() async {
+  SentryWidgetsFlutterBinding.ensureInitialized();
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   // Initialize session manager
   SessionManager.instance;
-  runApp(const MyApp());
+
+
+
+
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'https://dc5dc3b5a35cf344650ff54e6905fb85@o4510187629445120.ingest.us.sentry.io/4510187631869952';
+      options.tracesSampleRate = 1.0;
+      options.profilesSampleRate = 1.0;
+      // options.replay.sessionSampleRate = 1.0;
+      // options.replay.onErrorSampleRate = 1.0;
+    },
+    appRunner: () => runApp(SentryWidget(child: const MyApp())),
+  );
+
+
 }
 
 class MyApp extends StatelessWidget {

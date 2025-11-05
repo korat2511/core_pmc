@@ -40,6 +40,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
   final _addressController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
+  final _minRangeController = TextEditingController();
+  final _maxRangeController = TextEditingController();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   
@@ -61,6 +63,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _minRangeController.dispose();
+    _maxRangeController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -122,6 +126,80 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     FocusScope.of(context).unfocus();
     _searchFocusNode.unfocus();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _showFullScreenMap() async {
+    // Determine initial location: selected location or user's current location
+    LatLng initialLocation;
+    
+    if (_selectedLocation != null) {
+      // Use selected location from small map
+      initialLocation = _selectedLocation!;
+    } else {
+      // Get user's current location
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        
+        if (permission == LocationPermission.deniedForever) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Location permission permanently denied. Please enable location access in app settings.',
+          );
+          return;
+        }
+        
+        if (permission == LocationPermission.denied) {
+          SnackBarUtils.showError(
+            context,
+            message: 'Location permission denied. Please enable location access in settings.',
+          );
+          return;
+        }
+        
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
+        initialLocation = LatLng(position.latitude, position.longitude);
+      } catch (e) {
+        SnackBarUtils.showError(
+          context,
+          message: 'Failed to get current location: $e',
+        );
+        return;
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return _FullScreenMapDialog(
+          currentLocation: initialLocation,
+          siteName: _siteNameController.text.trim().isNotEmpty
+              ? _siteNameController.text.trim()
+              : 'New Site',
+          onLocationSelected: (LatLng location, String address) {
+            // Update the current location and address
+            setState(() {
+              _selectedLocation = location;
+              _latitudeController.text = location.latitude.toStringAsFixed(6);
+              _longitudeController.text = location.longitude.toStringAsFixed(6);
+              _addressController.text = address;
+              _updateMarkers();
+            });
+
+            SnackBarUtils.showSuccess(
+              context,
+              message: 'Location updated successfully!',
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _onPlaceSelected(Prediction prediction) async {
@@ -356,6 +434,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
         latitude: double.tryParse(_latitudeController.text.trim()) ?? 0.0,
         longitude: double.tryParse(_longitudeController.text.trim()) ?? 0.0,
         address: _addressController.text.trim(),
+        minRange: int.tryParse(_minRangeController.text.trim()) ?? 500,
+        maxRange: int.tryParse(_maxRangeController.text.trim()) ?? 500,
       );
 
       if (response.isSuccess) {
@@ -597,10 +677,36 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                     ),
                       containerHorizontalPadding: 0,
                       containerVerticalPadding: 0,
-                ),
-                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
-                
-                Container(
+                 ),
+                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
+                 
+                 // Full Screen Map Button
+                 Row(
+                   children: [
+                     Expanded(
+                       child: ElevatedButton.icon(
+                         onPressed: _showFullScreenMap,
+                         icon: Icon(Icons.fullscreen, size: 18),
+                         label: Text('View Full Screen Map'),
+                         style: ElevatedButton.styleFrom(
+                           backgroundColor: Theme.of(context).colorScheme.primary,
+                           foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                           padding: EdgeInsets.symmetric(
+                             vertical: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20),
+                           ),
+                           shape: RoundedRectangleBorder(
+                             borderRadius: BorderRadius.circular(
+                               ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16),
+                             ),
+                           ),
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
+                 
+                 Container(
                   height: ResponsiveUtils.responsiveFontSize(context, mobile: 200, tablet: 250, desktop: 300),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 16)),
@@ -944,6 +1050,38 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
                   ],
                 ),
                 SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
+                
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _minRangeController,
+                        label: 'Min Range',
+                        prefixIcon: Icon(Icons.trending_down),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        // No validation needed - any value is allowed, empty defaults to 500
+                      ),
+                    ),
+                    SizedBox(width: ResponsiveUtils.responsiveSpacing(context, mobile: 12, tablet: 16, desktop: 20)),
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _maxRangeController,
+                        label: 'Max Range',
+                        prefixIcon: Icon(Icons.trending_up),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        // No validation needed - any value is allowed, empty defaults to 500
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 16, tablet: 20, desktop: 24)),
                 Text(
                   'Site Images',
                   style: AppTypography.titleMedium.copyWith(
@@ -1063,6 +1201,562 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
             ),
           ),
         ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenMapDialog extends StatefulWidget {
+  final LatLng? currentLocation;
+  final String siteName;
+  final Function(LatLng location, String address) onLocationSelected;
+
+  const _FullScreenMapDialog({
+    this.currentLocation,
+    required this.siteName,
+    required this.onLocationSelected,
+  });
+
+  @override
+  State<_FullScreenMapDialog> createState() => _FullScreenMapDialogState();
+}
+
+class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
+  GoogleMapController? _mapController;
+  LatLng? _selectedLocation;
+  Set<Marker> _markers = {};
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedLocation = widget.currentLocation;
+    _updateMarkers();
+    
+    // If no current location provided, get user's current location
+    if (widget.currentLocation == null) {
+      _getCurrentLocation();
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _updateMarkers() {
+    _markers.clear();
+    if (_selectedLocation != null) {
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('selected_location'),
+          position: _selectedLocation!,
+          draggable: true,
+          onDragEnd: (LatLng position) async {
+            setState(() {
+              _selectedLocation = position;
+              _updateMarkers();
+            });
+            
+            // Get address from new coordinates
+            try {
+              List<Placemark> placemarks = await placemarkFromCoordinates(
+                position.latitude,
+                position.longitude,
+              );
+              if (placemarks.isNotEmpty) {
+                Placemark place = placemarks[0];
+                String address = [
+                  place.street,
+                  place.subLocality,
+                  place.locality,
+                  place.administrativeArea,
+                  place.postalCode,
+                  place.country,
+                ].where((element) => element != null && element.isNotEmpty).join(', ');
+                
+                SnackBarUtils.showSuccess(
+                  context,
+                  message: 'Location updated: $address',
+                );
+              }
+            } catch (e) {
+              debugPrint('Error getting address: $e');
+            }
+          },
+        ),
+      );
+    }
+  }
+
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+    _searchFocusNode.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _onPlaceSelected(Prediction prediction) async {
+    try {
+      _dismissKeyboard();
+      _searchController.clear();
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      final String apiKey = "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ";
+      final String url = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.placeId}&key=$apiKey';
+      
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['status'] == 'OK' && data['result'] != null) {
+          final result = data['result'];
+          final geometry = result['geometry'];
+          final location = geometry['location'];
+          
+          final lat = location['lat'].toDouble();
+          final lng = location['lng'].toDouble();
+          
+          setState(() {
+            _selectedLocation = LatLng(lat, lng);
+            _updateMarkers();
+            _isLoading = false;
+          });
+
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(lat, lng),
+                15.0,
+              ),
+            );
+          }
+
+          SnackBarUtils.showSuccess(
+            context,
+            message: 'Location selected successfully!',
+          );
+        } else {
+          throw Exception('Place details not found');
+        }
+      } else {
+        throw Exception('Failed to fetch place details');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to get place details: $e',
+      );
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      _dismissKeyboard();
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _isLoading = false;
+          });
+          SnackBarUtils.showError(
+            context,
+            message: 'Location permission denied. Please enable location access in settings.',
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _isLoading = false;
+        });
+        SnackBarUtils.showError(
+          context,
+          message: 'Location permission permanently denied. Please enable location access in app settings.',
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+        _updateMarkers();
+        _isLoading = false;
+      });
+
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0,
+          ),
+        );
+      }
+
+      SnackBarUtils.showSuccess(
+        context,
+        message: 'Showing current location on map',
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      SnackBarUtils.showError(
+        context,
+        message: 'Failed to get current location: $e',
+      );
+    }
+  }
+
+  void _selectLocation() {
+    if (_selectedLocation != null) {
+      // Get address from coordinates
+      _getAddressFromCoordinates(_selectedLocation!);
+    }
+  }
+
+  Future<void> _getAddressFromCoordinates(LatLng position) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String address = [
+          place.street,
+          place.subLocality,
+          place.locality,
+          place.administrativeArea,
+          place.postalCode,
+          place.country,
+        ].where((element) => element != null && element.isNotEmpty).join(', ');
+
+        widget.onLocationSelected(_selectedLocation!, address);
+        Navigator.of(context).pop();
+      } else {
+        widget.onLocationSelected(_selectedLocation!, 'Selected Location');
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Error getting address from coordinates: $e');
+      widget.onLocationSelected(_selectedLocation!, 'Selected Location');
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Select Location - ${widget.siteName}'),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          elevation: 0,
+          actions: [
+            TextButton(
+              onPressed: _selectLocation,
+              child: Text(
+                'SELECT',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            // Map
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: widget.currentLocation ?? const LatLng(0.0, 0.0),
+                zoom: 15.0,
+              ),
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+              },
+              onTap: (LatLng position) {
+                _dismissKeyboard();
+                setState(() {
+                  _selectedLocation = position;
+                  _updateMarkers();
+                });
+              },
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+              },
+            ),
+            
+            // Search Bar
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: GooglePlaceAutoCompleteTextField(
+                  textEditingController: _searchController,
+                  focusNode: _searchFocusNode,
+                  googleAPIKey: "AIzaSyBdsNUr3ZUSZH63Mb2brR1LqAmZnIP94zQ",
+                  inputDecoration: InputDecoration(
+                    hintText: 'Search for a place...',
+                    hintStyle: AppTypography.bodyMedium.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  debounceTime: 600,
+                  countries: ["in"],
+                  isLatLngRequired: true,
+                  getPlaceDetailWithLatLng: (prediction) {
+                    _onPlaceSelected(prediction);
+                  },
+                  itemClick: (prediction) {
+                    _onPlaceSelected(prediction);
+                  },
+                  itemBuilder: (context, index, prediction) {
+                    return Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppColors.borderColor.withOpacity(0.5),
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  prediction.description ?? '',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (prediction.structuredFormatting?.secondaryText != null) ...[
+                                  SizedBox(height: 4),
+                                  Text(
+                                    prediction.structuredFormatting!.secondaryText!,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  seperatedBuilder: Divider(
+                    height: 1,
+                    color: AppColors.borderColor.withOpacity(0.5),
+                  ),
+                  containerHorizontalPadding: 0,
+                  containerVerticalPadding: 0,
+                ),
+              ),
+            ),
+            
+            // Map Controls
+            Positioned(
+              right: 16,
+              bottom: 100,
+              child: Column(
+                children: [
+                  // Current Location Button
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: _getCurrentLocation,
+                        child: Icon(
+                          Icons.my_location,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 8),
+                  
+                  // Zoom In Button
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          _mapController?.animateCamera(CameraUpdate.zoomIn());
+                        },
+                        child: Icon(
+                          Icons.add,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 8),
+                  
+                  // Zoom Out Button
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          _mapController?.animateCamera(CameraUpdate.zoomOut());
+                        },
+                        child: Icon(
+                          Icons.remove,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Loading Indicator
+            if (_isLoading)
+              Center(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+          ],
         ),
       ),
     );

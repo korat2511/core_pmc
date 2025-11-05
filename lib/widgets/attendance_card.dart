@@ -68,11 +68,7 @@ class _AttendanceCardState extends State<AttendanceCard> {
       if (success && _attendanceService.attendanceData != null) {
         final data = _attendanceService.attendanceData!;
         
-        // Debug logging
-        print('Attendance Check Response:');
-        print('Flag: ${data.flag}');
-        print('Current Data: ${data.data?.toJson()}');
-        print('Last Attendance: ${data.lastAttendance?.toJson()}');
+
         
         // Determine if user is punched in based on flag
         if (data.flag == 'check_out') {

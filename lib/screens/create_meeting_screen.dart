@@ -162,6 +162,9 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
 
 
   void _addDiscussionPoint() {
+    // Dismiss keyboard before adding new discussion point
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       // Insert at the beginning (index 0) to show new discussions at the top
       _discussions.insert(0, MeetingDiscussion(
@@ -172,6 +175,19 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
         document: null,
       ));
     });
+    
+    // Multiple safety checks to ensure keyboard stays dismissed
+    Future.delayed(Duration(milliseconds: 50), () {
+      FocusScope.of(context).unfocus();
+    });
+    
+    Future.delayed(Duration(milliseconds: 150), () {
+      FocusScope.of(context).unfocus();
+    });
+    
+    Future.delayed(Duration(milliseconds: 300), () {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   void _removeDiscussionPoint(int index) {
@@ -181,6 +197,9 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
   }
 
   Future<void> _pickDocument(int index) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     // Show options dialog for file type selection
     final String? selectedType = await showDialog<String>(
       context: context,
@@ -262,6 +281,9 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
 
   Future<void> _pickVoiceNote() async {
     try {
+      // Dismiss keyboard before showing dialog
+      FocusScope.of(context).unfocus();
+      
       // Show options dialog for audio file selection
       final String? selectedType = await showDialog<String>(
         context: context,
@@ -437,6 +459,11 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
         title: 'Create Meeting',
         showDrawer: false,
         showBackButton: true,
+        onBackPressed: () {
+          // Dismiss keyboard before navigating back
+          FocusScope.of(context).unfocus();
+          Navigator.of(context).pop();
+        },
       ),
       body: GestureDetector(
         onTap: () {
@@ -799,6 +826,7 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
           // Discussion Action
           TextFormField(
             controller: discussion.discussionActionController,
+            autofocus: false, // Prevent auto-focus to avoid keyboard opening
             decoration: InputDecoration(
               labelText: 'Discussion Action *',
               hintText: 'What needs to be discussed?',
@@ -838,6 +866,7 @@ class _CreateMeetingScreenState extends State<CreateMeetingScreen> {
           // Remarks
           TextFormField(
             controller: discussion.remarksController,
+            autofocus: false, // Prevent auto-focus to avoid keyboard opening
             decoration: InputDecoration(
               labelText: 'Remarks (Optional)',
               hintText: 'Additional notes or comments',
