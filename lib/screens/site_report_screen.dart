@@ -1151,7 +1151,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             lastName: '',
             mobile: '',
             email: '',
-            userType: 0,
             status: '',
             createdAt: '',
             updatedAt: '',

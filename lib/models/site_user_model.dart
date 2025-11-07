@@ -1,10 +1,31 @@
+class SiteUserDesignation {
+  final int id;
+  final String name;
+  final int order;
+
+  SiteUserDesignation({
+    required this.id,
+    required this.name,
+    required this.order,
+  });
+
+  factory SiteUserDesignation.fromJson(Map<String, dynamic> json) {
+    return SiteUserDesignation(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      order: json['order'] ?? 0,
+    );
+  }
+}
+
 class SiteUserModel {
   final int id;
   final String firstName;
   final String lastName;
   final String mobile;
   final String email;
-  final int userType;
+  final int? designationId;
+  final SiteUserDesignation? designation;
   final String? deviceId;
   final String status;
   final String? image;
@@ -19,7 +40,8 @@ class SiteUserModel {
     required this.lastName,
     required this.mobile,
     required this.email,
-    required this.userType,
+    this.designationId,
+    this.designation,
     this.deviceId,
     required this.status,
     this.image,
@@ -36,7 +58,10 @@ class SiteUserModel {
       lastName: json['last_name'] ?? '',
       mobile: json['mobile'] ?? '',
       email: json['email'] ?? '',
-      userType: json['user_type'] ?? 0,
+      designationId: json['designation_id'],
+      designation: json['designation_relation'] != null
+          ? SiteUserDesignation.fromJson(json['designation_relation'])
+          : null,
       deviceId: json['device_id'],
       status: json['status'] ?? '',
       image: json['image'],
@@ -54,7 +79,7 @@ class SiteUserModel {
       'last_name': lastName,
       'mobile': mobile,
       'email': email,
-      'user_type': userType,
+      'designation_id': designationId,
       'device_id': deviceId,
       'status': status,
       'image': image,
@@ -67,6 +92,7 @@ class SiteUserModel {
 
   // Helper getters
   String get fullName => '$firstName $lastName';
+  String get designationName => designation?.name ?? 'Employee';
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
   bool get isActive => status.toLowerCase() == 'active';
   List<int> get siteIds {

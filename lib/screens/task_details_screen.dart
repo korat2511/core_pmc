@@ -26,7 +26,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/marquee_widget.dart';
 import '../widgets/custom_button.dart';
 import '../models/tag_model.dart';
-import '../core/utils/validation_utils.dart';
+import '../services/permission_service.dart';
 import '../core/utils/decision_pending_from_utils.dart';
 import '../core/utils/qc_category_picker_utils.dart';
 import '../models/qc_category_model.dart';
@@ -691,7 +691,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Future<void> _showQcTypeSelection() async {
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
     if (isTaskCompleted) {
       _showTaskCompletedWarning();
       return;
@@ -1008,14 +1008,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Future<void> _showDecisionSelectionModal() async {
-    // Check if user has permission to change decision
-    if (!ValidationUtils.canChangeDecisionPendingFrom(_taskDetail!)) {
-      SnackBarUtils.showError(
-        context,
-        message: 'You do not have permission to change this decision',
-      );
-      return;
-    }
+    // Permission check is done in _buildDecisionSection before calling this method
 
     final result = await DecisionPendingFromUtils.showDecisionPendingFromPicker(
       context: context,
@@ -1315,7 +1308,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         deviceId: currentUser.deviceId,
         mobile: currentUser.mobile,
         email: currentUser.email,
-        userType: currentUser.userType,
+        designationId: currentUser.designationId,
+        designationInfo: currentUser.designationInfo,
         status: currentUser.status,
         siteId: currentUser.siteId,
         image: currentUser.image,
@@ -1325,6 +1319,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         deletedAt: currentUser.deletedAt,
         imageUrl: currentUser.imageUrl,
         apiToken: currentUser.apiToken,
+        company: currentUser.company,
+        allowedCompanies: currentUser.allowedCompanies,
       );
 
       // Create new entry based on type
@@ -2414,7 +2410,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                   deviceId: siteUser.deviceId,
                   mobile: siteUser.mobile,
                   email: siteUser.email,
-                  userType: siteUser.userType,
+                  designationId: siteUser.designationId,
+                  designationInfo: siteUser.designation != null
+                      ? DesignationInfo(
+                          id: siteUser.designation!.id,
+                          name: siteUser.designation!.name,
+                          order: siteUser.designation!.order,
+                          status: 'active',
+                        )
+                      : null,
                   status: siteUser.status,
                   siteId: siteUser.siteId,
                   image: siteUser.image,
@@ -3604,7 +3608,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildQCTab() {
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
     final hasQcCategory = _taskDetail?.qcCategoryId != null && _taskDetail!.qcCategoryId != 0;
 
     return Stack(
@@ -3715,7 +3719,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildQcCategorySection() {
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -3800,7 +3804,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
 
   Widget _buildUnitSection() {
     final hasProgress = _taskDetail?.progressDetails.isNotEmpty == true;
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
     final totalWork = _taskDetail?.totalWork ?? 0;
     final totalWorkDone = _taskDetail?.totalWorkDone ?? 0;
     final workLeft = totalWork - totalWorkDone;
@@ -3982,7 +3986,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildDecisionSection() {
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
+    
+    // Check permission - can edit task OR is creator OR is assigned
+    final currentUser = AuthService.currentUser;
+    final assignedUserIds = _taskDetail!.assignTo != null 
+        ? _taskDetail!.assignTo!.split(',').map((id) => int.tryParse(id.trim()) ?? 0).where((id) => id > 0).toList()
+        : <int>[];
+    final canChange = PermissionService.canEditTask() || 
+                      (currentUser != null && currentUser.id == _taskDetail!.createdBy) ||
+                      (currentUser != null && assignedUserIds.contains(currentUser.id));
     
     return Container(
       padding: EdgeInsets.all(16),
@@ -3996,7 +4009,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
         children: [
           // Category Pending From
           GestureDetector(
-            onTap: (isTaskCompleted || !ValidationUtils.canChangeDecisionPendingFrom(_taskDetail!))
+            onTap: (isTaskCompleted || !canChange)
                 ? (isTaskCompleted ? _showTaskCompletedWarning : null)
                 : _showDecisionSelectionModal,
             child: Row(
@@ -4026,18 +4039,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
                           _buildDecisionPendingFromText(),
                           style: AppTypography.bodyMedium.copyWith(
                             fontSize: 14,
-                            color: (isTaskCompleted || !ValidationUtils.canChangeDecisionPendingFrom(
-                              _taskDetail!,
-                            ))
+                            color: (isTaskCompleted || !canChange)
                                 ? Theme.of(context).colorScheme.onSurfaceVariant
                                 : Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      if (!isTaskCompleted && ValidationUtils.canChangeDecisionPendingFrom(
-                        _taskDetail!,
-                      ))
+                      if (!isTaskCompleted && canChange)
                         Icon(
                           Icons.edit,
                           color: Theme.of(context).colorScheme.primary,
@@ -4095,7 +4104,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
 
   Widget _buildTimelineSection() {
     final progressDetails = _taskDetail!.progressDetails;
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
     final maxVisible = 2; // Show max 2 progress entries
     final visibleProgress = progressDetails.take(maxVisible).toList();
     final hasMore = progressDetails.length > maxVisible;
@@ -4387,7 +4396,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   Widget _buildTaskMetadataCard() {
     final catSubId = _taskDetail?.catSubId;
     final isSpecialTask = [2, 3, 4, 6].contains(catSubId);
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -5220,7 +5229,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   void _handleDeleteTask() {
-   if( ValidationUtils.canDeleteTask(widget.task)){
+   // Check permission - can delete task OR is creator
+   final currentUser = AuthService.currentUser;
+   final canDelete = PermissionService.canDeleteTask() || 
+                     (currentUser != null && currentUser.id == widget.task.createdBy);
+   
+   if(canDelete){
      // Show confirmation dialog
      showDialog(
        context: context,
@@ -6593,7 +6607,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
   }
 
   Widget _buildPhotosCard() {
-    final isTaskCompleted = ValidationUtils.isTaskDetailCompleted(_taskDetail!);
+    final isTaskCompleted = (_taskDetail?.progress ?? 0) >= 100;
     
     return Container(
       width: double.infinity,
@@ -7203,8 +7217,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     // Check if this is a supported task type (cat_sub_id = 2,3,4,5,6)
     final supportedTaskTypes = [2, 3, 4, 5, 6];
     if (supportedTaskTypes.contains(_taskDetail?.catSubId)) {
-      // Check update permissions for simple tasks (cat_sub_id 2,3,4,6)
-      if (!ValidationUtils.canUpdateTask(widget.task)) {
+      // Check update permissions - permission OR creator OR assigned
+      final currentUser = AuthService.currentUser;
+      final assignedUserIds = widget.task.assign.map((user) => user.id).toList();
+      if (!PermissionService.canEditTaskWithContext(widget.task.createdBy, assignedUserIds)) {
         SnackBarUtils.showError(context, message: "You don't have permission to update this task");
         return;
       }
@@ -7237,8 +7253,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
     final isSimpleTask = simpleTaskCategories.contains(widget.task.categoryName.toLowerCase());
     
     if (isSimpleTask) {
-      // For simple tasks, show Accept button if user has permission
-      if (ValidationUtils.canAcceptTask(widget.task)) {
+      // For simple tasks, show Accept button if user has permission OR is creator
+      final currentUser = AuthService.currentUser;
+      final canAccept = PermissionService.canEditTask() || 
+                        (currentUser != null && currentUser.id == widget.task.createdBy);
+      if (canAccept) {
         return Row(
           children: [
             Expanded(

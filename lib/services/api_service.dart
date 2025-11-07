@@ -33,7 +33,8 @@ import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://pmcprojects.in';
+  // static const String baseUrl = 'https://pmcprojects.in';
+  static const String baseUrl = 'https://nutanvij.com';
   static const Duration timeout = Duration(seconds: 30);
 
   // Generic method to handle API responses
@@ -290,7 +291,7 @@ class ApiService {
           )
           .timeout(timeout);
 
-      log("RES == ${response.body}");
+
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -2129,7 +2130,7 @@ class ApiService {
         'address': address,
         'min_range': minRange.toString(),
         'max_range': maxRange.toString(),
-        'company': "Core PMC",
+        'company': "PMC",
       });
 
       // Add image files
@@ -4977,5 +4978,297 @@ class ApiService {
     }
   }
 
+  // Validate Company Code
+  static Future<Map<String, dynamic>> validateCompanyCode({
+    required String companyCode,
+  }) async {
+    try {
+      final requestData = {
+        'company_code': companyCode,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/validateCompanyCode'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // User Signup with Company Code
+  static Future<Map<String, dynamic>> userSignup({
+    required String firstName,
+    required String lastName,
+    required String mobile,
+    required String email,
+    required String password,
+    required String companyCode,
+    int? designationId,
+  }) async {
+    try {
+      final requestData = {
+        'first_name': firstName,
+        'last_name': lastName,
+        'mobile': mobile,
+        'email': email,
+        'password': password,
+        'company_code': companyCode,
+        if (designationId != null) 'designation_id': designationId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/signup'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Company Signup
+  static Future<Map<String, dynamic>> companySignup({
+    required String companyName,
+    String? companyEmail,
+    String? companyPhone,
+    String? companyAddress,
+    required bool hasAccount,
+    String? userMobile,
+    String? firstName,
+    String? lastName,
+    String? mobile,
+    String? email,
+    String? password,
+    int? designationId,
+  }) async {
+    try {
+      final requestData = {
+        'company_name': companyName,
+        'has_account': hasAccount ? '1' : '0',
+        if (companyEmail != null) 'company_email': companyEmail,
+        if (companyPhone != null) 'company_phone': companyPhone,
+        if (companyAddress != null) 'company_address': companyAddress,
+        if (hasAccount && userMobile != null) 'user_mobile': userMobile,
+        if (!hasAccount && firstName != null) 'first_name': firstName,
+        if (!hasAccount && lastName != null) 'last_name': lastName,
+        if (!hasAccount && mobile != null) 'mobile': mobile,
+        if (!hasAccount && email != null) 'email': email,
+        if (!hasAccount && password != null) 'password': password,
+        if (designationId != null) 'designation_id': designationId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/companySignup'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // ==================== Permission Management APIs ====================
+
+  // Get User Permissions (Effective Merged Permissions)
+  static Future<Map<String, dynamic>> getUserPermissions({
+    required String apiToken,
+    int? userId, // If null, gets current user's permissions
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        if (userId != null) 'user_id': userId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/permission/getUserPermissions'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Get User Access (with Designation Access)
+  static Future<Map<String, dynamic>> getUserAccess({
+    required String apiToken,
+    required int userId,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        'user_id': userId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/permission/getUserAccess'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Update User Access (Override Designation Permissions)
+  static Future<Map<String, dynamic>> updateUserAccess({
+    required String apiToken,
+    required int userId,
+    required Map<String, dynamic> permissions,
+  }) async {
+    try {
+      final body = {
+        'api_token': apiToken,
+        'user_id': userId.toString(),
+        'permissions': permissions,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/permission/updateUserAccess'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(body),
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // ==================== Company Switching API ====================
+
+  // Switch Company
+  static Future<Map<String, dynamic>> switchCompany({
+    required String apiToken,
+    required int companyId,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        'company_id': companyId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/switchCompany'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
 
 } 

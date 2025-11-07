@@ -1,8 +1,9 @@
 import '../models/user_model.dart';
-import '../models/api_response.dart';
 import 'api_service.dart';
 import 'local_storage_service.dart';
-import '../core/utils/snackbar_utils.dart';
+import 'permission_service.dart';
+import 'site_service.dart';
+import 'company_notifier.dart';
 
 class AuthService {
   static UserModel? _currentUser;
@@ -49,6 +50,9 @@ class AuthService {
         _currentUser = response.user;
         _currentToken = response.token;
 
+        // Initialize permissions from login response
+        PermissionService.setPermissions(response.permissions);
+
         return {'success': true, 'message': 'Login successful'};
       } else {
         return {'success': false, 'message': response.message};
@@ -63,6 +67,7 @@ class AuthService {
     await LocalStorageService.clearAll();
     _currentUser = null;
     _currentToken = null;
+    PermissionService.clearPermissions();
   }
 
   // Check if user is logged in
@@ -84,5 +89,59 @@ class AuthService {
   // Check if user is active
   static bool isUserActive() {
     return _currentUser?.isActive ?? false;
+  }
+
+  // Switch company
+  static Future<Map<String, dynamic>> switchCompany(int companyId) async {
+    if (_currentToken == null || _currentUser == null) {
+      return {'success': false, 'message': 'Not logged in'};
+    }
+
+    try {
+      // Clear cached site data before switching
+      SiteService.clearSites();
+      
+      final response = await ApiService.switchCompany(
+        apiToken: _currentToken!,
+        companyId: companyId,
+      );
+
+      if (response['status'] == 1) {
+        // Update user data with new company info
+        if (response['user'] != null) {
+          final userData = Map<String, dynamic>.from(response['user']);
+          // Add allowed_companies to user data if it exists at top level
+          if (response['allowed_companies'] != null) {
+            userData['allowed_companies'] = response['allowed_companies'];
+          }
+          final updatedUser = UserModel.fromJson(userData);
+          await updateUser(updatedUser);
+        }
+
+        // Update permissions for new company
+        if (response['permissions'] != null) {
+          PermissionService.setPermissions(response['permissions']);
+        }
+
+        // Notify all listeners that company has changed
+        CompanyNotifier.notifyCompanyChanged();
+
+        return {
+          'success': true,
+          'message': 'Company switched successfully',
+          'companyName': response['company_name']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response['message'] ?? 'Failed to switch company'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error. Please try again.'
+      };
+    }
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
-import '../core/utils/user_access_utils.dart';
 import '../core/theme/app_typography.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
@@ -120,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       child: Image.asset(
-                        'assets/images/app_logo.png',
+                        'assets/images/pmc_logo.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -249,6 +248,58 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _handleLogin,
                             isLoading: _isLoading,
                             buttonType: ButtonType.primary,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Signup Links
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Don\'t have an account? ',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                },
+                                child: Text(
+                                  'Sign Up',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Company Signup Link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Want to create a company? ',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pushReplacementNamed('/company-signup');
+                                },
+                                child: Text(
+                                  'Register Company',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.secondaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

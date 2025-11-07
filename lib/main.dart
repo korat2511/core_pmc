@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
+import 'screens/company_signup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/permission_screen.dart';
@@ -54,7 +57,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            title: 'Core PMC',
+            title: 'PMC',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
@@ -70,8 +73,14 @@ class MyApp extends StatelessWidget {
             initialRoute: '/',
             routes: {
               '/': (context) => const SplashScreen(),
+              '/welcome': (context) => const WelcomeScreen(),
               '/login': (context) => const LoginScreen(),
-              '/home': (context) => const HomeScreen(),
+              '/signup': (context) => const SignupScreen(),
+              '/company-signup': (context) => const CompanySignupScreen(),
+              '/home': (context) {
+                final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+                return HomeScreen(arguments: args);
+              },
               '/profile': (context) => const UserProfileScreen(),
               '/permissions': (context) => const PermissionScreen(),
               '/site-albums': (context) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
-import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
@@ -307,7 +306,7 @@ class _UserAssignmentModalState extends State<UserAssignmentModal> {
           children: [
             SizedBox(height: 4),
             Text(
-              UserTypes.getUserTypeName(user.userType),
+              user.designationName,
               style: AppTypography.bodyMedium.copyWith(
                 fontSize: ResponsiveUtils.responsiveFontSize(
                   context,

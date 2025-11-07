@@ -1,7 +1,6 @@
 import 'package:core_pmc/core/utils/navigation_utils.dart';
 import 'package:core_pmc/screens/compass_screen.dart';
 import 'package:flutter/material.dart';
-import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../models/user_model.dart';
@@ -163,9 +162,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      // User Designation
+                      // User Designation & Company
                       Text(
-                        UserTypes.getUserTypeName(user?.userType),
+                        user?.designationDisplay ?? 'Employee',
                         style: AppTypography.bodySmall.copyWith(
                           fontSize: ResponsiveUtils.responsiveFontSize(
                             context,

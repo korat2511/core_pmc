@@ -297,7 +297,7 @@ class User {
   final String? deviceId;
   final String mobile;
   final String email;
-  final int userType;
+  final String? designation;
   final String status;
   final String siteId;
   final String? image;
@@ -315,7 +315,7 @@ class User {
     this.deviceId,
     required this.mobile,
     required this.email,
-    required this.userType,
+    this.designation,
     required this.status,
     required this.siteId,
     this.image,
@@ -335,7 +335,7 @@ class User {
       deviceId: json['device_id'],
       mobile: json['mobile'] ?? '',
       email: json['email'] ?? '',
-      userType: json['user_type'] ?? 0,
+      designation: json['designation'],
       status: json['status'] ?? '',
       siteId: json['site_id'] ?? '',
       image: json['image'],
@@ -356,7 +356,7 @@ class User {
       'device_id': deviceId,
       'mobile': mobile,
       'email': email,
-      'user_type': userType,
+      'designation': designation,
       'status': status,
       'site_id': siteId,
       'image': image,
@@ -367,6 +367,8 @@ class User {
       'image_url': imageUrl,
     };
   }
+  
+  String get designationDisplay => designation ?? 'Employee';
 }
 
 class POPayment {

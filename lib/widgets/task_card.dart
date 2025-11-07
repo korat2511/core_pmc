@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/navigation_utils.dart';
-import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
-import '../core/utils/validation_utils.dart';
+import '../services/permission_service.dart';
 import '../models/task_model.dart';
 import '../screens/task_details_screen.dart';
 import '../screens/update_task_screen.dart';
@@ -411,8 +410,9 @@ class TaskCard extends StatelessWidget {
       return;
     }
     
-    // Check update permissions for simple tasks (cat_sub_id 2,3,4,6)
-    if (!ValidationUtils.canUpdateTask(task)) {
+    // Check update permissions - permission OR creator OR assigned
+    final assignedUserIds = task.assign.map((user) => user.id).toList();
+    if (!PermissionService.canEditTaskWithContext(task.createdBy, assignedUserIds)) {
       SnackBarUtils.showError(context, message: "You don't have permission to update this task");
       return;
     }

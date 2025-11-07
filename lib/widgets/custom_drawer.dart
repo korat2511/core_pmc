@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
@@ -44,6 +43,176 @@ class _CustomDrawerState extends State<CustomDrawer> {
       appVersion = packageInfo.version;
       buildNumber = packageInfo.buildNumber;
     });
+  }
+
+  void _showCompanySelector(BuildContext context) {
+    final UserModel? user = AuthService.currentUser;
+    if (user?.allowedCompanies == null || user!.allowedCompanies!.isEmpty) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Company',
+                  style: AppTypography.titleLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Choose which company to work with',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ...user.allowedCompanies!.map((company) {
+                  final isCurrentCompany = company.id == user.companyId;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isCurrentCompany
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.business,
+                        color: isCurrentCompany
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    title: Text(
+                      company.name,
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: isCurrentCompany ? FontWeight.bold : FontWeight.normal,
+                        color: isCurrentCompany
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: company.companyCode != null
+                        ? Text(
+                            company.companyCode!,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          )
+                        : null,
+                    trailing: isCurrentCompany
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : null,
+                    onTap: isCurrentCompany
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop();
+                            _switchCompany(context, company.id);
+                          },
+                  );
+                }).toList(),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text('Cancel'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _switchCompany(BuildContext context, int companyId) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Switching company...',
+                style: AppTypography.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final result = await AuthService.switchCompany(companyId);
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      if (result['success']) {
+        // Close drawer
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Switched to ${result['companyName'] ?? 'new company'}'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // Data refresh is handled by CompanyNotifier stream in individual screens
+        // Home screen and other screens listening to the stream will auto-refresh
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to switch company'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 
@@ -165,14 +334,14 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       SizedBox(
                         height: ResponsiveUtils.responsiveSpacing(
                           context,
-                          mobile: 4,
-                          tablet: 6,
-                          desktop: 8,
+                          mobile: 2,
+                          tablet: 3,
+                          desktop: 4,
                         ),
                       ),
                       // User Designation
                       Text(
-                        UserTypes.getUserTypeName(user?.userType),
+                        user?.designationDisplay ?? 'Employee',
                         style: AppTypography.bodyMedium.copyWith(
                           fontSize: ResponsiveUtils.responsiveFontSize(
                             context,
@@ -180,10 +349,90 @@ class _CustomDrawerState extends State<CustomDrawer> {
                             tablet: 14,
                             desktop: 16,
                           ),
-                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(
+                        height: ResponsiveUtils.responsiveSpacing(
+                          context,
+                          mobile: 2,
+                          tablet: 3,
+                          desktop: 4,
+                        ),
+                      ),
+                      // Company Name - Tappable to switch companies
+                      InkWell(
+                        onTap: user?.hasMultipleCompanies == true
+                            ? () {
+                                print('DEBUG: Tapped company switcher');
+                                print('DEBUG: allowedCompanies count: ${user?.allowedCompanies?.length ?? 0}');
+                                _showCompanySelector(context);
+                              }
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                          decoration: user?.hasMultipleCompanies == true
+                              ? BoxDecoration(
+                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.3),
+                                    width: 0.5,
+                                  ),
+                                )
+                              : null,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.business_outlined,
+                                size: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 12,
+                                  tablet: 14,
+                                  desktop: 16,
+                                ),
+                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
+                              ),
+                              SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  user?.companyName ?? 'PMC',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    fontSize: ResponsiveUtils.responsiveFontSize(
+                                      context,
+                                      mobile: 12,
+                                      tablet: 14,
+                                      desktop: 16,
+                                    ),
+                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                                    fontWeight: user?.hasMultipleCompanies == true 
+                                        ? FontWeight.w600 
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (user?.hasMultipleCompanies == true) ...[
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.expand_more,
+                                  size: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 16,
+                                    tablet: 18,
+                                    desktop: 20,
+                                  ),
+                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),

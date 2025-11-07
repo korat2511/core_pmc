@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
-import '../core/constants/user_types.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
@@ -540,7 +539,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         context,
                         icon: Icons.work_outline,
                         title: 'Designation',
-                        value: UserTypes.getUserTypeName(user?.userType),
+                        value: user?.designationDisplay ?? 'Employee',
                       ),
 
                       _buildProfileItem(

@@ -258,7 +258,7 @@ class _SiteCardState extends State<SiteCard> {
                             ),
                               SizedBox(height: 2),
                               Text(
-                                'Core PMC',
+                                'PMC',
                                 style: AppTypography.bodySmall.copyWith(
                                   fontSize: 12,
                                   color: Theme.of(

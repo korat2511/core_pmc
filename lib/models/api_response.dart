@@ -33,25 +33,40 @@ class LoginResponse {
   final String message;
   final String? token;
   final UserModel? user;
+  final Map<String, dynamic>? permissions;
 
   LoginResponse({
     required this.status,
     required this.message,
     this.token,
     this.user,
+    this.permissions,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     final status = json['status'] ?? 0;
     final message = json['message'] ?? '';
     final token = json['token'];
-    final user = json['data'] != null ? UserModel.fromJson(json['data']) : null;
+    
+    // Merge user data with allowed_companies from top level
+    UserModel? user;
+    if (json['data'] != null) {
+      final userData = Map<String, dynamic>.from(json['data']);
+      // Add allowed_companies to user data if it exists at top level
+      if (json['allowed_companies'] != null) {
+        userData['allowed_companies'] = json['allowed_companies'];
+      }
+      user = UserModel.fromJson(userData);
+    }
+    
+    final permissions = json['permissions'] as Map<String, dynamic>?;
     
     return LoginResponse(
       status: status,
       message: message,
       token: token,
       user: user,
+      permissions: permissions,
     );
   }
 

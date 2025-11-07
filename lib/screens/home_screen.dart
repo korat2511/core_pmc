@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
@@ -11,11 +12,14 @@ import '../widgets/custom_drawer.dart';
 import '../widgets/site_card.dart';
 import '../widgets/custom_search_bar.dart';
 import '../widgets/dismiss_keyboard.dart';
-import '../core/utils/validation_utils.dart';
+import '../services/permission_service.dart';
+import '../services/company_notifier.dart';
 import '../screens/attendance_check_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Map<String, dynamic>? arguments;
+  
+  const HomeScreen({super.key, this.arguments});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -26,17 +30,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _searchQuery = '';
   bool _isLoading = false;
   late TextEditingController _searchController;
+  StreamSubscription<bool>? _companyChangeSubscription;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Listen to company changes
+    _companyChangeSubscription = CompanyNotifier.companyChangedStream.listen((_) {
+      print('DEBUG HomeScreen: Company changed notification received');
+      _loadSites();
+    });
+    
     _loadSites();
   }
 
   @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload sites if arguments changed (company switched)
+    if (widget.arguments?['refresh'] != oldWidget.arguments?['refresh']) {
+      _loadSites();
+    }
+  }
+
+  @override
   void dispose() {
+    _companyChangeSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -58,21 +80,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
 
   Future<void> _loadSites() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
 
+    print('DEBUG HomeScreen: Loading sites...');
+    
     // Always load all sites first
     final success = await SiteService.getSiteList(status: '');
 
     if (success) {
+      print('DEBUG HomeScreen: Loaded ${SiteService.allSites.length} sites');
       // Then apply status filter if any
       SiteService.updateFilteredSites(_selectedStatus);
+    } else {
+      print('DEBUG HomeScreen: Failed - ${SiteService.errorMessage}');
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
 
     if (!success && mounted) {
       // Check for session expiration
@@ -108,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ],
       ),
       drawer: CustomDrawer(),
-      floatingActionButton: ValidationUtils.canCreateSite(context)
+      floatingActionButton: PermissionService.canCreateSite()
           ? FloatingActionButton.extended(
               onPressed: () {
                 Navigator.of(context).pushNamed('/create-site');
@@ -360,11 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<SiteModel> _getFilteredSites() {
     List<SiteModel> sitesToFilter = SiteService.allSites;
 
-    // Debug logging
-    print('🔍 === SEARCH DEBUG ===');
-    print('📊 Total sites: ${sitesToFilter.length}');
-    print('🔍 Search query: "$_searchQuery"');
-    print('📋 Selected status: "$_selectedStatus"');
+
 
     // First filter by status
     if (_selectedStatus.isNotEmpty) {
@@ -374,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
         return site.status.toLowerCase() == _selectedStatus.toLowerCase();
       }).toList();
-      print('📊 After status filter: ${sitesToFilter.length} sites');
+
     }
 
     // Then filter by search query
@@ -383,17 +410,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final nameMatch = site.name.toLowerCase().contains(_searchQuery.toLowerCase());
         final clientMatch = site.clientName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
         
-        // Debug individual site matching
-        if (nameMatch || clientMatch) {
-          print('✅ Site "${site.name}" matches search "$_searchQuery"');
-        }
+
         
         return nameMatch || clientMatch;
       }).toList();
-      print('📊 After search filter: ${sitesToFilter.length} sites');
+
     }
 
-    print('🔍 === END SEARCH DEBUG ===');
     return sitesToFilter;
   }
 

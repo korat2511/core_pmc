@@ -158,7 +158,15 @@ class UserAssignmentUtils {
           lastName: siteUser.lastName,
           mobile: siteUser.mobile,
           email: siteUser.email,
-          userType: siteUser.userType,
+          designationId: siteUser.designationId,
+          designationInfo: siteUser.designation != null
+              ? DesignationInfo(
+                  id: siteUser.designation!.id,
+                  name: siteUser.designation!.name,
+                  order: siteUser.designation!.order,
+                  status: 'active',
+                )
+              : null,
           status: siteUser.status,
           lastActiveTime: siteUser.createdAt,
           createdAt: siteUser.createdAt,

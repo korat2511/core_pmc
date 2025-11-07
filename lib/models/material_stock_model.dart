@@ -114,7 +114,7 @@ class StockHistoryModel {
   final SiteModel? site;
   final dynamic progress;
   final GRNModel? grn;
-  final UserModel? user;
+  final StockUserModel? user;
 
   StockHistoryModel({
     required this.id,
@@ -154,7 +154,7 @@ class StockHistoryModel {
       site: json['site'] != null ? SiteModel.fromJson(json['site']) : null,
       progress: json['progress'],
       grn: json['grn'] != null ? GRNModel.fromJson(json['grn']) : null,
-      user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
+      user: json['user'] != null ? StockUserModel.fromJson(json['user']) : null,
     );
   }
 }
@@ -265,13 +265,13 @@ class GRNModel {
   }
 }
 
-class UserModel {
+class StockUserModel {
   final int id;
   final String firstName;
   final String lastName;
   final String mobile;
   final String email;
-  final int userType;
+  final String? designation;
   final String status;
   final String siteId;
   final String? image;
@@ -279,13 +279,13 @@ class UserModel {
   final String createdAt;
   final String updatedAt;
 
-  UserModel({
+  StockUserModel({
     required this.id,
     required this.firstName,
     required this.lastName,
     required this.mobile,
     required this.email,
-    required this.userType,
+    this.designation,
     required this.status,
     required this.siteId,
     this.image,
@@ -294,14 +294,14 @@ class UserModel {
     required this.updatedAt,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
+  factory StockUserModel.fromJson(Map<String, dynamic> json) {
+    return StockUserModel(
       id: json['id'] ?? 0,
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
       mobile: json['mobile'] ?? '',
       email: json['email'] ?? '',
-      userType: json['user_type'] ?? 0,
+      designation: json['designation'],
       status: json['status'] ?? '',
       siteId: json['site_id'] ?? '',
       image: json['image'],
@@ -312,4 +312,5 @@ class UserModel {
   }
 
   String get fullName => '$firstName $lastName';
+  String get designationDisplay => designation ?? 'Employee';
 }

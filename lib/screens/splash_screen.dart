@@ -62,11 +62,11 @@ class _SplashScreenState extends State<SplashScreen>
         // Navigate to permission screen
         Navigator.of(context).pushReplacementNamed('/permissions');
       } else {
-        // Skip permission screen and go directly to login/home
+        // Skip permission screen and go directly to welcome/home
         if (AuthService.isLoggedIn() && SessionManager.isSessionValid()) {
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
-          Navigator.of(context).pushReplacementNamed('/login');
+          Navigator.of(context).pushReplacementNamed('/welcome');
         }
       }
     }
@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
 
                     child: Image.asset(
-                      'assets/images/app_logo.png',
+                      'assets/images/pmc_logo.png',
                       fit: BoxFit.contain,
 
                     ),
