@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/navigation_utils.dart';
+import '../core/utils/snackbar_utils.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../screens/all_users_screen.dart';
 import '../screens/attendance_screen.dart';
 import '../screens/to_do_list.dart';
+import '../screens/designation_management_screen.dart';
+import '../screens/invite_team_screen.dart';
+import '../services/invitation_service.dart';
 import '../providers/theme_provider.dart';
+import '../services/permission_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class CustomDrawer extends StatefulWidget {
@@ -211,6 +217,28 @@ class _CustomDrawerState extends State<CustomDrawer> {
           content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
+      );
+    }
+  }
+
+  Future<void> _shareApp(BuildContext context) async {
+    final shareService = InvitationService();
+    try {
+      final response = await shareService.getShareLinks();
+      if (response['status'] == 1) {
+        final message = response['share_message'] as String? ??
+            'Check out PMC app to manage projects efficiently.';
+        await Share.share(message);
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response['message'] ?? 'Unable to load share message',
+        );
+      }
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Unable to share right now. ${e.toString()}',
       );
     }
   }
@@ -480,6 +508,34 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     NavigationUtils.push(context, const AllUsersScreen());
                   },
                 ),
+                if (PermissionService.canManageDesignations())
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Manage Designations',
+                    onTap: () {
+                      NavigationUtils.push(
+                        context,
+                        const DesignationManagementScreen(),
+                      );
+                    },
+                  ),
+                if (PermissionService.canInviteUser()) ...[
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.person_add_alt,
+                    title: 'Invite Members',
+                    onTap: () {
+                      NavigationUtils.push(context, const InviteTeamScreen());
+                    },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.ios_share,
+                    title: 'Share App',
+                    onTap: () => _shareApp(context),
+                  ),
+                ],
                 // To-Do List
                 _buildDrawerItem(
                   context,

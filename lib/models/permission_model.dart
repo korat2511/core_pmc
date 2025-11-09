@@ -26,6 +26,7 @@ class PermissionModel {
   final bool canDeleteUser;
   final bool canAssignUsersToSite;
   final bool canRemoveUsersFromSite;
+  final bool canInviteUser;
   
   // Attendance
   final bool canMarkAttendance;
@@ -80,6 +81,7 @@ class PermissionModel {
     this.canDeleteUser = false,
     this.canAssignUsersToSite = false,
     this.canRemoveUsersFromSite = false,
+    this.canInviteUser = false,
     this.canMarkAttendance = false,
     this.canViewAttendance = false,
     this.canEditAttendance = false,
@@ -122,6 +124,7 @@ class PermissionModel {
       canDeleteUser: json['can_delete_user'] == true || json['can_delete_user'] == 1,
       canAssignUsersToSite: json['can_assign_users_to_site'] == true || json['can_assign_users_to_site'] == 1,
       canRemoveUsersFromSite: json['can_remove_users_from_site'] == true || json['can_remove_users_from_site'] == 1,
+      canInviteUser: json['can_invite_user'] == true || json['can_invite_user'] == 1,
       canMarkAttendance: json['can_mark_attendance'] == true || json['can_mark_attendance'] == 1,
       canViewAttendance: json['can_view_attendance'] == true || json['can_view_attendance'] == 1,
       canEditAttendance: json['can_edit_attendance'] == true || json['can_edit_attendance'] == 1,
@@ -165,6 +168,7 @@ class PermissionModel {
       'can_delete_user': canDeleteUser,
       'can_assign_users_to_site': canAssignUsersToSite,
       'can_remove_users_from_site': canRemoveUsersFromSite,
+      'can_invite_user': canInviteUser,
       'can_mark_attendance': canMarkAttendance,
       'can_view_attendance': canViewAttendance,
       'can_edit_attendance': canEditAttendance,

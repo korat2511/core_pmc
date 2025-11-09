@@ -7,6 +7,7 @@ import '../core/theme/app_typography.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../services/api_service.dart';
+import 'signup_next_step_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -91,7 +92,8 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _handleSignup() async {
     FocusScope.of(context).unfocus();
     
-    if (!_companyCodeValidated) {
+    final companyCode = _companyCodeController.text.trim();
+    if (companyCode.isNotEmpty && !_companyCodeValidated) {
       SnackBarUtils.showError(
         context,
         message: 'Please validate company code first',
@@ -111,7 +113,7 @@ class _SignupScreenState extends State<SignupScreen> {
           mobile: _mobileController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          companyCode: _companyCodeController.text.trim(),
+          companyCode: companyCode.isEmpty ? null : companyCode,
           designationId: null, // Will be set by admin later
         );
 
@@ -120,11 +122,26 @@ class _SignupScreenState extends State<SignupScreen> {
         });
 
         if (result['status'] == 1) {
-          SnackBarUtils.showSuccess(
-            context,
-            message: 'Account created successfully! Please login.',
-          );
-          Navigator.of(context).pushReplacementNamed('/login');
+          final bool hasCompany = result['has_company'] == true;
+          if (hasCompany) {
+            SnackBarUtils.showSuccess(
+              context,
+              message: 'Account created successfully! Please login.',
+            );
+            Navigator.of(context).pushReplacementNamed('/login');
+          } else {
+            SnackBarUtils.showInfo(
+              context,
+              message: 'Account created! Complete your company setup to continue.',
+            );
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => SignupNextStepScreen(
+                  userData: Map<String, dynamic>.from(result['user'] ?? {}),
+                ),
+              ),
+            );
+          }
         } else {
           SnackBarUtils.showError(
             context,
@@ -205,7 +222,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   child: Text(
-                    'Join your company by entering the company code provided by your administrator',
+                    'Enter your company code if you have one now, or skip and create/join a company after signup.',
                     style: AppTypography.bodyMedium.copyWith(
                       fontSize: ResponsiveUtils.responsiveFontSize(
                         context,
@@ -232,13 +249,19 @@ class _SignupScreenState extends State<SignupScreen> {
                           Expanded(
                             child: CustomTextField(
                               controller: _companyCodeController,
-                              label: 'Company Code',
+                              label: 'Company Code (optional)',
                               hintText: 'Enter company code',
-                              enabled: !_companyCodeValidated,
                               textCapitalization: TextCapitalization.characters,
+                              onChanged: (value) {
+                                setState(() {
+                                  _companyCodeValidated = false;
+                                  _companyName = null;
+                                });
+                              },
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Company code is required';
+                                final trimmed = value?.trim() ?? '';
+                                if (trimmed.isEmpty) {
+                                  return null;
                                 }
                                 if (!_companyCodeValidated) {
                                   return 'Please validate company code';
@@ -254,7 +277,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ? null
                                 : _validateCompanyCode,
                             isLoading: _isValidatingCode,
-                            isEnabled: !_companyCodeValidated,
+                            isEnabled: !_companyCodeValidated &&
+                                _companyCodeController.text.trim().isNotEmpty,
                             buttonType: _companyCodeValidated
                                 ? ButtonType.success
                                 : ButtonType.primary,

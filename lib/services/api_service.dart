@@ -5020,7 +5020,7 @@ class ApiService {
     required String mobile,
     required String email,
     required String password,
-    required String companyCode,
+    String? companyCode,
     int? designationId,
   }) async {
     try {
@@ -5030,9 +5030,11 @@ class ApiService {
         'mobile': mobile,
         'email': email,
         'password': password,
-        'company_code': companyCode,
         if (designationId != null) 'designation_id': designationId.toString(),
       };
+      if (companyCode != null && companyCode.trim().isNotEmpty) {
+        requestData['company_code'] = companyCode.trim();
+      }
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/user/signup'),
@@ -5056,6 +5058,47 @@ class ApiService {
       return {
         'status': 0,
         'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> addUserToCompany({
+    required int userId,
+    required int companyId,
+    bool isPrimary = false,
+    String? designation,
+  }) async {
+    try {
+      final Map<String, String> requestData = {
+        'user_id': userId.toString(),
+        'company_id': companyId.toString(),
+        'is_primary': isPrimary ? '1' : '0',
+      };
+      if (designation != null && designation.trim().isNotEmpty) {
+        requestData['designation'] = designation.trim();
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/addUserToCompany'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        return {
+          'status': 0,
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to join company. Please try again.',
       };
     }
   }
@@ -5113,6 +5156,212 @@ class ApiService {
       return {
         'status': 0,
         'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Invitation APIs
+  static Future<Map<String, dynamic>> sendInvitation({
+    required String apiToken,
+    required int designationId,
+    int? companyId,
+    String? fullName,
+    String? email,
+    String? mobile,
+    List<String>? channels,
+    String? notes,
+    int? expiresInMinutes,
+  }) async {
+    try {
+      final Map<String, String> requestData = {
+        'api_token': apiToken,
+        'designation_id': designationId.toString(),
+        if (companyId != null) 'company_id': companyId.toString(),
+        if (fullName != null && fullName.trim().isNotEmpty) 'full_name': fullName.trim(),
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+        if (mobile != null && mobile.trim().isNotEmpty) 'mobile': mobile.trim(),
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        if (expiresInMinutes != null) 'expires_in_minutes': expiresInMinutes.toString(),
+      };
+
+      final inviteChannels = channels == null || channels.isEmpty
+          ? ['sms', 'whatsapp']
+          : channels;
+      for (var i = 0; i < inviteChannels.length; i++) {
+        requestData['channels[$i]'] = inviteChannels[i];
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/send'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to send invitation. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getInvitations({
+    required String apiToken,
+    int? companyId,
+    String? status,
+    int page = 1,
+  }) async {
+    try {
+      final Map<String, String> requestData = {
+        'api_token': apiToken,
+        'page': page.toString(),
+        if (companyId != null) 'company_id': companyId.toString(),
+        if (status != null && status.isNotEmpty) 'status': status,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/list'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to load invitations. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> resendInvitation({
+    required String apiToken,
+    required int invitationId,
+    List<String>? channels,
+  }) async {
+    try {
+      final Map<String, String> requestData = {
+        'api_token': apiToken,
+        'invitation_id': invitationId.toString(),
+      };
+
+      if (channels != null && channels.isNotEmpty) {
+        for (var i = 0; i < channels.length; i++) {
+          requestData['channels[$i]'] = channels[i];
+        }
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/resend'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to resend invitation. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> revokeInvitation({
+    required String apiToken,
+    required int invitationId,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        'invitation_id': invitationId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/revoke'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to revoke invitation. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> shareAppLinks({
+    required String apiToken,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/shareApp'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to fetch share links. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> acceptInvitation({
+    required String inviteCode,
+    required String firstName,
+    required String lastName,
+    required String mobile,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final requestData = {
+        'invite_code': inviteCode,
+        'first_name': firstName,
+        'last_name': lastName,
+        'mobile': mobile,
+        'email': email,
+        'password': password,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/invitation/accept'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Failed to accept invitation. Please try again.',
       };
     }
   }
@@ -5224,6 +5473,310 @@ class ApiService {
           'message': _parseApiErrorMessage(response.body, response.statusCode),
         };
       }
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // ==================== Company Switching API ====================
+
+  // ==================== Designation Management API ====================
+
+  // Get Designations
+  static Future<Map<String, dynamic>> getDesignations({
+    required String apiToken,
+    required int companyId,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        'company_id': companyId.toString(),
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/designation/getDesignations'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(
+              queryParameters: requestData
+                  .map((key, value) => MapEntry(key, value.toString())),
+            ).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Create Designation
+  static Future<Map<String, dynamic>> createDesignation({
+    required String apiToken,
+    required int companyId,
+    required String name,
+    int? order,
+    String status = 'active',
+  }) async {
+    try {
+      final body = {
+        'api_token': apiToken,
+        'company_id': companyId.toString(),
+        'name': name,
+        'status': status,
+      };
+      if (order != null) {
+        body['order'] = order.toString();
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/designation/createDesignation'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(
+              queryParameters:
+                  body.map((key, value) => MapEntry(key, value.toString())),
+            ).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Update Designation
+  static Future<Map<String, dynamic>> updateDesignation({
+    required String apiToken,
+    required int designationId,
+    String? name,
+    int? order,
+    String? status,
+  }) async {
+    try {
+      final body = <String, String>{
+        'api_token': apiToken,
+        'designation_id': designationId.toString(),
+      };
+
+      if (name != null) body['name'] = name;
+      if (order != null) body['order'] = order.toString();
+      if (status != null) body['status'] = status;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/designation/updateDesignation'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(
+              queryParameters:
+                  body.map((key, value) => MapEntry(key, value.toString())),
+            ).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Delete Designation
+  static Future<Map<String, dynamic>> deleteDesignation({
+    required String apiToken,
+    required int designationId,
+  }) async {
+    try {
+      final body = {
+        'api_token': apiToken,
+        'designation_id': designationId.toString(),
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/designation/deleteDesignation'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(
+              queryParameters:
+                  body.map((key, value) => MapEntry(key, value.toString())),
+            ).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Reorder Designations
+  static Future<Map<String, dynamic>> reorderDesignations({
+    required String apiToken,
+    required int companyId,
+    required List<Map<String, dynamic>> designations,
+  }) async {
+    try {
+      final body = json.encode({
+        'api_token': apiToken,
+        'company_id': companyId,
+        'designations': designations,
+      });
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/designation/reorderDesignations'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: body,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Get Designation Access
+  static Future<Map<String, dynamic>> getDesignationAccess({
+    required String apiToken,
+    required int designationId,
+  }) async {
+    try {
+      final body = {
+        'api_token': apiToken,
+        'designation_id': designationId.toString(),
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/permission/getDesignationAccess'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: Uri(
+              queryParameters:
+                  body.map((key, value) => MapEntry(key, value.toString())),
+            ).query,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Update Designation Access
+  static Future<Map<String, dynamic>> updateDesignationAccess({
+    required String apiToken,
+    required int designationId,
+    required Map<String, dynamic> permissions,
+  }) async {
+    try {
+      final body = json.encode({
+        'api_token': apiToken,
+        'designation_id': designationId,
+        'permissions': permissions,
+      });
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/permission/updateDesignationAccess'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: body,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
     } catch (e) {
       return {
         'status': 0,

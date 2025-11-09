@@ -20,6 +20,48 @@ class UserPermissionsScreen extends StatefulWidget {
 }
 
 class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
+  static const List<String> _permissionKeys = [
+    'can_create_site',
+    'can_update_site',
+    'can_delete_site',
+    'can_update_site_address',
+    'can_update_site_status',
+    'can_create_task',
+    'can_edit_task',
+    'can_delete_task',
+    'can_update_task_progress',
+    'can_update_task_status',
+    'can_assign_task',
+    'can_create_issue',
+    'can_edit_issue',
+    'can_delete_issue',
+    'can_update_issue_progress',
+    'can_create_user',
+    'can_edit_user',
+    'can_delete_user',
+    'can_assign_users_to_site',
+    'can_remove_users_from_site',
+    'can_invite_user',
+    'can_mark_attendance',
+    'can_view_attendance',
+    'can_edit_attendance',
+    'can_view_reports',
+    'can_export_reports',
+    'can_create_quality_check',
+    'can_edit_quality_check',
+    'can_delete_quality_check',
+    'can_manage_materials',
+    'can_create_po',
+    'can_approve_po',
+    'can_upload_images',
+    'can_delete_images',
+    'can_create_meeting',
+    'can_edit_meeting',
+    'can_delete_meeting',
+    'can_manage_designations',
+    'can_manage_company_settings',
+  ];
+
   bool _isLoading = false;
   bool _isSaving = false;
   Map<String, bool> _permissions = {};
@@ -33,50 +75,114 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
   }
 
   Future<void> _loadPermissions() async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser == null || currentUser.apiToken.isEmpty) {
+      SnackBarUtils.showError(context, message: 'Session expired. Please log in again.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
       final response = await ApiService.getUserAccess(
-        apiToken: AuthService.currentUser!.apiToken,
+        apiToken: currentUser.apiToken,
         userId: widget.user.id,
       );
 
-      if (response['status'] == 1 && response['data'] != null) {
-        final data = response['data'];
-        
-        // Extract designation permissions
-        if (data['designation_access'] != null) {
-          _designationPermissions = (data['designation_access'] as Map<String, dynamic>)
-              .map((key, value) => MapEntry(key, value == true || value == 1));
-        }
-        
-        // Extract user-specific overrides
-        if (data['user_access'] != null) {
-          final userAccess = data['user_access'] as Map<String, dynamic>;
-          _userOverrides = userAccess.map((key, value) {
-            if (value == null) return MapEntry(key, null);
-            return MapEntry(key, value == true || value == 1);
+
+
+      if (response['status'] != 1 || response['data'] == null) {
+        final message = response['message'] ?? 'Failed to load permissions';
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _permissions = {};
+            _designationPermissions = {};
+            _userOverrides = {for (final key in _permissionKeys) key: null};
           });
+          SnackBarUtils.showError(context, message: message);
         }
-        
-        // Extract effective permissions
-        if (data['effective_permissions'] != null) {
-          _permissions = (data['effective_permissions'] as Map<String, dynamic>)
-              .map((key, value) => MapEntry(key, value == true || value == 1));
-        }
+        return;
       }
 
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      SnackBarUtils.showError(context, message: 'Failed to load permissions');
+      final data = Map<String, dynamic>.from(response['data'] as Map);
+      final designationRaw = data['designation_access'];
+      final userAccessRaw = data['user_access'];
+      final effectiveRaw = data['effective_permissions'];
+
+      final Map<String, bool> designationPermissions = {};
+      final Map<String, bool?> userOverrides = {};
+      final Map<String, bool> effectivePermissions = {};
+
+      for (final key in _permissionKeys) {
+        final designationValue = _extractBool(designationRaw, key);
+        final overrideValue = _extractNullableBool(userAccessRaw, key);
+        final effectiveValue = _extractBool(
+          effectiveRaw,
+          key,
+          fallback: overrideValue ?? designationValue,
+        );
+
+        designationPermissions[key] = designationValue;
+        userOverrides[key] = overrideValue;
+        effectivePermissions[key] = effectiveValue;
+      }
+
+      if (mounted) {
+        setState(() {
+          _designationPermissions = designationPermissions;
+          _userOverrides = userOverrides;
+          _permissions = effectivePermissions;
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      print('ERROR UserPermissionsScreen: Failed to load permissions -> $e');
+      print(stackTrace);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        SnackBarUtils.showError(context, message: 'Failed to load permissions');
+      }
     }
+  }
+
+  bool _extractBool(
+    dynamic source,
+    String key, {
+    bool fallback = false,
+  }) {
+    if (source is Map) {
+      final raw = source[key];
+      if (raw == null) return fallback;
+      if (raw is bool) return raw;
+      if (raw is num) return raw == 1;
+      if (raw is String) {
+        final lower = raw.toLowerCase();
+        if (lower == 'true' || lower == '1') return true;
+        if (lower == 'false' || lower == '0') return false;
+      }
+    }
+    return fallback;
+  }
+
+  bool? _extractNullableBool(dynamic source, String key) {
+    if (source is Map) {
+      final raw = source[key];
+      if (raw == null) return null;
+      if (raw is bool) return raw;
+      if (raw is num) return raw == 1;
+      if (raw is String) {
+        final lower = raw.toLowerCase();
+        if (lower.isEmpty || lower == 'null') return null;
+        if (lower == 'true' || lower == '1') return true;
+        if (lower == 'false' || lower == '0') return false;
+      }
+    }
+    return null;
   }
 
   Future<void> _savePermissions() async {
@@ -140,6 +246,7 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primaryColor,
         foregroundColor: Colors.white,
+        centerTitle: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -340,7 +447,7 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
                 ),
                 if (isOverridden)
                   Text(
-                    'Overridden (Designation: ${designationValue ? "Yes" : "No"})',
+                    'From Designation: ${designationValue ? "Yes" : "No"})',
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.warningColor,
                       fontSize: 11,

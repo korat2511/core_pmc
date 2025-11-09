@@ -104,6 +104,7 @@ class PermissionService {
   static bool canDeleteUser() => hasPermission('can_delete_user');
   static bool canAssignUsersToSite() => hasPermission('can_assign_users_to_site');
   static bool canRemoveUsersFromSite() => hasPermission('can_remove_users_from_site');
+  static bool canInviteUser() => hasPermission('can_invite_user');
 
   // Attendance Permissions
   static bool canMarkAttendance() => hasPermission('can_mark_attendance');
