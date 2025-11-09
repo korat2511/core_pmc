@@ -290,7 +290,6 @@ class ApiService {
           )
           .timeout(timeout);
 
-      log("RES == ${response.body}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
