@@ -1,4 +1,4 @@
-package com.corepmc.pmc_staging;
+package com.pmcprojects.pmcstaging;
 
 import io.flutter.embedding.android.FlutterActivity;
 
