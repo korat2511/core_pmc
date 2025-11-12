@@ -97,7 +97,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     // Initialize animations
     _scaleAnimation = Tween<double>(
       begin: 0.0,
@@ -106,7 +106,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       parent: _overlayAnimationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -114,7 +114,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       parent: _overlayAnimationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Add status listener to handle animation completion
     _overlayAnimationController.addStatusListener((status) {
       if (mounted) {
@@ -129,7 +129,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         }
       }
     });
-    
+
     FlDownloader.initialize();
     progressStream = FlDownloader.progressStream.listen((event) {
       if (mounted) {
@@ -154,7 +154,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       } else if (event.status == DownloadStatus.running) {
         debugPrint('event.progress: ${event.progress}');
         _showProgressOverlaySmoothly();
-        
+
         // Close overlay when progress reaches 100%
         if (event.progress >= 100) {
           debugPrint('Progress reached 100%, closing overlay');
@@ -188,7 +188,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         debugPrint('Download paused');
         Future.delayed(
           const Duration(milliseconds: 250),
-          () => FlDownloader.attachDownloadProgress(event.downloadId),
+              () => FlDownloader.attachDownloadProgress(event.downloadId),
         );
       } else if (event.status == DownloadStatus.pending) {
         debugPrint('Download pending');
@@ -324,9 +324,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                             Text(
                               duration,
                               style: AppTypography.bodySmall.copyWith(
-                                                              color: isSelected
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -442,7 +442,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                     subParts: _subParts[entry.key] ?? [],
                     isExpanded: _expandedSections.contains(entry.key),
                     selectedSubParts:
-                        _selectedSubParts[entry.key] ?? <String>{},
+                    _selectedSubParts[entry.key] ?? <String>{},
                     onChanged: (value) {
                       setState(() {
                         final newValue = value ?? false;
@@ -476,7 +476,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                       setState(() {
                         _selectedSubParts.putIfAbsent(
                           entry.key,
-                          () => <String>{},
+                              () => <String>{},
                         );
                         if (selected) {
                           _selectedSubParts[entry.key]!.add(subPart);
@@ -520,7 +520,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               ),
             ),
           ),
-          
+
           // Progress Overlay
           AnimatedBuilder(
             animation: _overlayAnimationController,
@@ -533,101 +533,101 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                   }
                 });
               }
-              
+
               return _showProgressOverlay
                   ? FadeTransition(
-                      opacity: _fadeAnimation,
+                opacity: _fadeAnimation,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+                  child: Center(
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
                       child: Container(
-                        color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
-                        child: Center(
-                          child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: Container(
-                              margin: EdgeInsets.all(20),
-                              padding: EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Progress indicator
-                                  SizedBox(
-                                    width: 60,
-                                    height: 60,
-                                    child: TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(
-                                        begin: 0.0,
-                                        end: progress / 100,
-                                      ),
-                                      duration: const Duration(milliseconds: 200),
-                                      curve: Curves.easeInOut,
-                                      builder: (context, value, child) {
-                                        return CircularProgressIndicator(
-                                          value: value,
-                                          strokeWidth: 6,
-                                          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Theme.of(context).colorScheme.primary,
-                                          ),
-                                        );
-                                      },
+                        margin: EdgeInsets.all(20),
+                        padding: EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Progress indicator
+                            SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  begin: 0.0,
+                                  end: progress / 100,
+                                ),
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeInOut,
+                                builder: (context, value, child) {
+                                  return CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: 6,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
                                     ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  
-                                  // Progress text
-                                  Text(
-                                    progress >= 100 ? 'Download completed' : 'Downloading PDF...',
-                                    style: AppTypography.titleMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  
-                                  // Percentage with animation
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(
-                                      begin: 0.0,
-                                      end: progress.toDouble(),
-                                    ),
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: Curves.easeInOut,
-                                    builder: (context, value, child) {
-                                      return Text(
-                                        '${value.round()}%',
-                                        style: AppTypography.bodyLarge.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  SizedBox(height: 4),
-                                  
-                                  // Status
-                                  Text(
-                                    progress >= 100 ? 'Opening PDF...' : _getStatusText(status),
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
                             ),
-                          ),
+                            SizedBox(height: 16),
+
+                            // Progress text
+                            Text(
+                              progress >= 100 ? 'Download completed' : 'Downloading PDF...',
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+
+                            // Percentage with animation
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(
+                                begin: 0.0,
+                                end: progress.toDouble(),
+                              ),
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              builder: (context, value, child) {
+                                return Text(
+                                  '${value.round()}%',
+                                  style: AppTypography.bodyLarge.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                );
+                              },
+                            ),
+                            SizedBox(height: 4),
+
+                            // Status
+                            Text(
+                              progress >= 100 ? 'Opening PDF...' : _getStatusText(status),
+                              style: AppTypography.bodySmall.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    )
+                    ),
+                  ),
+                ),
+              )
                   : SizedBox.shrink();
             },
           ),
@@ -676,13 +676,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             child: Row(
               children: [
                 Expanded(
-                                  child: Text(
-                  _formatDate(date),
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 13,
+                  child: Text(
+                    _formatDate(date),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
                 ),
                 Icon(
                   Icons.calendar_today,
@@ -735,16 +735,16 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                         title,
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w600,
-                                                  color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 14,
                         ),
                       ),
                       SizedBox(height: 2),
                       Text(
                         description,
                         style: AppTypography.bodySmall.copyWith(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -793,8 +793,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                           child: Text(
                             subPart,
                             style: AppTypography.bodySmall.copyWith(
-                                                          color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -807,7 +807,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                             borderRadius: BorderRadius.circular(4),
                           ),
                           materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                          MaterialTapTargetSize.shrinkWrap,
                           visualDensity: VisualDensity.compact,
                         ),
                       ],
@@ -873,7 +873,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _toDate = now;
         break;
       case 'Specific Date':
-        // Keep current dates for manual selection
+      // Keep current dates for manual selection
         break;
     }
   }
@@ -925,8 +925,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       // Determine API endpoint based on date range
       final isSameDate =
           _fromDate.year == _toDate.year &&
-          _fromDate.month == _toDate.month &&
-          _fromDate.day == _toDate.day;
+              _fromDate.month == _toDate.month &&
+              _fromDate.day == _toDate.day;
 
       Map<String, dynamic>? response;
 
@@ -991,7 +991,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         debugPrint('API Response received: $response');
         final status = response['status'];
         debugPrint('Response status: $status');
-        
+
         if (status == 1 ) {
           // Handle PDF response
           final pdfUrl = response['pdfurl'];
@@ -1020,7 +1020,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             // Request permission
             final permission = await FlDownloader.requestPermission();
             debugPrint('Storage permission status: $permission');
-            
+
             if (permission == StoragePermissionStatus.granted) {
               try {
                 debugPrint('Starting download...');
@@ -1028,9 +1028,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                   pdfUrl.toString(),
                   fileName: "$pdfName.pdf",
                 );
-                
+
                 debugPrint('Download ID: $downloadId');
-                
+
                 if (downloadId == null || downloadId <= 0) {
                   _hideProgressOverlaySmoothly();
                   if (mounted) {
@@ -1116,7 +1116,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       final selectedCategoryIds = <String>[];
       for (final categoryName in selectedCategories) {
         final category = _categories.firstWhere(
-          (cat) => cat.name == categoryName,
+              (cat) => cat.name == categoryName,
           orElse: () => CategoryModel(
             id: 0,
             name: '',
@@ -1144,7 +1144,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       final selectedUserIds = <String>[];
       for (final userName in selectedUsers) {
         final user = _users.firstWhere(
-          (user) => user.fullName == userName,
+              (user) => user.fullName == userName,
           orElse: () => SiteUserModel(
             id: 0,
             firstName: '',
