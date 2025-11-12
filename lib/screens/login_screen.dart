@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       width: ResponsiveUtils.responsiveFontSize(
                         context,
-                        mobile: 160,
+                        mobile: 170,
                         tablet: 180,
                         desktop: 220,
                       ),
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       child: Image.asset(
-                        'assets/images/pmc_logo.png',
+                        'assets/images/pmc_transparent_1.png',
                         fit: BoxFit.contain,
                       ),
                     ),

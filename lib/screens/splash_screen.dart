@@ -1,3 +1,4 @@
+import 'package:core_pmc/core/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
@@ -59,7 +60,9 @@ class _SplashScreenState extends State<SplashScreen>
       final shouldShowPermission = await PermissionService.shouldShowPermissionScreen();
       
       if (shouldShowPermission) {
-        // Navigate to permission screen
+
+
+
         Navigator.of(context).pushReplacementNamed('/permissions');
       } else {
         // Skip permission screen and go directly to welcome/home
@@ -111,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
 
                     child: Image.asset(
-                      'assets/images/pmc_logo.png',
+                      'assets/images/pmc_transparent_1.png',
                       fit: BoxFit.contain,
 
                     ),

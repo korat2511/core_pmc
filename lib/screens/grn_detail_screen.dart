@@ -594,17 +594,12 @@ class _ImageFullScreenViewerState extends State<_ImageFullScreenViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          '${_currentIndex + 1} of ${widget.documents.length}',
-          style: TextStyle(color: Colors.white),
-        ),
+      appBar: CustomAppBar(
+        title: '${_currentIndex + 1} of ${widget.documents.length}',
+        showDrawer: false,
+        showBackButton: true,
       ),
+
       body: Column(
         children: [
           // Image viewer

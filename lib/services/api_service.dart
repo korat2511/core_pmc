@@ -508,11 +508,16 @@ class ApiService {
   // Get All Users API
   static Future<SiteUserResponse> getAllUsers({
     required String apiToken,
+    int? companyId,
   }) async {
     try {
       final Map<String, dynamic> requestData = {
         'api_token': apiToken,
       };
+
+      if (companyId != null) {
+        requestData['company_id'] = companyId.toString();
+      }
 
       final response = await http
           .post(
@@ -5820,6 +5825,156 @@ class ApiService {
       return {
         'status': 0,
         'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Delete logged-in account
+  static Future<Map<String, dynamic>> deleteAccount() async {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
+      return {
+        'status': 0,
+        'message': 'Authentication token not found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/user/deleteAccount'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': token,
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please try again.',
+      };
+    }
+  }
+
+  // Delete company by id
+  static Future<Map<String, dynamic>> deleteCompany({
+    required int companyId,
+  }) async {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
+      return {
+        'status': 0,
+        'message': 'Authentication token not found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/company/deleteCompany'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': token,
+              'company_id': companyId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please try again.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUser({
+    required String apiToken,
+    required int userId,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? mobile,
+    String? status,
+    int? designationId,
+    File? image,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/updateUser');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['api_token'] = apiToken
+        ..fields['user_id'] = userId.toString();
+
+      if (firstName != null) {
+        request.fields['first_name'] = firstName;
+      }
+      if (lastName != null) {
+        request.fields['last_name'] = lastName;
+      }
+      if (email != null) {
+        request.fields['email'] = email;
+      }
+      if (mobile != null) {
+        request.fields['mobile'] = mobile;
+      }
+      if (status != null) {
+        request.fields['status'] = status;
+      }
+      if (designationId != null) {
+        request.fields['designation_id'] = designationId.toString();
+      }
+
+      if (image != null) {
+        request.files.add(await http.MultipartFile.fromPath('image', image.path));
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(json.decode(response.body));
+      }
+
+      return {
+        'status': 0,
+        'message': getErrorMessage(response.statusCode),
+      };
+    } catch (e) {
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException')) {
+        return {
+          'status': 0,
+          'message': 'No internet connection. Please check your network.',
+        };
+      }
+
+      return {
+        'status': 0,
+        'message': 'Something went wrong. $e',
       };
     }
   }

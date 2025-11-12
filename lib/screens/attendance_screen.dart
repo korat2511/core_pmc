@@ -53,7 +53,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final startDate = _getMonthStartDate();
     final endDate = _getMonthEndDate();
 
-    print('Loading attendance for user ${widget.userId} from $startDate to $endDate');
+
 
     final success = await _attendanceService.getAttendanceReport(
       userId: widget.userId,
@@ -150,6 +150,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       appBar: CustomAppBar(
         title: '${widget.userName}\'s Attendance',
         showDrawer: false,
+        showBackButton: true,
       ),
       body: Column(
         children: [

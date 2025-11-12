@@ -196,7 +196,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       desktop: 120,
                     ),
                     child: Image.asset(
-                      'assets/images/pmc_logo.png',
+                      'assets/images/pmc_transparent_1.png',
                       fit: BoxFit.contain,
                     ),
                   ),

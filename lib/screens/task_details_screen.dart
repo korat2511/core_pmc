@@ -374,7 +374,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
       }
 
       // Load all users and site users in parallel
-      final allUserResponse = await ApiService.getAllUsers(apiToken: apiToken);
+      final allUserResponse = await ApiService.getAllUsers(
+        apiToken: apiToken,
+        companyId: AuthService.currentUser?.companyId,
+      );
       final siteUserResponse = await ApiService.getUsersBySite(
         apiToken: apiToken,
         siteId: _taskDetail?.siteId ?? 0,

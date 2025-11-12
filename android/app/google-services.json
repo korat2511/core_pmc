@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "400934075728",
-    "project_id": "core-pmc-7a16e",
-    "storage_bucket": "core-pmc-7a16e.firebasestorage.app"
+    "project_number": "963319091501",
+    "project_id": "pmc-projects-18ba4",
+    "storage_bucket": "pmc-projects-18ba4.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:400934075728:android:478e39aa446a63a207c055",
+        "mobilesdk_app_id": "1:963319091501:android:51a5825e7060d98427c3a4",
         "android_client_info": {
-          "package_name": "com.corepmc.core_pmc"
+          "package_name": "com.pmcprojects.pmcstaging"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAShwHbv7WYrxJXW4cLKJvnsUPUcZ8d1LA"
+          "current_key": "AIzaSyANTL0cYSvblWuqRqlPjCTIRuZZnxzZm0M"
         }
       ],
       "services": {

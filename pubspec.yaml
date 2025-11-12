@@ -2,7 +2,7 @@ name: core_pmc
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.0+4
+version: 1.0.0+1
 
 environment:
   sdk: ^3.8.1
@@ -47,7 +47,6 @@ dependencies:
   change_app_package_name: ^1.5.0
 
 dev_dependencies:
-  sentry_dart_plugin: ^3.1.1
   flutter_test:
     sdk: flutter
 
@@ -89,8 +88,3 @@ flutter:
           weight: 200
         - asset: assets/fonts/Lexend-Thin.ttf
           weight: 100
-sentry:
-  upload_debug_symbols: true
-  upload_source_maps: true
-  project: corepmc
-  org: excellence-it-solution

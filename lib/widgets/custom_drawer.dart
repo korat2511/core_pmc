@@ -12,10 +12,13 @@ import '../screens/attendance_screen.dart';
 import '../screens/to_do_list.dart';
 import '../screens/designation_management_screen.dart';
 import '../screens/invite_team_screen.dart';
+import '../screens/join_company_screen.dart';
 import '../services/invitation_service.dart';
 import '../providers/theme_provider.dart';
 import '../services/permission_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../services/api_service.dart';
+import '../screens/login_screen.dart';
 
 class CustomDrawer extends StatefulWidget {
   final VoidCallback? onViewProfile;
@@ -182,42 +185,21 @@ class _CustomDrawerState extends State<CustomDrawer> {
     try {
       final result = await AuthService.switchCompany(companyId);
       
-      // Close loading dialog
+
       Navigator.of(context).pop();
       
       if (result['success']) {
-        // Close drawer
         Navigator.of(context).pop();
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Switched to ${result['companyName'] ?? 'new company'}'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        
-        // Data refresh is handled by CompanyNotifier stream in individual screens
-        // Home screen and other screens listening to the stream will auto-refresh
+        SnackBarUtils.showSuccess(context, message: "Switched to ${result['companyName'] ?? "new company"}");
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to switch company'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarUtils.showError(context, message: result['message'] ?? 'Failed to switch company');
+
       }
     } catch (e) {
-      // Close loading dialog
+
       Navigator.of(context).pop();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackBarUtils.showError(context, message: "Error: ${e.toString()}");
+
     }
   }
 
@@ -239,6 +221,199 @@ class _CustomDrawerState extends State<CustomDrawer> {
       SnackBarUtils.showError(
         context,
         message: 'Unable to share right now. ${e.toString()}',
+      );
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Delete Account',
+          style: AppTypography.titleLarge.copyWith(
+            color: Theme.of(context).colorScheme.error,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'This will deactivate your account and sign you out of the app. You can only continue by contacting an administrator or joining a company again. Are you sure you want to proceed?',
+          style: AppTypography.bodyMedium.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Deleting account...',
+                style: AppTypography.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final result = await ApiService.deleteAccount();
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop();
+
+    if ((result['status'] == 1) || (result['success'] == true)) {
+      SnackBarUtils.showSuccess(
+        context,
+        message: result['message'] ?? 'Account deleted successfully.',
+      );
+
+      await AuthService.logout();
+
+      if (!mounted) return;
+
+      NavigationUtils.pushAndRemoveAll(context, const LoginScreen());
+    } else {
+      SnackBarUtils.showError(
+        context,
+        message: result['message'] ?? 'Failed to delete account. Please try again.',
+      );
+    }
+  }
+
+  Future<void> _handleDeleteCompany() async {
+    final user = AuthService.currentUser;
+    final companyId = user?.companyId;
+
+    if (user == null || companyId == null) {
+      SnackBarUtils.showError(
+        context,
+        message: 'No company selected to delete. Please switch to a company first.',
+      );
+      return;
+    }
+
+    final companyName = user.companyName.trim().isEmpty ? 'this company' : user.companyName;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Delete Company',
+          style: AppTypography.titleLarge.copyWith(
+            color: Theme.of(context).colorScheme.error,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Deleting $companyName will permanently remove the entire company footprint, including site information, task history, attendance logs, inventory records, and every other dataset linked to this organisation. All team members will lose access and none of this information can be recovered later. If you still want to proceed, confirm below.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Deleting company...',
+                style: AppTypography.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final result = await ApiService.deleteCompany(companyId: companyId);
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop();
+
+    if ((result['status'] == 'success') || (result['status'] == 1) || (result['success'] == true)) {
+      SnackBarUtils.showSuccess(
+        context,
+        message: result['message'] ?? 'Company deleted successfully.',
+      );
+
+      await AuthService.logout();
+
+      if (!mounted) return;
+
+      NavigationUtils.pushAndRemoveAll(context, const LoginScreen());
+    } else {
+      SnackBarUtils.showError(
+        context,
+        message: result['message'] ?? 'Failed to delete company. Please try again.',
       );
     }
   }
@@ -531,6 +706,26 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   ),
                   _buildDrawerItem(
                     context,
+                    icon: Icons.add_business,
+                    title: 'Join a Company',
+                    onTap: () {
+                      final currentUser = AuthService.currentUser;
+                      if (currentUser == null) {
+                        SnackBarUtils.showError(
+                          context,
+                          message: 'Please login again to join a company.',
+                        );
+                        return;
+                      }
+
+                      NavigationUtils.push(
+                        context,
+                        JoinCompanyScreen(userId: currentUser.id),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    context,
                     icon: Icons.ios_share,
                     title: 'Share App',
                     onTap: () => _shareApp(context),
@@ -559,6 +754,23 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   },
                 ),
                 const Divider(),
+                if (PermissionService.canManageCompanySettings())
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.apartment,
+                    title: 'Delete Company',
+                    onTap: _handleDeleteCompany,
+                    textColor: Theme.of(context).colorScheme.error,
+                    iconColor: Theme.of(context).colorScheme.error,
+                  ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.person_remove_alt_1_outlined,
+                  title: 'Delete Account',
+                  onTap: _handleDeleteAccount,
+                  textColor: Theme.of(context).colorScheme.error,
+                  iconColor: Theme.of(context).colorScheme.error,
+                ),
                 // Logout
                 _buildDrawerItem(
                   context,
@@ -566,7 +778,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   title: 'Logout',
                   onTap: widget.onLogout ?? () {
                     AuthService.logout();
-                    Navigator.of(context).pushReplacementNamed('/login');
+                    NavigationUtils.pushReplacement(context, const LoginScreen());
                   },
                   textColor: Theme.of(context).colorScheme.error,
                   iconColor: Theme.of(context).colorScheme.error,

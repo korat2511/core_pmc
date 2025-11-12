@@ -41,48 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBGyF6oOkoFHIYhmZGktyvFRydqCG67cXk',
-    appId: '1:400934075728:web:a20bdf70d4c0ec7607c055',
-    messagingSenderId: '400934075728',
-    projectId: 'core-pmc-7a16e',
-    authDomain: 'core-pmc-7a16e.firebaseapp.com',
-    storageBucket: 'core-pmc-7a16e.firebasestorage.app',
-    measurementId: 'G-DPHTEPRHTS',
+    apiKey: 'AIzaSyCR8m6l-kd5OycBXdjOv-Gcvy0IK4IKM_o',
+    appId: '1:963319091501:web:861e67cf10e0beb327c3a4',
+    messagingSenderId: '963319091501',
+    projectId: 'pmc-projects-18ba4',
+    authDomain: 'pmc-projects-18ba4.firebaseapp.com',
+    storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
+    measurementId: 'G-PCL04EKB23',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAShwHbv7WYrxJXW4cLKJvnsUPUcZ8d1LA',
-    appId: '1:400934075728:android:478e39aa446a63a207c055',
-    messagingSenderId: '400934075728',
-    projectId: 'core-pmc-7a16e',
-    storageBucket: 'core-pmc-7a16e.firebasestorage.app',
+    apiKey: 'AIzaSyANTL0cYSvblWuqRqlPjCTIRuZZnxzZm0M',
+    appId: '1:963319091501:android:51a5825e7060d98427c3a4',
+    messagingSenderId: '963319091501',
+    projectId: 'pmc-projects-18ba4',
+    storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBaTwjWz_PwR3RKeIORXh90lNWzZTWlWNY',
-    appId: '1:400934075728:ios:9d2ab93818cac28007c055',
-    messagingSenderId: '400934075728',
-    projectId: 'core-pmc-7a16e',
-    storageBucket: 'core-pmc-7a16e.firebasestorage.app',
-    iosBundleId: 'com.corepmc.corePmc',
+    apiKey: 'AIzaSyC4QUn55JgXstv20wjoAZU8bfuMSQUXMo0',
+    appId: '1:963319091501:ios:ee2ee4c4866b5c0927c3a4',
+    messagingSenderId: '963319091501',
+    projectId: 'pmc-projects-18ba4',
+    storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
+    iosBundleId: 'com.pmcprojects.pmcstaging',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBaTwjWz_PwR3RKeIORXh90lNWzZTWlWNY',
-    appId: '1:400934075728:ios:9d2ab93818cac28007c055',
-    messagingSenderId: '400934075728',
-    projectId: 'core-pmc-7a16e',
-    storageBucket: 'core-pmc-7a16e.firebasestorage.app',
+    apiKey: 'AIzaSyC4QUn55JgXstv20wjoAZU8bfuMSQUXMo0',
+    appId: '1:963319091501:ios:c186e27e0eb3352127c3a4',
+    messagingSenderId: '963319091501',
+    projectId: 'pmc-projects-18ba4',
+    storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
     iosBundleId: 'com.corepmc.corePmc',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBGyF6oOkoFHIYhmZGktyvFRydqCG67cXk',
-    appId: '1:400934075728:web:c8a741185a6cf7a507c055',
-    messagingSenderId: '400934075728',
-    projectId: 'core-pmc-7a16e',
-    authDomain: 'core-pmc-7a16e.firebaseapp.com',
-    storageBucket: 'core-pmc-7a16e.firebasestorage.app',
-    measurementId: 'G-BKJ2KZWX9R',
+    apiKey: 'AIzaSyCR8m6l-kd5OycBXdjOv-Gcvy0IK4IKM_o',
+    appId: '1:963319091501:web:225fa472ade412c127c3a4',
+    messagingSenderId: '963319091501',
+    projectId: 'pmc-projects-18ba4',
+    authDomain: 'pmc-projects-18ba4.firebaseapp.com',
+    storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
+    measurementId: 'G-10XRNYDWNM',
   );
+
 }

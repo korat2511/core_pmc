@@ -214,7 +214,7 @@ class _CompanySignupScreenState extends State<CompanySignupScreen> {
                       desktop: 120,
                     ),
                     child: Image.asset(
-                      'assets/images/pmc_logo.png',
+                      'assets/images/pmc_transparent_1.png',
                       fit: BoxFit.contain,
                     ),
                   ),

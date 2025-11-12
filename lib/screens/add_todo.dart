@@ -1,4 +1,5 @@
 import 'package:core_pmc/core/constants/app_colors.dart';
+import 'package:core_pmc/core/utils/snackbar_utils.dart';
 import 'package:core_pmc/widgets/custom_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -42,9 +43,8 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 
   void _saveTodo() {
     if (_titleController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a title')),
-      );
+      SnackBarUtils.showError(context, message: "Please enter a title");
+
       return;
     }
 

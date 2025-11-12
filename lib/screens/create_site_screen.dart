@@ -1471,24 +1471,28 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('Select Location - ${widget.siteName}'),
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          foregroundColor: Theme.of(context).colorScheme.onSurface,
-          elevation: 0,
+
+        appBar: CustomAppBar(
+          title: 'Select Location - ${widget.siteName}',
+          showDrawer: false,
+          showBackButton: true,
+          showCompass: false,
+
           actions: [
             TextButton(
               onPressed: _selectLocation,
               child: Text(
                 'SELECT',
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.surface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
+
+
         body: Stack(
           children: [
             // Map

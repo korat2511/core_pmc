@@ -5,6 +5,7 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../services/api_service.dart';
@@ -141,14 +142,11 @@ class _JoinCompanyScreenState extends State<JoinCompanyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Join Company'),
-        backgroundColor: AppColors.backgroundColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+
+      appBar: CustomAppBar(
+        title: 'Join Company',
+        showDrawer: false,
+        showBackButton: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

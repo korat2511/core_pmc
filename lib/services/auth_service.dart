@@ -82,8 +82,19 @@ class AuthService {
 
   // Update user data
   static Future<void> updateUser(UserModel user) async {
-    await LocalStorageService.saveUser(user);
-    _currentUser = user;
+    final currentAllowed = _currentUser?.allowedCompanies;
+    final needsAllowedMerge = (user.allowedCompanies == null || user.allowedCompanies!.isEmpty) &&
+        (currentAllowed != null && currentAllowed.isNotEmpty);
+
+    final mergedUser = needsAllowedMerge
+        ? UserModel.fromJson({
+            ...user.toJson(),
+            'allowed_companies': currentAllowed.map((company) => company.toJson()).toList(),
+          })
+        : user;
+
+    await LocalStorageService.saveUser(mergedUser);
+    _currentUser = mergedUser;
   }
 
   // Check if user is active

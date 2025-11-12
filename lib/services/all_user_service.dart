@@ -1,6 +1,7 @@
 import '../models/site_user_model.dart';
 import '../models/site_user_response.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 import 'local_storage_service.dart';
 import 'session_manager.dart';
 
@@ -32,6 +33,7 @@ class AllUserService {
       // Call API
       final SiteUserResponse response = await ApiService.getAllUsers(
         apiToken: apiToken,
+        companyId: AuthService.currentUser?.companyId,
       );
 
       if (response.isSuccess) {
