@@ -89,7 +89,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   String? _formatDate(String? dateString) {
     if (dateString == null || dateString.isEmpty) return null;
-
+    
     try {
       final DateTime date = DateTime.parse(dateString);
       return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
@@ -123,185 +123,185 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 color: Theme.of(context).colorScheme.primary,
               ),
             )
-          : RefreshIndicator(
+                    : RefreshIndicator(
               onRefresh: _loadUserDetails,
               color: Theme.of(context).colorScheme.primary,
-              child: SingleChildScrollView(
+            child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: ResponsiveUtils.responsivePadding(context),
-                child: Column(
-                  children: [
-                    Container(
-                      width: ResponsiveUtils.responsiveFontSize(
+              padding: ResponsiveUtils.responsivePadding(context),
+              child: Column(
+          children: [
+            Container(
+              width: ResponsiveUtils.responsiveFontSize(
+                context,
+                mobile: 120,
+                tablet: 140,
+                desktop: 160,
+              ),
+              height: ResponsiveUtils.responsiveFontSize(
+                context,
+                mobile: 120,
+                tablet: 140,
+                desktop: 160,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 60,
+                    tablet: 70,
+                    desktop: 80,
+                  ),
+                ),
+              ),
+              child: user?.imageUrl != null
+                  ? ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 60,
+                    tablet: 70,
+                    desktop: 80,
+                  ),
+                ),
+                child: Image.network(
+                  user!.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      size: ResponsiveUtils.responsiveFontSize(
                         context,
-                        mobile: 120,
-                        tablet: 140,
-                        desktop: 160,
+                        mobile: 60,
+                        tablet: 70,
+                        desktop: 80,
                       ),
-                      height: ResponsiveUtils.responsiveFontSize(
+                    );
+                  },
+                ),
+              )
+                  : Icon(
+                Icons.person,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 60,
+                  tablet: 70,
+                  desktop: 80,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 24,
+                tablet: 32,
+                desktop: 40,
+              ),
+            ),
+                Container(
+                  width: double.infinity,
+                  padding: ResponsiveUtils.responsivePadding(context),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveUtils.responsiveSpacing(
                         context,
-                        mobile: 120,
-                        tablet: 140,
-                        desktop: 160,
+                        mobile: 16,
+                        tablet: 20,
+                        desktop: 24,
                       ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(
-                          ResponsiveUtils.responsiveFontSize(
-                            context,
-                            mobile: 60,
-                            tablet: 70,
-                            desktop: 80,
-                          ),
-                        ),
-                      ),
-                      child: user?.imageUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                ResponsiveUtils.responsiveFontSize(
-                                  context,
-                                  mobile: 60,
-                                  tablet: 70,
-                                  desktop: 80,
-                                ),
-                              ),
-                              child: Image.network(
-                                user!.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.person,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                    size: ResponsiveUtils.responsiveFontSize(
-                                      context,
-                                      mobile: 60,
-                                      tablet: 70,
-                                      desktop: 80,
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                          : Icon(
-                              Icons.person,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              size: ResponsiveUtils.responsiveFontSize(
-                                context,
-                                mobile: 60,
-                                tablet: 70,
-                                desktop: 80,
-                              ),
-                            ),
                     ),
-                    SizedBox(
-                      height: ResponsiveUtils.responsiveSpacing(
-                        context,
-                        mobile: 24,
-                        tablet: 32,
-                        desktop: 40,
-                      ),
+                    border: Border.all(
+                      color: AppColors.borderColor,
+                      width: 1,
                     ),
-                    Container(
-                      width: double.infinity,
-                      padding: ResponsiveUtils.responsivePadding(context),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(
-                          ResponsiveUtils.responsiveSpacing(
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Profile Details',
+                        style: AppTypography.titleLarge.copyWith(
+                          fontSize: ResponsiveUtils.responsiveFontSize(
                             context,
-                            mobile: 16,
+                            mobile: 18,
                             tablet: 20,
-                            desktop: 24,
+                            desktop: 22,
                           ),
-                        ),
-                        border: Border.all(
-                          color: AppColors.borderColor,
-                          width: 1,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Profile Details',
-                            style: AppTypography.titleLarge.copyWith(
-                              fontSize: ResponsiveUtils.responsiveFontSize(
-                                context,
-                                mobile: 18,
-                                tablet: 20,
-                                desktop: 22,
-                              ),
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(
-                            height: ResponsiveUtils.responsiveSpacing(
-                              context,
-                              mobile: 16,
-                              tablet: 20,
-                              desktop: 24,
-                            ),
-                          ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.badge_outlined,
-                            title: 'User ID',
-                            value: user?.id.toString() ?? 'N/A',
-                          ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.person_outline,
-                            title: 'Full Name',
-                            value: user?.fullName ?? 'N/A',
-                          ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.phone_outlined,
-                            title: 'Mobile Number',
-                            value: user?.mobile ?? 'N/A',
-                          ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.email_outlined,
-                            title: 'Email',
-                            value: user?.email ?? 'N/A',
-                          ),
-                          _buildProfileItem(
-                            context,
+                      SizedBox(
+                        height: ResponsiveUtils.responsiveSpacing(
+                          context,
+                          mobile: 16,
+                          tablet: 20,
+                          desktop: 24,
+                        ),
+                      ),
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.badge_outlined,
+                        title: 'User ID',
+                        value: user?.id.toString() ?? 'N/A',
+                      ),
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.person_outline,
+                        title: 'Full Name',
+                        value: user?.fullName ?? 'N/A',
+                      ),
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.phone_outlined,
+                        title: 'Mobile Number',
+                        value: user?.mobile ?? 'N/A',
+                      ),
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.email_outlined,
+                        title: 'Email',
+                        value: user?.email ?? 'N/A',
+                      ),
+                      _buildProfileItem(
+                        context,
                             icon: Icons.business_center_outlined,
-                            title: 'Designation',
-                            value: user?.designationDisplay ?? 'Employee',
-                          ),
+                        title: 'Designation',
+                        value: user?.designationDisplay ?? 'Employee',
+                      ),
                           _buildProfileItem(
                             context,
                             icon: Icons.apartment_outlined,
                             title: 'Company',
                             value: user?.companyName ?? 'N/A',
                           ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.circle_outlined,
-                            title: 'Status',
-                            value: user?.status ?? 'N/A',
-                            valueColor: user?.isActive == true
-                                ? Colors.green
-                                : Theme.of(context).colorScheme.error,
-                          ),
-                          _buildProfileItem(
-                            context,
-                            icon: Icons.calendar_today_outlined,
-                            title: 'Joined On',
-                            value: _formatDate(user?.createdAt) ?? 'N/A',
-                          ),
-                        ],
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.circle_outlined,
+                        title: 'Status',
+                        value: user?.status ?? 'N/A',
+                        valueColor: user?.isActive == true
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.error,
                       ),
-                    ),
-                  ],
+                      _buildProfileItem(
+                        context,
+                        icon: Icons.calendar_today_outlined,
+                        title: 'Joined On',
+                        value: _formatDate(user?.createdAt) ?? 'N/A',
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-    );
+          ],
+        ),
+      ),
+    ),
+  );
   }
 
   Widget _buildProfileItem(
