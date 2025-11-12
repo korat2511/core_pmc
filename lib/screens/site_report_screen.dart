@@ -585,13 +585,17 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                             SizedBox(height: 16),
 
                             // Progress text
-                            Text(
-                              progress >= 100 ? 'Download completed' : 'Downloading PDF...',
-                              style: AppTypography.titleMedium.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
+                             Text(
+                               status == 'preparing'
+                                   ? 'Preparing report...'
+                                   : (progress >= 100
+                                       ? 'Download completed'
+                                       : 'Downloading PDF...'),
+                               style: AppTypography.titleMedium.copyWith(
+                                 fontWeight: FontWeight.w600,
+                                 color: Theme.of(context).colorScheme.onSurface,
+                               ),
+                             ),
                             SizedBox(height: 8),
 
                             // Percentage with animation
@@ -915,8 +919,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _isAnimating = false;
         _showProgressOverlay = false;
         _isLoading = true;
+        progress = 0;
+        status = 'preparing';
       });
     }
+    _showProgressOverlaySmoothly();
 
     try {
       // Prepare parameters
@@ -1009,6 +1016,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             if (pdfUrl.toString().isEmpty || !pdfUrl.toString().startsWith('http')) {
               debugPrint('Invalid PDF URL: $pdfUrl');
               if (mounted) {
+                _hideProgressOverlaySmoothly();
                 SnackBarUtils.showError(
                   context,
                   message: 'Invalid PDF URL received from server.',
@@ -1062,6 +1070,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           } else {
             debugPrint('Invalid PDF response - URL: $pdfUrl, Name: $pdfName');
             if (mounted) {
+              _hideProgressOverlaySmoothly();
               SnackBarUtils.showError(
                 context,
                 message: 'Invalid PDF response from server.',
@@ -1071,11 +1080,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         } else {
 
           if (mounted) {
+            _hideProgressOverlaySmoothly();
             SnackBarUtils.showError(context, message: "Failed to generate report. Please try again.");
           }
         }
       } else {
         if (mounted) {
+          _hideProgressOverlaySmoothly();
           SnackBarUtils.showError(
             context,
             message: 'Failed to generate report. Please try again.',
@@ -1084,6 +1095,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       }
     } catch (e) {
 
+      _hideProgressOverlaySmoothly();
       if (e is TypeError) {
         print('TypeError details: ${e.toString()}');
       }
@@ -1263,6 +1275,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         return 'Preparing download...';
       case 'running':
         return 'Downloading...';
+      case 'preparing':
+        return 'Preparing report...';
       case 'paused':
         return 'Download paused';
       case 'failed':
