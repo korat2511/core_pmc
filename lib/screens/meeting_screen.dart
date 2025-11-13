@@ -688,13 +688,6 @@ class _MeetingScreenState extends State<MeetingScreen>
                       onPressed: () async{
                         final pdfUrl = meeting.pdfReportUrl;
                         final pdfName = "${widget.site.name.replaceAll(' ', '_')}_meeting_${meeting.id}";
-
-                        log("pdfUrl = $pdfUrl");
-                        log("pdfName = $pdfName");
-
-                        print('PDF URL: $pdfUrl');
-                        print('PDF Name: $pdfName');
-
                         // Don't show success message here - it will be shown when download completes
 
                         final permission = await FlDownloader.requestPermission();

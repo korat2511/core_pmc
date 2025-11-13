@@ -8,7 +8,6 @@ environment:
   sdk: ^3.8.1
 
 dependencies:
-  sentry_flutter: ^9.7.0
   flutter:
     sdk: flutter
 
@@ -31,7 +30,7 @@ dependencies:
   flutter_contacts: ^1.1.9+2
   dio: ^5.9.0
   path_provider: ^2.1.5
-  fl_downloader: ^2.1.0
+  fl_downloader: ^2.0.1+1
 #  flutter_downloader: ^1.12.0
   provider: ^6.1.5+1
   firebase_core: ^4.0.0

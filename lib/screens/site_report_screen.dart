@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
@@ -177,7 +178,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           if (event.statusReason != null) {
             errorMessage += 'Reason: ${event.statusReason.toString()}';
           } else {
-            errorMessage += 'Please check your internet connection and try again.';
+            errorMessage;
           }
           SnackBarUtils.showError(
             context,
@@ -1033,7 +1034,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               try {
                 debugPrint('Starting download...');
                 var downloadId = await FlDownloader.download(
-                  pdfUrl.toString(),
+                  pdfUrl,
                   fileName: "$pdfName.pdf",
                 );
 
@@ -1048,8 +1049,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                     );
                   }
                 }
+
               } catch (e) {
-                debugPrint('Download error: $e');
+                log('Download error: 2550 $e');
                 _hideProgressOverlaySmoothly();
                 if (mounted) {
                   SnackBarUtils.showError(
