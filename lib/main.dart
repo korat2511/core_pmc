@@ -24,11 +24,7 @@ void main() async {
   );
   // Initialize session manager
   SessionManager.instance;
-
-
   runApp(const MyApp());
-
-
 }
 
 class MyApp extends StatelessWidget {

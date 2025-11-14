@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -13,6 +14,7 @@ import '../models/site_user_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/navigation_utils.dart';
 
 class SiteReportScreen extends StatefulWidget {
   final SiteModel site;
@@ -37,6 +39,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   bool _isAnimating = false;
+  String? _lastGeneratedPdfUrl;
+  bool _manualDownloadDialogShown = false;
 
   // Report sections with sub-parts
   final Map<String, bool> _reportSections = {
@@ -185,6 +189,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             message: errorMessage,
           );
         }
+        _showManualDownloadDialog();
       } else if (event.status == DownloadStatus.paused) {
         debugPrint('Download paused');
         Future.delayed(
@@ -922,6 +927,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _isLoading = true;
         progress = 0;
         status = 'preparing';
+        _lastGeneratedPdfUrl = null;
+        _manualDownloadDialogShown = false;
       });
     }
     _showProgressOverlaySmoothly();
@@ -1026,6 +1033,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               return;
             }
 
+            if (mounted) {
+              setState(() {
+                _lastGeneratedPdfUrl = pdfUrl.toString();
+                _manualDownloadDialogShown = false;
+              });
+            }
+
             // Request permission
             final permission = await FlDownloader.requestPermission();
             debugPrint('Storage permission status: $permission');
@@ -1048,6 +1062,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                       message: 'Failed to start download. Please check your internet connection.',
                     );
                   }
+                  _showManualDownloadDialog();
                 }
 
               } catch (e) {
@@ -1059,6 +1074,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                     message: 'Download failed: ${e.toString()}',
                   );
                 }
+                _showManualDownloadDialog();
               }
             } else {
               _hideProgressOverlaySmoothly();
@@ -1068,6 +1084,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                   message: 'Storage permission denied. Cannot download PDF.',
                 );
               }
+              _showManualDownloadDialog();
             }
           } else {
             debugPrint('Invalid PDF response - URL: $pdfUrl, Name: $pdfName');
@@ -1107,6 +1124,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           message: 'Error generating report: ${e.toString()}',
         );
       }
+      _showManualDownloadDialog();
     } finally {
       if (mounted) {
         setState(() {
@@ -1318,5 +1336,97 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         }
       });
     }
+  }
+
+  Future<void> _showManualDownloadDialog() async {
+    if (!mounted || _lastGeneratedPdfUrl == null || _manualDownloadDialogShown) {
+      return;
+    }
+
+    setState(() {
+      _manualDownloadDialogShown = true;
+    });
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            'Manual Download Available',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'We could not download the PDF automatically. You can use the link below to download it manually:',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.borderColor),
+                ),
+                child: SelectableText(
+                  _lastGeneratedPdfUrl ?? '',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final url = _lastGeneratedPdfUrl;
+                if (url != null && url.isNotEmpty) {
+                  await Clipboard.setData(ClipboardData(text: url));
+                  NavigationUtils.pop(dialogContext);
+                  if (mounted) {
+                    SnackBarUtils.showSuccess(
+                      context,
+                      message: 'Link copied to clipboard',
+                    );
+                  }
+                } else {
+                  NavigationUtils.pop(dialogContext);
+                }
+              },
+              child: Text(
+                'Copy link',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => NavigationUtils.pop(dialogContext),
+              child: Text(
+                'Close',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
