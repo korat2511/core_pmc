@@ -17,10 +17,7 @@ import 'screens/task_details_screen.dart';
 import 'screens/invite_team_screen.dart';
 import 'models/task_model.dart';
 import 'services/session_manager.dart';
-import 'services/force_update_manager.dart';
 import 'providers/theme_provider.dart';
-import 'widgets/dismiss_keyboard.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() async {
 
