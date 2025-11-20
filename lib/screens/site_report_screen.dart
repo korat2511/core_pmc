@@ -1066,7 +1066,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                 }
 
               } catch (e) {
-                log('Download error: 2550 $e');
+                log('Download error: $e');
                 _hideProgressOverlaySmoothly();
                 if (mounted) {
                   SnackBarUtils.showError(
@@ -1314,7 +1314,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _showProgressOverlay = true;
         _isAnimating = true;
       });
-      // Small delay to ensure smooth appearance
       Future.delayed(const Duration(milliseconds: 50), () {
         if (mounted) {
           _overlayAnimationController.forward();
