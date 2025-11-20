@@ -141,8 +141,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       drawer: CustomDrawer(),
       floatingActionButton: PermissionService.canCreateSite()
           ? FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.of(context).pushNamed('/create-site');
+              onPressed: () async {
+                // Navigate to create site and wait for result
+                final result = await Navigator.of(context).pushNamed('/create-site');
+                // If site was created, refresh the list
+                if (result == true && mounted) {
+                  _loadSites();
+                }
               },
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,

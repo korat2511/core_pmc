@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/image_picker_utils.dart';
 import '../services/attendance_check_service.dart';
 import '../services/site_service.dart';
 import '../services/api_service.dart';
@@ -28,6 +30,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   bool _isLoading = false;
   bool _showPunchInForm = false;
   List<SiteModel> _availableSites = [];
+  File? _capturedImage; // Image captured for attendance
 
   @override
   void initState() {
@@ -87,8 +90,15 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   }
 
   Future<void> _handlePunchOut() async {
+    // First, capture image
+    final image = await _captureAttendanceImage('Check Out');
+    if (image == null) {
+      return; // User cancelled image capture
+    }
+
     setState(() {
       _isLoading = true;
+      _capturedImage = image;
     });
 
     try {
@@ -134,7 +144,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         address = 'Location not available';
       }
 
-      // Call saveAttendance API for punch out
+      // Call saveAttendance API for punch out with image
       final success = await ApiService.saveAttendance(
         type: 'check_out',
         siteId: '', // Empty for punch out
@@ -142,10 +152,16 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         remark: '',
         latitude: currentPosition.latitude.toString(),
         longitude: currentPosition.longitude.toString(),
+        image: _capturedImage!,
       );
 
       if (success) {
         SnackBarUtils.showSuccess(context, message: 'Successfully punched out');
+        
+        // Clear captured image
+        setState(() {
+          _capturedImage = null;
+        });
         
         // Refresh attendance status and update UI
         await _loadAttendanceStatus();
@@ -166,9 +182,51 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     }
   }
 
+  Future<File?> _captureAttendanceImage(String action) async {
+    // Use existing showImageSourceDialog from ImagePickerUtils
+    final file = await ImagePickerUtils.showImageSourceDialog(
+      context: context,
+      chooseMultiple: false,
+      imageQuality: 50, // Lower quality for smaller file size
+    );
+    
+    if (file == null) {
+      return null; // User cancelled
+    }
+    
+    // Compress to 512 KB max
+    final compressedFile = await ImagePickerUtils.compressImageToSize(
+      file,
+      maxSizeInKB: 512.0,
+    );
+    
+    if (compressedFile == null) {
+      return null;
+    }
+    
+    // Validate final size
+    final finalSizeKB = ImagePickerUtils.getImageSizeInMB(compressedFile) * 1024;
+    if (finalSizeKB > 512.0 && mounted) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Image is too large (${finalSizeKB.toStringAsFixed(0)} KB). Please try again with a smaller image.',
+      );
+      return null;
+    }
+    
+    return compressedFile;
+  }
+
   Future<void> _performAutoPunchIn() async {
+    // First, capture image
+    final image = await _captureAttendanceImage('Check In');
+    if (image == null) {
+      return; // User cancelled image capture
+    }
+
     setState(() {
       _isLoading = true;
+      _capturedImage = image;
     });
 
     try {
@@ -225,8 +283,8 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
 
       // Perform punch-in with detected site or empty
       if (nearbySite != null) {
-        // Site found within 500 meters - auto check-in
-        _performPunchInWithLocation(nearbySite, currentPosition);
+        // Site found within 500 meters - auto check-in (image already captured)
+        _performPunchInWithLocation(nearbySite, currentPosition, _capturedImage);
       } else {
         // No site found within 500 meters - ask for remark
         _showRemarkDialog();
@@ -303,8 +361,15 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
   }
 
   Future<void> _performRemoteCheckIn(String remark) async {
+    // First, capture image
+    final image = await _captureAttendanceImage('Check In');
+    if (image == null) {
+      return; // User cancelled image capture
+    }
+
     setState(() {
       _isLoading = true;
+      _capturedImage = image;
     });
 
     try {
@@ -358,6 +423,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         remark: remark,
         latitude: currentPosition.latitude.toString(),
         longitude: currentPosition.longitude.toString(),
+        image: _capturedImage!,
       );
 
       if (success) {
@@ -365,6 +431,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           context, 
           message: 'Successfully checked in from remote location',
         );
+        
+        // Clear captured image
+        setState(() {
+          _capturedImage = null;
+        });
         
         // Refresh attendance status and update UI
         await _loadAttendanceStatus();
@@ -385,9 +456,19 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     }
   }
 
-  Future<void> _performPunchInWithLocation(SiteModel site, Position currentPosition) async {
+  Future<void> _performPunchInWithLocation(SiteModel site, Position currentPosition, [File? preCapturedImage]) async {
+    // Capture image if not already captured
+    File? image = preCapturedImage;
+    if (image == null) {
+      image = await _captureAttendanceImage('Check In');
+      if (image == null) {
+        return; // User cancelled image capture
+      }
+    }
+
     setState(() {
       _isLoading = true;
+      _capturedImage = image;
     });
 
     try {
@@ -417,6 +498,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         remark: '',
         latitude: currentPosition.latitude.toString(),
         longitude: currentPosition.longitude.toString(),
+        image: _capturedImage!,
       );
 
       if (success) {
@@ -424,6 +506,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           context, 
           message: 'Successfully checked in at ${site.name}',
         );
+        
+        // Clear captured image
+        setState(() {
+          _capturedImage = null;
+        });
         
         // Refresh attendance status and update UI
         await _loadAttendanceStatus();

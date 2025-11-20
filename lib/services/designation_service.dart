@@ -26,11 +26,17 @@ class DesignationService {
       return false;
     }
 
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
+      _errorMessage = 'Session expired. Please log in again.';
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = '';
 
     final response = await ApiService.getDesignations(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       companyId: companyId,
     );
 
@@ -55,14 +61,14 @@ class DesignationService {
     int? order,
     String status = 'active',
   }) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return null;
     }
 
     final response = await ApiService.createDesignation(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       companyId: companyId,
       name: name,
       order: order,
@@ -86,14 +92,14 @@ class DesignationService {
     int? order,
     String? status,
   }) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return null;
     }
 
     final response = await ApiService.updateDesignation(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       designationId: designationId,
       name: name,
       order: order,
@@ -106,8 +112,12 @@ class DesignationService {
           _designations.indexWhere((designation) => designation.id == updated.id);
       if (index != -1) {
         _designations[index] = updated;
-        _designations.sort((a, b) => a.order.compareTo(b.order));
+      } else {
+        // If not found, add it (shouldn't happen, but handle it)
+        _designations.add(updated);
       }
+      // Sort by order after update
+      _designations.sort((a, b) => a.order.compareTo(b.order));
       return updated;
     }
 
@@ -116,14 +126,14 @@ class DesignationService {
   }
 
   static Future<bool> deleteDesignation({required int designationId}) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return false;
     }
 
     final response = await ApiService.deleteDesignation(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       designationId: designationId,
     );
 
@@ -146,8 +156,8 @@ class DesignationService {
       ..addAll(orderedDesignations);
     _designations.sort((a, b) => a.order.compareTo(b.order));
 
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return false;
     }
@@ -164,7 +174,7 @@ class DesignationService {
         .toList();
 
     final response = await ApiService.reorderDesignations(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       companyId: companyId,
       designations: payload,
     );
@@ -185,14 +195,14 @@ class DesignationService {
   static Future<Map<String, dynamic>?> getDesignationAccess({
     required int designationId,
   }) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return null;
     }
 
     final response = await ApiService.getDesignationAccess(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       designationId: designationId,
     );
 
@@ -209,14 +219,14 @@ class DesignationService {
     required int designationId,
     required Map<String, dynamic> permissions,
   }) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser == null) {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
       _errorMessage = 'Session expired. Please log in again.';
       return false;
     }
 
     final response = await ApiService.updateDesignationAccess(
-      apiToken: currentUser.apiToken,
+      apiToken: token,
       designationId: designationId,
       permissions: permissions,
     );

@@ -29,12 +29,14 @@ import '../models/billing_address_model.dart';
 import '../models/terms_and_condition_model.dart';
 import '../models/meeting_model.dart';
 import '../models/material_stock_model.dart';
+import '../models/site_gallery_image_model.dart';
+import '../models/petty_cash_entry_model.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 
 class ApiService {
-  // static const String baseUrl = 'https://pmcprojects.in';
-  static const String baseUrl = 'https://nutanvij.com';
+  static const String baseUrl = 'https://pmcprojects.in';
+  // static const String baseUrl = 'https://nutanvij.com';
   static const Duration timeout = Duration(seconds: 30);
 
   // Generic method to handle API responses
@@ -290,8 +292,6 @@ class ApiService {
             body: requestData,
           )
           .timeout(timeout);
-
-
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -655,6 +655,68 @@ class ApiService {
         'success': false,
         'message': 'Network error occurred',
       };
+    }
+  }
+
+  // Get Site Gallery Images API
+  static Future<ApiResponse<List<SiteGalleryImageModel>>> getSiteGallery({
+    required String apiToken,
+    required int siteId,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/getSiteGallery'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'site_id': siteId.toString(),
+              'page': page.toString(),
+              'per_page': perPage.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['status'] == 1 && jsonData['data'] != null) {
+          final List<dynamic> imagesJson = jsonData['data'];
+          final List<SiteGalleryImageModel> images = imagesJson
+              .map((json) => SiteGalleryImageModel.fromJson(json))
+              .toList();
+          
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Gallery images retrieved successfully',
+            data: images,
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to retrieve gallery images',
+            data: [],
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: [],
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching site gallery: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: [],
+      );
     }
   }
 
@@ -1043,6 +1105,7 @@ class ApiService {
     required String remark,
     required String latitude,
     required String longitude,
+    required File image,
   }) async {
     try {
       final token = await AuthService.currentToken;
@@ -1050,32 +1113,35 @@ class ApiService {
         return false;
       }
 
-      final Map<String, dynamic> requestData = {
-        'api_token': token,
-        'type': type,
-        'site_id': siteId,
-        'address': address,
-        'remark': remark,
-        'latitude': latitude,
-        'longitude': longitude,
-      };
-
-      final response = await http.post(
+      // Use multipart request for image upload
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse('$baseUrl/api/saveAttendance'),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
-      ).timeout(timeout);
+      );
 
+      // Add fields
+      request.fields['api_token'] = token;
+      request.fields['type'] = type;
+      request.fields['site_id'] = siteId;
+      request.fields['address'] = address;
+      request.fields['remark'] = remark;
+      request.fields['latitude'] = latitude;
+      request.fields['longitude'] = longitude;
+
+      // Add image file
+      final multipartFile = await http.MultipartFile.fromPath(
+        'image',
+        image.path,
+      );
+      request.files.add(multipartFile);
+
+      // Send request
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         final success = jsonData['status'] == 1 || jsonData['success'] == true;
-        if (!success) {
-
-        }
         return success;
       } else {
         return false;
@@ -2101,8 +2167,8 @@ class ApiService {
     required String siteName,
     required String clientName,
     required String architectName,
-    required DateTime startDate,
-    required DateTime endDate,
+    DateTime? startDate,
+    DateTime? endDate,
     required List<String> images,
     required double latitude,
     required double longitude,
@@ -2111,6 +2177,17 @@ class ApiService {
     required int maxRange,
   }) async {
     try {
+      // Get company_id from current user
+      final currentUser = AuthService.currentUser;
+      final companyId = currentUser?.companyId;
+      
+      if (companyId == null) {
+        return ApiResponse(
+          status: 0,
+          message: 'User must be associated with a company to create a site',
+        );
+      }
+
       // Create multipart request
       final request = http.MultipartRequest(
         'POST',
@@ -2123,20 +2200,28 @@ class ApiService {
       });
 
       // Add text fields
-      request.fields.addAll({
+      final fields = <String, String>{
         'api_token': apiToken,
         'name': siteName,
         'client_name': clientName,
         'architect_name': architectName,
-        'start_date': startDate.toIso8601String().split('T')[0], // YYYY-MM-DD format
-        'end_date': endDate.toIso8601String().split('T')[0], // YYYY-MM-DD format
         'latitude': latitude.toString(),
         'longitude': longitude.toString(),
         'address': address,
         'min_range': minRange.toString(),
         'max_range': maxRange.toString(),
-        'company': "PMC",
-      });
+        'company_id': companyId.toString(), 
+      };
+      
+      // Add optional date fields only if provided
+      if (startDate != null) {
+        fields['start_date'] = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      }
+      if (endDate != null) {
+        fields['end_date'] = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      }
+      
+      request.fields.addAll(fields);
 
       // Add image files
       for (int i = 0; i < images.length; i++) {
@@ -2165,8 +2250,15 @@ class ApiService {
       }
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
+        try {
+          final Map<String, dynamic> jsonData = json.decode(response.body) as Map<String, dynamic>;
         return ApiResponse.fromJson(jsonData, null);
+        } catch (parseError) {
+          return ApiResponse(
+            status: 0,
+            message: 'Failed to parse server response: ${parseError.toString()}',
+          );
+        }
       } else {
         return ApiResponse(
           status: response.statusCode,
@@ -2176,7 +2268,7 @@ class ApiService {
     } catch (e) {
       return ApiResponse(
         status: 0,
-        message: 'Failed to create site: $e',
+        message: 'Failed to create site: ${e.toString()}',
       );
     }
   }
@@ -5114,6 +5206,7 @@ class ApiService {
     String? companyEmail,
     String? companyPhone,
     String? companyAddress,
+    File? logoFile,
     required bool hasAccount,
     String? userMobile,
     String? firstName,
@@ -5124,6 +5217,49 @@ class ApiService {
     int? designationId,
   }) async {
     try {
+      // Use multipart request if logo file is provided, otherwise use form-urlencoded
+      if (logoFile != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/api/user/companySignup'),
+        );
+
+        // Add fields
+        request.fields['company_name'] = companyName;
+        request.fields['has_account'] = hasAccount ? '1' : '0';
+        if (companyEmail != null) request.fields['company_email'] = companyEmail;
+        if (companyPhone != null) request.fields['company_phone'] = companyPhone;
+        if (companyAddress != null) request.fields['company_address'] = companyAddress;
+        if (hasAccount && userMobile != null) request.fields['user_mobile'] = userMobile;
+        if (!hasAccount && firstName != null) request.fields['first_name'] = firstName;
+        if (!hasAccount && lastName != null) request.fields['last_name'] = lastName;
+        if (!hasAccount && mobile != null) request.fields['mobile'] = mobile;
+        if (!hasAccount && email != null) request.fields['email'] = email;
+        if (!hasAccount && password != null) request.fields['password'] = password;
+        if (designationId != null) request.fields['designation_id'] = designationId.toString();
+
+        // Add logo file
+        final multipartFile = await http.MultipartFile.fromPath(
+          'logo',
+          logoFile.path,
+        );
+        request.files.add(multipartFile);
+
+        // Send request
+        final streamedResponse = await request.send().timeout(timeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          return jsonData;
+        } else {
+          return {
+            'status': 0,
+            'message': _parseApiErrorMessage(response.body, response.statusCode),
+          };
+        }
+      } else {
+        // Use form-urlencoded for requests without logo
       final requestData = {
         'company_name': companyName,
         'has_account': hasAccount ? '1' : '0',
@@ -5156,10 +5292,134 @@ class ApiService {
           'status': 0,
           'message': _parseApiErrorMessage(response.body, response.statusCode),
         };
+        }
       }
     } catch (e) {
       return {
         'status': 0,
+        'message': 'Network error. Please check your connection and try again.',
+      };
+    }
+  }
+
+  // Get Company By ID
+  static Future<Map<String, dynamic>> getCompanyById({
+    required String apiToken,
+    required int companyId,
+  }) async {
+    try {
+      final requestData = {
+        'api_token': apiToken,
+        'company_id': companyId.toString(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/company/getCompanyById'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        return {
+          'status': 'error',
+          'message': _parseApiErrorMessage(response.body, response.statusCode),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 'error',
+        'message': 'Failed to fetch company details. Please try again.',
+      };
+    }
+  }
+
+  // Update Company
+  static Future<Map<String, dynamic>> updateCompany({
+    required String apiToken,
+    required int companyId,
+    String? name,
+    String? email,
+    String? phone,
+    String? address,
+    File? logoFile,
+    String? description,
+  }) async {
+    try {
+      // Use multipart request if logo file is provided, otherwise use form-urlencoded
+      if (logoFile != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/api/company/updateCompany'),
+        );
+
+        // Add fields
+        request.fields['api_token'] = apiToken;
+        request.fields['company_id'] = companyId.toString();
+        if (name != null) request.fields['name'] = name;
+        if (email != null) request.fields['email'] = email;
+        if (phone != null) request.fields['phone'] = phone;
+        if (address != null) request.fields['address'] = address;
+        if (description != null) request.fields['description'] = description;
+
+        // Add logo file
+        final multipartFile = await http.MultipartFile.fromPath(
+          'logo',
+          logoFile.path,
+        );
+        request.files.add(multipartFile);
+
+        // Send request
+        final streamedResponse = await request.send().timeout(timeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          return jsonData;
+        } else {
+          return {
+            'status': 'error',
+            'message': _parseApiErrorMessage(response.body, response.statusCode),
+          };
+        }
+      } else {
+        // Use form-urlencoded for requests without logo
+        final requestData = {
+          'api_token': apiToken,
+          'company_id': companyId.toString(),
+          if (name != null) 'name': name,
+          if (email != null) 'email': email,
+          if (phone != null) 'phone': phone,
+          if (address != null) 'address': address,
+          if (description != null) 'description': description,
+        };
+
+        final response = await http.post(
+          Uri.parse('$baseUrl/api/company/updateCompany'),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+          },
+          body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+        ).timeout(timeout);
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          return jsonData;
+        } else {
+          return {
+            'status': 'error',
+            'message': _parseApiErrorMessage(response.body, response.statusCode),
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        'status': 'error',
         'message': 'Network error. Please check your connection and try again.',
       };
     }
@@ -5976,6 +6236,442 @@ class ApiService {
         'status': 0,
         'message': 'Something went wrong. $e',
       };
+    }
+  }
+
+  // Petty Cash APIs
+  static Future<ApiResponse<PettyCashEntryModel>> createPettyCashEntry({
+    required String apiToken,
+    required int siteId,
+    required String ledgerType,
+    required double amount,
+    required String paymentMode,
+    required String entryDate,
+    String? receivedBy,
+    String? receivedVia,
+    String? receivedFrom,
+    String? receivedFromType,
+    int? receivedFromId,
+    String? receivedFromName,
+    String? paidBy,
+    String? paidVia,
+    String? paidTo,
+    String? paidToType,
+    int? paidToId,
+    String? paidToName,
+    String? transactionId,
+    String? remark,
+    required List<File> imageFiles,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/pettyCash/createEntry'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+      });
+
+      final fields = <String, String>{
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'ledger_type': ledgerType,
+        'amount': amount.toString(),
+        'payment_mode': paymentMode,
+        'entry_date': entryDate,
+      };
+
+      if (remark != null && remark.isNotEmpty) {
+        fields['remark'] = remark;
+      }
+      if (transactionId != null && transactionId.isNotEmpty) {
+        fields['transaction_id'] = transactionId;
+      }
+
+      // Add received fields
+      if (ledgerType == 'received') {
+        if (receivedBy != null) fields['received_by'] = receivedBy;
+        if (receivedVia != null) fields['received_via'] = receivedVia;
+        if (receivedFrom != null) fields['received_from'] = receivedFrom;
+        if (receivedFromType != null) fields['received_from_type'] = receivedFromType;
+        if (receivedFromId != null) fields['received_from_id'] = receivedFromId.toString();
+        if (receivedFromName != null) fields['received_from_name'] = receivedFromName;
+      }
+
+      // Add spent fields
+      if (ledgerType == 'spent') {
+        if (paidBy != null) fields['paid_by'] = paidBy;
+        if (paidVia != null) fields['paid_via'] = paidVia;
+        if (paidTo != null) fields['paid_to'] = paidTo;
+        if (paidToType != null) fields['paid_to_type'] = paidToType;
+        if (paidToId != null) fields['paid_to_id'] = paidToId.toString();
+        if (paidToName != null) fields['paid_to_name'] = paidToName;
+      }
+
+      request.fields.addAll(fields);
+
+      // Add images
+      for (final imageFile in imageFiles) {
+        request.files.add(
+          await http.MultipartFile.fromPath('images', imageFile.path),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1 && jsonData['data'] != null) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Entry created successfully',
+            data: PettyCashEntryModel.fromJson(jsonData['data']),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to create entry',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating petty cash entry: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse<Map<String, dynamic>>> getPettyCashEntries({
+    required String apiToken,
+    required int siteId,
+    String? ledgerType,
+    String? startDate,
+    String? endDate,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final requestData = <String, String>{
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+
+      if (ledgerType != null) requestData['ledger_type'] = ledgerType;
+      if (startDate != null) requestData['start_date'] = startDate;
+      if (endDate != null) requestData['end_date'] = endDate;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/pettyCash/getEntries'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: requestData,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          final dataList = jsonData['data'];
+          List<Map<String, dynamic>> entries = [];
+          
+          if (dataList != null && dataList is List) {
+            entries = dataList
+                .where((e) => e is Map<String, dynamic>)
+                .map((e) => e as Map<String, dynamic>)
+                .toList();
+          }
+
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Entries retrieved successfully',
+            data: {
+              'entries': entries,
+              'pagination': jsonData['pagination'],
+              'summary': jsonData['summary'],
+            },
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to retrieve entries',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching petty cash entries: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse<List<PettyCashOptionModel>>> getPettyCashOptions({
+    required String apiToken,
+    required int siteId,
+    required String type, // 'site_engineer', 'project_coordinator', 'agency', 'vendor', 'client'
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/pettyCash/getOptions'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'site_id': siteId.toString(),
+              'type': type,
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1 && jsonData['data'] != null) {
+          final options = (jsonData['data'] as List<dynamic>)
+              .map((opt) => PettyCashOptionModel.fromJson(opt))
+              .toList();
+
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Options retrieved successfully',
+            data: options,
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to retrieve options',
+            data: [],
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: [],
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching petty cash options: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: [],
+      );
+    }
+  }
+
+  static Future<ApiResponse<PettyCashEntryModel>> updatePettyCashEntry({
+    required String apiToken,
+    required int entryId,
+    required double amount,
+    required String entryDate,
+    String? paymentMode,
+    String? receivedBy,
+    String? receivedVia,
+    String? receivedFrom,
+    String? receivedFromType,
+    int? receivedFromId,
+    String? receivedFromName,
+    String? paidBy,
+    String? paidVia,
+    String? paidTo,
+    String? paidToType,
+    int? paidToId,
+    String? paidToName,
+    String? transactionId,
+    String? remark,
+    List<File>? imageFiles,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/pettyCash/updateEntry'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+      });
+
+      final fields = <String, String>{
+        'api_token': apiToken,
+        'entry_id': entryId.toString(),
+        'amount': amount.toString(),
+        'entry_date': entryDate,
+      };
+
+      if (paymentMode != null) fields['payment_mode'] = paymentMode;
+      if (remark != null) fields['remark'] = remark;
+      if (transactionId != null) fields['transaction_id'] = transactionId;
+      if (receivedBy != null) fields['received_by'] = receivedBy;
+      if (receivedVia != null) fields['received_via'] = receivedVia;
+      if (receivedFrom != null) fields['received_from'] = receivedFrom;
+      if (receivedFromType != null) fields['received_from_type'] = receivedFromType;
+      if (receivedFromId != null) fields['received_from_id'] = receivedFromId.toString();
+      if (receivedFromName != null) fields['received_from_name'] = receivedFromName;
+      if (paidBy != null) fields['paid_by'] = paidBy;
+      if (paidVia != null) fields['paid_via'] = paidVia;
+      if (paidTo != null) fields['paid_to'] = paidTo;
+      if (paidToType != null) fields['paid_to_type'] = paidToType;
+      if (paidToId != null) fields['paid_to_id'] = paidToId.toString();
+      if (paidToName != null) fields['paid_to_name'] = paidToName;
+
+      request.fields.addAll(fields);
+
+      // Add new images if provided
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        for (final imageFile in imageFiles) {
+          request.files.add(
+            await http.MultipartFile.fromPath('images[]', imageFile.path),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1 && jsonData['data'] != null) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Entry updated successfully',
+            data: PettyCashEntryModel.fromJson(jsonData['data']),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to update entry',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating petty cash entry: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse> deletePettyCashEntry({
+    required String apiToken,
+    required int entryId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/pettyCash/deleteEntry'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'entry_id': entryId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? 'Entry deleted successfully',
+          data: null,
+        );
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting petty cash entry: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse> deletePettyCashImage({
+    required String apiToken,
+    required int imageId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/pettyCash/deleteImage'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'image_id': imageId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return ApiResponse(
+          status: jsonData['status'] ?? 0,
+          message: jsonData['message'] ?? 'Image deleted successfully',
+          data: null,
+        );
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting petty cash image: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
     }
   }
 

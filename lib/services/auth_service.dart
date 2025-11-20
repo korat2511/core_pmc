@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import '../models/user_model.dart';
 import 'api_service.dart';
 import 'local_storage_service.dart';
@@ -36,6 +38,9 @@ class AuthService {
         mobile: mobile,
         password: password,
       );
+
+      log("Login Response == ${response.status}");
+      log("Login Response == ${response.message}");
 
       if (response.isSuccess &&
           response.user != null &&

@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/image_picker_utils.dart';
 import '../core/theme/app_typography.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
@@ -23,6 +25,9 @@ class _CompanySignupScreenState extends State<CompanySignupScreen> {
   final _companyEmailController = TextEditingController();
   final _companyPhoneController = TextEditingController();
   final _companyAddressController = TextEditingController();
+  
+  // Logo file
+  File? _selectedLogoFile;
   
   // User Fields (for new account)
   final _firstNameController = TextEditingController();
@@ -76,6 +81,7 @@ class _CompanySignupScreenState extends State<CompanySignupScreen> {
           companyAddress: _companyAddressController.text.trim().isEmpty
               ? null
               : _companyAddressController.text.trim(),
+          logoFile: _selectedLogoFile,
           hasAccount: _hasAccount,
           userMobile: _hasAccount
               ? _existingUserMobileController.text.trim()
@@ -214,7 +220,7 @@ class _CompanySignupScreenState extends State<CompanySignupScreen> {
                       desktop: 120,
                     ),
                     child: Image.asset(
-                      'assets/images/pmc_transparent_1.png',
+                      'assets/images/pmc.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -324,6 +330,149 @@ class _CompanySignupScreenState extends State<CompanySignupScreen> {
                         hintText: 'Enter company address',
                         textCapitalization: TextCapitalization.sentences,
                         maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Company Logo Section
+                      Text(
+                        'Company Logo (Optional)',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Logo Upload Button and Preview
+                      Row(
+                        children: [
+                          // Logo Preview/Upload Button
+                          GestureDetector(
+                            onTap: () async {
+                              final file = await ImagePickerUtils.showImageSourceDialog(
+                                context: context,
+                                chooseMultiple: false,
+                                imageQuality: 85,
+                              );
+                              if (file != null && mounted) {
+                                // Validate image size (max 2MB)
+                                if (!ImagePickerUtils.isImageSizeValid(file, 2.0)) {
+                                  SnackBarUtils.showError(
+                                    context,
+                                    message: 'Image size must be less than 2MB',
+                                  );
+                                  return;
+                                }
+                                
+                                // Validate image dimensions (max 512x512)
+                                // Validate image size (max 2MB)
+                                final isValidSize = ImagePickerUtils.isImageSizeValid(file, 2.0);
+                                if (!isValidSize) {
+                                  SnackBarUtils.showError(
+                                    context,
+                                    message: 'Logo image size cannot exceed 2MB.',
+                                  );
+                                  setState(() {
+                                    _selectedLogoFile = null;
+                                  });
+                                  return;
+                                }
+                                
+                                // Validate aspect ratio (3.8:1)
+                                final isValidAspectRatio = await ImagePickerUtils.isImageAspectRatioValid(
+                                  file,
+                                  targetRatio: 3.8,
+                                  tolerance: 0.1,
+                                );
+                                if (!isValidAspectRatio) {
+                                  final aspectRatio = await ImagePickerUtils.getImageAspectRatio(file);
+                                  SnackBarUtils.showError(
+                                    context,
+                                    message: 'Logo aspect ratio must be approximately 3.8:1 (wide format). Current ratio: ${aspectRatio?.toStringAsFixed(2) ?? 'N/A'}:1. Recommended dimensions: 800x210px or 1600x421px.',
+                                  );
+                                  setState(() {
+                                    _selectedLogoFile = null;
+                                  });
+                                  return;
+                                }
+                                
+                                setState(() {
+                                  _selectedLogoFile = file;
+                                });
+                              }
+                            },
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.primaryColor.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: _selectedLogoFile != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        _selectedLogoFile!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate,
+                                          color: AppColors.primaryColor,
+                                          size: 32,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Add Logo',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Remove Logo Button
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_selectedLogoFile != null)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedLogoFile = null;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline, size: 18),
+                                    label: const Text('Remove Logo'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Logo will be used in PDF reports. Aspect ratio: 3.8:1 (wide format). Max size: 2MB. Recommended: 800x210px or 1600x421px',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 32),
 

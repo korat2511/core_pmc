@@ -20,15 +20,26 @@ class DesignationModel {
   });
 
   factory DesignationModel.fromJson(Map<String, dynamic> json) {
+    // Helper function to safely convert to int
+    int _toInt(dynamic value, int defaultValue) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      if (value is String) {
+        final parsed = int.tryParse(value);
+        return parsed ?? defaultValue;
+      }
+      return defaultValue;
+    }
+
     return DesignationModel(
-      id: json['id'] ?? 0,
-      companyId: json['company_id'] ?? 0,
-      name: json['name'] ?? '',
-      order: json['order'] ?? 0,
-      status: json['status'] ?? 'active',
+      id: _toInt(json['id'], 0),
+      companyId: _toInt(json['company_id'], 0),
+      name: json['name']?.toString() ?? '',
+      order: _toInt(json['order'], 0),
+      status: json['status']?.toString() ?? 'active',
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
-      deletedAt: json['deleted_at'],
+      deletedAt: json['deleted_at']?.toString(),
     );
   }
 

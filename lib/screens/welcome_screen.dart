@@ -12,7 +12,7 @@ class WelcomeScreen extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: AppColors.surfaceColor,
       body: SafeArea(
         child: Padding(
           padding: ResponsiveUtils.responsivePadding(context),
@@ -35,7 +35,7 @@ class WelcomeScreen extends StatelessWidget {
                   desktop: 160,
                 ),
                 child: Image.asset(
-                  'assets/images/pmc_transparent_1.png',
+                  'assets/images/pmc.png',
                   fit: BoxFit.contain,
                 ),
               ),

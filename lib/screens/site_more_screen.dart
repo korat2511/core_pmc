@@ -16,6 +16,7 @@ import 'site_agency_screen.dart';
 import 'meeting_screen.dart';
 import 'quantity_screen.dart';
 import 'petty_cash_screen.dart';
+import 'site_gallery_screen.dart';
 
 
 class SiteMoreScreen extends StatefulWidget {
@@ -302,9 +303,12 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         );
         break;
       case 'Site Gallery':
-        SnackBarUtils.showInfo(
+        NavigationUtils.push(
           context,
-          message: 'Site Gallery functionality coming soon',
+          SiteGalleryScreen(
+            siteId: widget.site.id,
+            siteName: widget.site.name,
+          ),
         );
         break;
       case 'Folders':
@@ -323,7 +327,7 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         NavigationUtils.push(context, MeetingScreen(site: widget.site));
         break;
       case 'Petty Cash':
-        NavigationUtils.push(context, PettyCashScreen(site: widget.site));
+        NavigationUtils.push(context, PettyCashScreen(site: widget.site,));
         break;
       default:
         // Show a temporary message for other options

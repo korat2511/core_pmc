@@ -7,11 +7,11 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
-import '../core/utils/navigation_utils.dart';
 import '../core/utils/image_picker_utils.dart';
 import '../core/utils/date_picker_utils.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
+import '../services/site_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_date_picker_field.dart';
@@ -419,7 +419,9 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
     try {
       final String? apiToken = await LocalStorageService.getToken();
       if (apiToken == null) {
-        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        if (mounted) {
+          SnackBarUtils.showError(context, message: 'Authentication token not found');
+        }
         return;
       }
 
@@ -428,8 +430,8 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
         siteName: _siteNameController.text.trim(),
         clientName: _clientNameController.text.trim(),
         architectName: _architectNameController.text.trim(),
-        startDate: _startDate!,
-        endDate: _endDate!,
+        startDate: _startDate,
+        endDate: _endDate,
         images: _selectedImages,
         latitude: double.tryParse(_latitudeController.text.trim()) ?? 0.0,
         longitude: double.tryParse(_longitudeController.text.trim()) ?? 0.0,
@@ -438,18 +440,36 @@ class _CreateSiteScreenState extends State<CreateSiteScreen> {
         maxRange: int.tryParse(_maxRangeController.text.trim()) ?? 500,
       );
 
-      if (response.isSuccess) {
-        SnackBarUtils.showSuccess(context, message: 'Site created successfully');
-        NavigationUtils.pop(context);
-      } else {
-        SnackBarUtils.showError(context, message: response.message);
+      if (mounted) {
+        if (response.isSuccess) {
+          SnackBarUtils.showSuccess(context, message: 'Site created successfully');
+          
+          // Refresh the site list to show the newly created site
+          await SiteService.getSiteList(status: '');
+          SiteService.updateFilteredSites(''); // Update filtered sites
+          
+          // Return to previous screen with refresh flag
+          Navigator.of(context).pop(true);
+        } else {
+          final errorMessage = response.message.isNotEmpty 
+              ? response.message 
+              : 'Failed to create site. Please try again.';
+          SnackBarUtils.showError(context, message: errorMessage);
+        }
       }
     } catch (e) {
-      SnackBarUtils.showError(context, message: 'Failed to create site: $e');
+      if (mounted) {
+        final errorMessage = e.toString().contains('Null check operator')
+            ? 'Please fill all required fields before creating a site'
+            : 'Failed to create site: ${e.toString()}';
+        SnackBarUtils.showError(context, message: errorMessage);
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

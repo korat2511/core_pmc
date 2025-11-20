@@ -7,6 +7,7 @@ import '../core/theme/app_typography.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../services/auth_service.dart';
+import 'signup_next_step_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -50,8 +51,36 @@ class _LoginScreenState extends State<LoginScreen> {
           // Show success message
           SnackBarUtils.showSuccess(context, message: 'Login successful!');
           
-          // Navigate to home screen
-          Navigator.of(context).pushReplacementNamed('/home');
+          // Check if user has a company
+          final currentUser = AuthService.currentUser;
+          final hasCompany = currentUser?.company != null || 
+                            (currentUser?.allowedCompanies != null && 
+                             currentUser!.allowedCompanies!.isNotEmpty);
+          
+          if (hasCompany) {
+            // User has a company, navigate to home
+            Navigator.of(context).pushReplacementNamed('/home');
+          } else {
+            // User has no company, navigate to signup next step
+            if (currentUser != null) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => SignupNextStepScreen(
+                    userData: {
+                      'id': currentUser.id,
+                      'first_name': currentUser.firstName,
+                      'last_name': currentUser.lastName,
+                      'email': currentUser.email,
+                      'mobile': currentUser.mobile,
+                    },
+                  ),
+                ),
+              );
+            } else {
+              // Fallback to home if user data is not available
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
+          }
         } else {
           // Show error message from API response
           SnackBarUtils.showError(
@@ -76,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: AppColors.surfaceColor,
       body: SafeArea(
                 child: SingleChildScrollView(
           padding: ResponsiveUtils.responsivePadding(context),
@@ -119,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       child: Image.asset(
-                        'assets/images/pmc_transparent_1.png',
+                        'assets/images/pmc.png',
                         fit: BoxFit.contain,
                       ),
                     ),

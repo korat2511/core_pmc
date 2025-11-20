@@ -10,6 +10,7 @@ import '../core/utils/snackbar_utils.dart';
 import '../models/attendance_model.dart';
 import '../models/site_model.dart';
 import '../services/site_service.dart';
+import '../services/api_service.dart';
 
 class AttendanceDetailModal extends StatefulWidget {
   final DateTime date;
@@ -64,6 +65,9 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
     final isFutureDate = widget.date.isAfter(DateTime.now().subtract(const Duration(days: 1)));
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
@@ -71,9 +75,10 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
           topRight: Radius.circular(20),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Handle bar
           Container(
             margin: const EdgeInsets.only(top: 12),
@@ -190,9 +195,10 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
           
           // Content
           if (isPresent) ...[
-            Container(
+            Padding(
               padding: ResponsiveUtils.responsivePadding(context),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Details Section
                   _buildDetailsSection(context, widget.attendance!),
@@ -213,9 +219,10 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
               ),
             ),
           ] else ...[
-            Container(
+            Padding(
               padding: ResponsiveUtils.responsivePadding(context),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isFutureDate 
@@ -268,7 +275,8 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
               desktop: 28,
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -563,6 +571,38 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
                   // Map controls
                   _buildMapControls(context),
                 ],
+              ),
+            ),
+          ),
+          
+          SizedBox(
+            height: ResponsiveUtils.responsiveSpacing(
+              context,
+              mobile: 12,
+              tablet: 16,
+              desktop: 20,
+            ),
+          ),
+          
+          // Full Screen Map Button
+          Padding(
+            padding: ResponsiveUtils.responsivePadding(context),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showFullScreenMap(context, attendance, markers, centerLocation!),
+                icon: Icon(Icons.map_outlined),
+                label: Text('View Full Screen Map'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    vertical: ResponsiveUtils.responsiveSpacing(
+                      context,
+                      mobile: 12,
+                      tablet: 16,
+                      desktop: 20,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -1053,12 +1093,59 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
             ),
           ],
           
+          // Distance from site for check-in
+          if (attendance.latitudeIn != null && 
+              attendance.longitudeIn != null && 
+              attendance.latitudeIn!.isNotEmpty && 
+              attendance.longitudeIn!.isNotEmpty &&
+              attendance.siteId != null) ...[
+            SizedBox(
+              height: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 8,
+                tablet: 12,
+                desktop: 16,
+              ),
+            ),
+            _buildDistanceNote(
+              context,
+              attendance: attendance,
+              isCheckIn: true,
+            ),
+          ],
+          
+          // Check-in Image (only show if image exists and is not empty)
+          if ((attendance.imageInUrl ?? attendance.imageIn) != null && 
+              (attendance.imageInUrl ?? attendance.imageIn)!.isNotEmpty && 
+              (attendance.imageInUrl ?? attendance.imageIn)!.trim().isNotEmpty) ...[
+            _buildImageSection(
+              context,
+              title: 'Check-in Image',
+              imageUrl: attendance.imageInUrl ?? attendance.imageIn ?? '',
+              icon: Icons.camera_alt_outlined,
+              color: Colors.green,
+            ),
+          ],
+          
+          // Divider between check-in and check-out
           SizedBox(
             height: ResponsiveUtils.responsiveSpacing(
               context,
-              mobile: 12,
-              tablet: 16,
-              desktop: 20,
+              mobile: 16,
+              tablet: 20,
+              desktop: 24,
+            ),
+          ),
+          Divider(
+            thickness: 1,
+            color: AppColors.borderColor,
+          ),
+          SizedBox(
+            height: ResponsiveUtils.responsiveSpacing(
+              context,
+              mobile: 16,
+              tablet: 20,
+              desktop: 24,
             ),
           ),
           
@@ -1088,6 +1175,41 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
               icon: Icons.location_on_outlined,
               color: Colors.blue,
               onTap: () => _focusOnCheckOutLocation(attendance),
+            ),
+          ],
+          
+          // Distance from site for check-out
+          if (attendance.latitudeOut != null && 
+              attendance.longitudeOut != null && 
+              attendance.latitudeOut!.isNotEmpty && 
+              attendance.longitudeOut!.isNotEmpty &&
+              attendance.siteId != null) ...[
+            SizedBox(
+              height: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 4,
+                tablet: 6,
+                desktop: 8,
+              ),
+            ),
+            _buildDistanceNote(
+              context,
+              attendance: attendance,
+              isCheckIn: false,
+            ),
+          ],
+          
+          // Check-out Image (only show if image exists and is not empty)
+          // Note: Auto checkout at midnight may not have image
+          if ((attendance.imageOutUrl ?? attendance.imageOut) != null && 
+              (attendance.imageOutUrl ?? attendance.imageOut)!.isNotEmpty && 
+              (attendance.imageOutUrl ?? attendance.imageOut)!.trim().isNotEmpty) ...[
+            _buildImageSection(
+              context,
+              title: 'Check-out Image',
+              imageUrl: attendance.imageOutUrl ?? attendance.imageOut ?? '',
+              icon: Icons.camera_alt_outlined,
+              color: Colors.red,
             ),
           ],
           
@@ -1221,5 +1343,438 @@ class _AttendanceDetailModalState extends State<AttendanceDetailModal> {
     }
     
     return content;
+  }
+
+  Widget _buildImageSection(
+    BuildContext context, {
+    required String title,
+    required String imageUrl,
+    required IconData icon,
+    required Color color,
+  }) {
+    // Validate image URL before processing
+    if (imageUrl.isEmpty || imageUrl.trim().isEmpty) {
+      return SizedBox.shrink();
+    }
+    
+    final fullImageUrl = _getFullImageUrl(imageUrl);
+    
+    // Double check after URL construction
+    if (fullImageUrl.isEmpty) {
+      return SizedBox.shrink();
+    }
+    
+    return Padding(
+      padding: EdgeInsets.only(
+        left: ResponsiveUtils.responsiveSpacing(
+          context,
+          mobile: 40,
+          tablet: 44,
+          desktop: 48,
+        ),
+        top: ResponsiveUtils.responsiveSpacing(
+          context,
+          mobile: 4,
+          tablet: 6,
+          desktop: 8,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => _showFullScreenImage(context, fullImageUrl, title),
+        child: Text(
+          'View $title',
+          style: AppTypography.bodySmall.copyWith(
+            fontSize: ResponsiveUtils.responsiveFontSize(
+              context,
+              mobile: 12,
+              tablet: 14,
+              desktop: 16,
+            ),
+            color: Colors.blue,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.blue,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getFullImageUrl(String imagePath) {
+    // Handle null or empty paths
+    if (imagePath.isEmpty || imagePath.trim().isEmpty) {
+      debugPrint('AttendanceDetailModal: Empty image path');
+      return '';
+    }
+    
+    // If image path already contains full URL, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      debugPrint('AttendanceDetailModal: Full URL provided: $imagePath');
+      return imagePath;
+    }
+    
+    // Otherwise, construct full URL from base URL and storage path
+    final baseUrl = ApiService.baseUrl.replaceAll('/api', '');
+    
+    // Clean the path - remove 'public/' if present, and ensure no leading slash
+    String cleanPath = imagePath.replaceFirst('public/', '').replaceFirst(RegExp(r'^/'), '');
+    
+    // Construct the full URL
+    final fullUrl = '$baseUrl/storage/$cleanPath';
+    debugPrint('AttendanceDetailModal: Constructed image URL: $fullUrl (from path: $imagePath)');
+    
+    return fullUrl;
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl, String title) {
+    // Validate image URL before showing
+    if (imageUrl.isEmpty || imageUrl.trim().isEmpty) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Image URL is not available',
+      );
+      return;
+    }
+    
+    final fullImageUrl = _getFullImageUrl(imageUrl);
+    if (fullImageUrl.isEmpty) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Image URL is not available',
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  fullImageUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.black87,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('AttendanceDetailModal: Image load error: $error');
+                    debugPrint('AttendanceDetailModal: Image URL: $fullImageUrl');
+                    debugPrint('AttendanceDetailModal: Stack trace: $stackTrace');
+                    return Container(
+                      color: Colors.black87,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Failed to load image',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            SizedBox(height: 8),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                fullImageUrl,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 40,
+                tablet: 50,
+                desktop: 60,
+              ),
+              right: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 20,
+                tablet: 30,
+                desktop: 40,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: ResponsiveUtils.responsiveFontSize(
+                    context,
+                    mobile: 28,
+                    tablet: 32,
+                    desktop: 36,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  padding: EdgeInsets.all(
+                    ResponsiveUtils.responsiveSpacing(
+                      context,
+                      mobile: 8,
+                      tablet: 12,
+                      desktop: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 40,
+                tablet: 50,
+                desktop: 60,
+              ),
+              left: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 20,
+                tablet: 30,
+                desktop: 40,
+              ),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.responsiveSpacing(
+                    context,
+                    mobile: 12,
+                    tablet: 16,
+                    desktop: 20,
+                  ),
+                  vertical: ResponsiveUtils.responsiveSpacing(
+                    context,
+                    mobile: 6,
+                    tablet: 8,
+                    desktop: 10,
+                  ),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.responsiveSpacing(
+                      context,
+                      mobile: 8,
+                      tablet: 12,
+                      desktop: 16,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  title,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: Colors.white,
+                    fontSize: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 14,
+                      tablet: 16,
+                      desktop: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Calculate distance from check-in/check-out to site
+  double? _calculateDistanceToSite(AttendanceModel attendance, bool isCheckIn) {
+    final site = _getSiteById(attendance.siteId);
+    if (site == null || site.latitude == null || site.longitude == null) {
+      return null;
+    }
+
+    double? lat;
+    double? lng;
+
+    if (isCheckIn) {
+      if (attendance.latitudeIn == null || 
+          attendance.longitudeIn == null || 
+          attendance.latitudeIn!.isEmpty || 
+          attendance.longitudeIn!.isEmpty) {
+        return null;
+      }
+      lat = double.tryParse(attendance.latitudeIn!);
+      lng = double.tryParse(attendance.longitudeIn!);
+    } else {
+      if (attendance.latitudeOut == null || 
+          attendance.longitudeOut == null || 
+          attendance.latitudeOut!.isEmpty || 
+          attendance.longitudeOut!.isEmpty) {
+        return null;
+      }
+      lat = double.tryParse(attendance.latitudeOut!);
+      lng = double.tryParse(attendance.longitudeOut!);
+    }
+
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    try {
+      final distanceInMeters = Geolocator.distanceBetween(
+        lat,
+        lng,
+        site.latitude!,
+        site.longitude!,
+      );
+      return distanceInMeters;
+    } catch (e) {
+      debugPrint('Error calculating distance: $e');
+      return null;
+    }
+  }
+
+  // Build distance note widget
+  Widget _buildDistanceNote(
+    BuildContext context, {
+    required AttendanceModel attendance,
+    required bool isCheckIn,
+  }) {
+    final distance = _calculateDistanceToSite(attendance, isCheckIn);
+    
+    if (distance == null) {
+      return SizedBox.shrink();
+    }
+
+    final distanceText = distance < 1000
+        ? '${distance.toStringAsFixed(0)} m away from site'
+        : '${(distance / 1000).toStringAsFixed(2)} km away from site';
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: ResponsiveUtils.responsiveSpacing(
+          context,
+          mobile: 40,
+          tablet: 44,
+          desktop: 48,
+        ),
+      ),
+      child: Text(
+        distanceText,
+        style: AppTypography.bodySmall.copyWith(
+          fontSize: ResponsiveUtils.responsiveFontSize(
+            context,
+            mobile: 11,
+            tablet: 12,
+            desktop: 13,
+          ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
+
+  // Show full-screen map
+  void _showFullScreenMap(
+    BuildContext context,
+    AttendanceModel attendance,
+    List<Marker> markers,
+    LatLng centerLocation,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          child: Stack(
+            children: [
+              GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: centerLocation,
+                  zoom: markers.length > 2 ? 10.0 : (markers.length > 1 ? 12.0 : 15.0),
+                ),
+                markers: Set<Marker>.from(markers),
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                zoomControlsEnabled: true,
+                mapToolbarEnabled: false,
+                mapType: MapType.normal,
+                onMapCreated: (GoogleMapController controller) {
+                  // Store controller if needed
+                },
+              ),
+              Positioned(
+                top: ResponsiveUtils.responsiveSpacing(
+                  context,
+                  mobile: 40,
+                  tablet: 50,
+                  desktop: 60,
+                ),
+                right: ResponsiveUtils.responsiveSpacing(
+                  context,
+                  mobile: 20,
+                  tablet: 30,
+                  desktop: 40,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: ResponsiveUtils.responsiveFontSize(
+                      context,
+                      mobile: 28,
+                      tablet: 32,
+                      desktop: 36,
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black54,
+                    padding: EdgeInsets.all(
+                      ResponsiveUtils.responsiveSpacing(
+                        context,
+                        mobile: 8,
+                        tablet: 12,
+                        desktop: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

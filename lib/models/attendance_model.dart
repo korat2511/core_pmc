@@ -13,6 +13,10 @@ class AttendanceModel {
   final String outTime;
   final String? addressIn;
   final String? addressOut;
+  final String? imageIn;
+  final String? imageOut;
+  final String? imageInUrl;
+  final String? imageOutUrl;
   final String createdAt;
   final int? siteId;
   final String updatedAt;
@@ -32,6 +36,10 @@ class AttendanceModel {
     required this.outTime,
     this.addressIn,
     this.addressOut,
+    this.imageIn,
+    this.imageOut,
+    this.imageInUrl,
+    this.imageOutUrl,
     required this.createdAt,
     this.siteId,
     required this.updatedAt,
@@ -53,6 +61,10 @@ class AttendanceModel {
       outTime: json['out_time']?.toString() ?? '',
       addressIn: json['address_in']?.toString(),
       addressOut: json['address_out']?.toString(),
+      imageIn: json['image_in']?.toString(),
+      imageOut: json['image_out']?.toString(),
+      imageInUrl: json['image_in_url']?.toString(),
+      imageOutUrl: json['image_out_url']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
       siteId: json['site_id'],
       updatedAt: json['updated_at']?.toString() ?? '',
@@ -75,6 +87,10 @@ class AttendanceModel {
       'out_time': outTime,
       'address_in': addressIn,
       'address_out': addressOut,
+      'image_in': imageIn,
+      'image_out': imageOut,
+      'image_in_url': imageInUrl,
+      'image_out_url': imageOutUrl,
       'created_at': createdAt,
       'site_id': siteId,
       'updated_at': updatedAt,

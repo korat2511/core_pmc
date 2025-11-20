@@ -13,6 +13,7 @@ import '../screens/to_do_list.dart';
 import '../screens/designation_management_screen.dart';
 import '../screens/invite_team_screen.dart';
 import '../screens/join_company_screen.dart';
+import '../screens/company_details_screen.dart';
 import '../services/invitation_service.dart';
 import '../providers/theme_provider.dart';
 import '../services/permission_service.dart';
@@ -754,7 +755,18 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   },
                 ),
                 const Divider(),
-                if (PermissionService.canManageCompanySettings())
+                if (PermissionService.canManageCompanySettings()) ...[
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.business,
+                    title: 'Company Details',
+                    onTap: () {
+                      NavigationUtils.push(
+                        context,
+                        const CompanyDetailsScreen(),
+                      );
+                    },
+                  ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.apartment,
@@ -763,6 +775,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     textColor: Theme.of(context).colorScheme.error,
                     iconColor: Theme.of(context).colorScheme.error,
                   ),
+                ],
                 _buildDrawerItem(
                   context,
                   icon: Icons.person_remove_alt_1_outlined,

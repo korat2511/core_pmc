@@ -170,17 +170,35 @@ class _InviteTeamScreenState extends State<InviteTeamScreen> {
 
     if (selectedDesignationId == null) return;
 
+    // Show channel selection dialog
+    final selectedChannels = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => _ChannelSelectionDialog(
+        hasEmail: contact.emails.isNotEmpty,
+        hasPhone: cleanedPhone.isNotEmpty,
+      ),
+    );
+
+    if (selectedChannels == null || selectedChannels.isEmpty) {
+      SnackBarUtils.showInfo(context, message: 'Please select at least one channel to send invitation.');
+      return;
+    }
+
     await _sendInvitation(
       name: contact.displayName,
       phone: cleanedPhone,
+      email: contact.emails.isNotEmpty ? contact.emails.first.address : null,
       designationId: selectedDesignationId,
+      channels: selectedChannels,
     );
   }
 
   Future<void> _sendInvitation({
     required String name,
     required String phone,
+    String? email,
     required int designationId,
+    required List<String> channels,
   }) async {
     setState(() => _isSending = true);
 
@@ -188,7 +206,8 @@ class _InviteTeamScreenState extends State<InviteTeamScreen> {
       designationId: designationId,
       fullName: name.trim().isEmpty ? null : name.trim(),
       mobile: phone,
-      channels: const ['sms'],
+      email: email,
+      channels: channels,
       notes: null,
       expiresInMinutes: null,
     );
@@ -216,10 +235,36 @@ class _InviteTeamScreenState extends State<InviteTeamScreen> {
   }
 
   Future<void> _handleResend(InvitationModel invitation) async {
-    final response = await _invitationService.resendInvitation(invitationId: invitation.id);
+    // Show channel selection dialog for resend
+    final hasEmail = invitation.email != null && invitation.email!.isNotEmpty;
+    final hasPhone = invitation.mobile != null && invitation.mobile!.isNotEmpty;
+
+    if (!hasEmail && !hasPhone) {
+      SnackBarUtils.showError(context, message: 'Invitation has no email or mobile number.');
+      return;
+    }
+
+    final selectedChannels = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => _ChannelSelectionDialog(
+        hasEmail: hasEmail,
+        hasPhone: hasPhone,
+      ),
+    );
+
+    if (selectedChannels == null || selectedChannels.isEmpty) {
+      SnackBarUtils.showInfo(context, message: 'Please select at least one channel to resend invitation.');
+      return;
+    }
+
+    final response = await _invitationService.resendInvitation(
+      invitationId: invitation.id,
+      channels: selectedChannels,
+    );
 
     if (response['status'] == 1) {
       SnackBarUtils.showSuccess(context, message: response['message'] ?? 'Invitation resent.');
+      await _loadInvitations(refresh: true);
     } else {
       SnackBarUtils.showError(context, message: response['message'] ?? 'Failed to resend invitation.');
     }
@@ -623,6 +668,135 @@ class _DesignationPickerSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ChannelSelectionDialog extends StatefulWidget {
+  final bool hasEmail;
+  final bool hasPhone;
+
+  const _ChannelSelectionDialog({
+    required this.hasEmail,
+    required this.hasPhone,
+  });
+
+  @override
+  State<_ChannelSelectionDialog> createState() => _ChannelSelectionDialogState();
+}
+
+class _ChannelSelectionDialogState extends State<_ChannelSelectionDialog> {
+  final Set<String> _selectedChannels = {'sms'}; // Default to SMS
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        'Select Channels',
+        style: AppTypography.titleMedium.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Choose how to send the invitation:',
+            style: AppTypography.bodyMedium.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (widget.hasEmail)
+            CheckboxListTile(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.email_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Email'),
+                ],
+              ),
+              value: _selectedChannels.contains('email'),
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    _selectedChannels.add('email');
+                  } else {
+                    _selectedChannels.remove('email');
+                  }
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+          if (widget.hasPhone) ...[
+            CheckboxListTile(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.sms_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('SMS'),
+                ],
+              ),
+              value: _selectedChannels.contains('sms'),
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    _selectedChannels.add('sms');
+                  } else {
+                    _selectedChannels.remove('sms');
+                  }
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+            CheckboxListTile(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.chat_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('WhatsApp'),
+                ],
+              ),
+              value: _selectedChannels.contains('whatsapp'),
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    _selectedChannels.add('whatsapp');
+                  } else {
+                    _selectedChannels.remove('whatsapp');
+                  }
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _selectedChannels.isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_selectedChannels.toList()),
+          child: const Text('Send'),
+        ),
+      ],
     );
   }
 }

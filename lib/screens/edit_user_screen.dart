@@ -289,15 +289,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              Text(
-                widget.canEditStatus
-                    ? 'Update user details. You can manage designation and status because you have the required access.'
-                    : 'Update basic information. Status and designation changes are managed by administrators.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
+
               SizedBox(
                 height: ResponsiveUtils.responsiveSpacing(
                   context,

@@ -1,736 +1,614 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
-import '../core/utils/navigation_utils.dart';
 import '../core/utils/snackbar_utils.dart';
-import '../models/petty_cash_entry_model.dart';
+import '../core/utils/navigation_utils.dart';
 import '../models/site_model.dart';
-import '../services/petty_cash_service.dart';
+import '../models/petty_cash_entry_model.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_button.dart';
+import '../widgets/custom_search_bar.dart';
 import 'add_petty_cash_entry_screen.dart';
-
-// Utility function for currency formatting - always use abbreviations
-String formatCurrency(double amount) {
-  if (amount >= 10000000) {
-    return '₹${(amount / 10000000).toStringAsFixed(1)}Cr';
-  } else if (amount >= 100000) {
-    return '₹${(amount / 100000).toStringAsFixed(1)}L';
-  } else if (amount >= 1000) {
-    return '₹${(amount / 1000).toStringAsFixed(1)}K';
-  } else {
-    return '₹${amount.toStringAsFixed(0)}';
-  }
-}
-
-// Utility function for currency formatting without ₹ symbol
-String formatCurrencyWithoutSymbol(double amount) {
-  if (amount >= 10000000) {
-    return '${(amount / 10000000).toStringAsFixed(1)}Cr';
-  } else if (amount >= 100000) {
-    return '${(amount / 100000).toStringAsFixed(1)}L';
-  } else if (amount >= 1000) {
-    return '${(amount / 1000).toStringAsFixed(1)}K';
-  } else {
-    return '${amount.toStringAsFixed(0)}';
-  }
-}
+import 'package:intl/intl.dart';
 
 class PettyCashScreen extends StatefulWidget {
   final SiteModel site;
 
-  const PettyCashScreen({super.key, required this.site});
+  const PettyCashScreen({
+    super.key,
+    required this.site,
+  });
 
   @override
   State<PettyCashScreen> createState() => _PettyCashScreenState();
 }
 
 class _PettyCashScreenState extends State<PettyCashScreen> {
-  List<PettyCashEntry> _entries = [];
-  PettyCashBalance _balance = PettyCashBalance(
-    siteId: '',
-    siteName: '',
-    totalReceived: 0.0,
-    totalSpent: 0.0,
-    currentBalance: 0.0,
-    lastUpdated: DateTime.now(),
-  );
-  bool _isLoading = true;
-  bool _showChart = false;
-  String _selectedFilter = 'all'; // all, received, spent
-  DateTime? _startDate;
-  DateTime? _endDate;
+  List<PettyCashEntryModel> _entries = [];
+  List<PettyCashEntryModel> _filteredEntries = [];
+  bool _isLoading = false;
+  String _searchQuery = '';
+  String? _selectedLedgerType; // null = all, 'spent', 'received'
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
+  // Summary data
+  double _totalReceived = 0.0;
+  double _totalSpent = 0.0;
+  double _currentBalance = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadEntries();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadEntries({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _isLoading = true;
+        _currentPage = 1;
+        _hasMore = true;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
-      final entries = await PettyCashService.getPettyCashEntries(
-        siteId: widget.site.id.toString(),
-        startDate: _startDate,
-        endDate: _endDate,
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        return;
+      }
+
+      final response = await ApiService.getPettyCashEntries(
+        apiToken: token,
+        siteId: widget.site.id,
+        ledgerType: _selectedLedgerType,
+        page: _currentPage,
+        perPage: 20,
       );
 
-      final balance = await PettyCashService.getPettyCashBalance(widget.site.id.toString());
+      if (response.status == 1 && response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final entriesList = data['entries'];
+        final List<PettyCashEntryModel> newEntries;
+        
+        if (entriesList is List) {
+          newEntries = entriesList
+              .where((e) => e is Map<String, dynamic>)
+              .map((e) => PettyCashEntryModel.fromJson(e as Map<String, dynamic>))
+              .toList();
+        } else {
+          newEntries = [];
+        }
 
-      setState(() {
-        _entries = entries;
-        _balance = balance;
-        _isLoading = false;
-      });
+        setState(() {
+          if (isRefresh || _currentPage == 1) {
+            _entries = newEntries;
+          } else {
+            _entries.addAll(newEntries);
+          }
+          final summary = data['summary'] as Map<String, dynamic>?;
+          _totalReceived = (summary?['total_received'] ?? 0.0).toDouble();
+          _totalSpent = (summary?['total_spent'] ?? 0.0).toDouble();
+          _currentBalance = (summary?['current_balance'] ?? 0.0).toDouble();
+          
+          final pagination = data['pagination'] as Map<String, dynamic>?;
+          if (pagination != null) {
+            _hasMore = pagination['current_page'] < pagination['last_page'];
+          } else {
+            _hasMore = false;
+          }
+        });
+        // Apply filter after the frame is built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _applySearchFilter();
+        });
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response.message ?? 'Failed to load entries',
+        );
+      }
     } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Error loading entries: $e',
+      );
+    } finally {
       setState(() {
         _isLoading = false;
+        _isLoadingMore = false;
       });
-      SnackBarUtils.showError(context, message: 'Failed to load data: $e');
     }
   }
 
-  List<PettyCashEntry> get _filteredEntries {
-    if (_selectedFilter == 'all') return _entries;
-    return _entries.where((entry) => entry.ledgerType == _selectedFilter).toList();
+  Future<void> _loadMoreEntries() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _currentPage++;
+    });
+
+    await _loadEntries();
+  }
+
+  Future<void> _refreshEntries() async {
+    await _loadEntries(isRefresh: true);
+  }
+
+  void _applySearchFilter() {
+    if (_searchQuery.isEmpty) {
+      setState(() {
+        _filteredEntries = _entries;
+      });
+      return;
+    }
+
+    setState(() {
+      _filteredEntries = _entries.where((entry) {
+        final query = _searchQuery.toLowerCase();
+        return (entry.remark?.toLowerCase().contains(query) ?? false) ||
+            (entry.transactionId?.toLowerCase().contains(query) ?? false) ||
+            (entry.paidToName?.toLowerCase().contains(query) ?? false) ||
+            (entry.receivedFromName?.toLowerCase().contains(query) ?? false) ||
+            entry.amount.toString().contains(query);
+      }).toList();
+    });
+  }
+
+  Future<void> _deleteEntry(PettyCashEntryModel entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Entry'),
+        content: const Text('Are you sure you want to delete this entry?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        SnackBarUtils.showError(context, message: 'Authentication token not found');
+        return;
+      }
+
+      final response = await ApiService.deletePettyCashEntry(
+        apiToken: token,
+        entryId: entry.id,
+      );
+
+      if (response.status == 1) {
+        SnackBarUtils.showSuccess(
+          context,
+          message: response.message ?? 'Entry deleted successfully',
+        );
+        _refreshEntries();
+      } else {
+        SnackBarUtils.showError(
+          context,
+          message: response.message ?? 'Failed to delete entry',
+        );
+      }
+    } catch (e) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Error deleting entry: $e',
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'PETTY CASH LEDGER',
+        title: 'Petty Cash - ${widget.site.name}',
         showDrawer: false,
         showBackButton: true,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primaryColor))
-          : Column(
-              children: [
-                // Balance Card
-                _buildBalanceCard(),
-                
-                // Filter and Chart Toggle
-                _buildFilterSection(),
-                
-                // Chart Section
-                if (_showChart) _buildChartSection(),
-                
-                // Entries List
-                Expanded(child: _buildEntriesList()),
-              ],
-            ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 4,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: CustomButton(
-          text: 'Update Petty Cash',
-          onPressed: _addEntry,
-          backgroundColor: AppColors.primaryColor,
-          textColor: Colors.white,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBalanceCard() {
-    return Container(
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryColor.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          Text(
-            'Current Balance',
-            style: AppTypography.titleSmall.copyWith(
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                formatCurrency(_balance.currentBalance),
-                style: AppTypography.titleLarge.copyWith(
-                  color: _balance.currentBalance.isNegative 
-                      ? AppColors.errorColor 
-                      : AppColors.successColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _balance.currentBalance.isNegative 
-                      ? AppColors.errorColor.withOpacity(0.1)
-                      : AppColors.successColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _balance.currentBalance.isNegative ? 'Deficit' : 'Surplus',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: _balance.currentBalance.isNegative 
-                        ? AppColors.errorColor 
-                        : AppColors.successColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
+          // Summary Cards
+          _buildSummaryCards(),
+          
+          // Filter and Search
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: SizedBox(
+                    height: 40,
+                    child: CustomSearchBar(
+                      hintText: 'Search entries...',
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                        // Apply filter after the frame is built
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _applySearchFilter();
+                        });
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 40,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedLedgerType,
+                      decoration: InputDecoration(
+                        labelText: 'Filter',
+                        labelStyle: AppTypography.bodySmall.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('All'),
+                        ),
+                        const DropdownMenuItem<String>(
+                          value: 'spent',
+                          child: Text('Spent'),
+                        ),
+                        const DropdownMenuItem<String>(
+                          value: 'received',
+                          child: Text('Received'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedLedgerType = value;
+                        });
+                        // Refresh entries after the frame is built
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _refreshEntries();
+                        });
+                      },
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      icon: Icon(
+                        Icons.filter_list,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildBalanceItem(
-                  'Received',
-                  formatCurrency(_balance.totalReceived),
-                  AppColors.successColor,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildBalanceItem(
-                  'Spent',
-                  formatCurrency(_balance.totalSpent),
-                  AppColors.errorColor,
-                ),
-              ),
-            ],
+
+          // Entries List
+          Expanded(
+            child: _isLoading && _entries.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredEntries.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _refreshEntries,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredEntries.length + (_hasMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _filteredEntries.length) {
+                              // Load more trigger
+                              if (!_isLoadingMore) {
+                                _loadMoreEntries();
+                              }
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+                            return _buildEntryCard(_filteredEntries[index]);
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          NavigationUtils.push(
+            context,
+            AddPettyCashEntryScreen(site: widget.site),
+          ).then((_) => _refreshEntries());
+        },
+        backgroundColor: AppColors.primaryColor,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Entry'),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCards() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSummaryCard(
+              'Received',
+              _totalReceived,
+              Colors.green,
+              Icons.arrow_downward,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryCard(
+              'Spent',
+              _totalSpent,
+              Colors.red,
+              Icons.arrow_upward,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryCard(
+              'Balance',
+              _currentBalance,
+              _currentBalance >= 0 ? Colors.blue : Colors.orange,
+              Icons.account_balance_wallet,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBalanceItem(String label, String amount, Color color) {
+  Widget _buildSummaryCard(String label, double amount, Color color, IconData icon) {
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppTypography.bodySmall.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-          ),
-          SizedBox(height: 3),
-          Text(
-            amount,
-            style: AppTypography.bodyMedium.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          // Filter Dropdown
-          Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedFilter,
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedFilter = value!;
-                    });
-                  },
-                  items: [
-                    DropdownMenuItem(value: 'all', child: Text('All Entries')),
-                    DropdownMenuItem(value: 'received', child: Text('Received')),
-                    DropdownMenuItem(value: 'spent', child: Text('Spent')),
-                  ],
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
+            ],
           ),
-          SizedBox(width: 12),
-          // Chart Toggle
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _showChart = !_showChart;
-              });
-            },
-            icon: Icon(
-              _showChart ? Icons.table_chart : Icons.bar_chart,
-              color: AppColors.primaryColor,
+          const SizedBox(height: 8),
+          Text(
+            '₹${amount.toStringAsFixed(2)}',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
-            tooltip: _showChart ? 'Hide Chart' : 'Show Chart',
-          ),
-          // Date Filter
-          IconButton(
-            onPressed: _showDateFilter,
-            icon: Icon(
-              Icons.date_range,
-              color: AppColors.primaryColor,
-            ),
-            tooltip: 'Filter by Date',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildChartSection() {
-    return Container(
-      height: 200,
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No petty cash entries found',
+            style: AppTypography.titleMedium.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add your first entry to get started',
+            style: AppTypography.bodyMedium.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
-      child: _entries.isEmpty
-          ? Center(
-              child: Text(
-                'No data available for chart',
-                style: AppTypography.bodyMedium.copyWith(color: Colors.grey[600]),
-              ),
-            )
-          : LineChart(
-              LineChartData(
-                gridData: FlGridData(show: true),
-                titlesData: FlTitlesData(show: true),
-                borderData: FlBorderData(show: true),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _entries.asMap().entries.map((entry) {
-                      return FlSpot(
-                        entry.key.toDouble(),
-                        entry.value.ledgerType == 'received' 
-                            ? entry.value.amount 
-                            : -entry.value.amount,
-                      );
-                    }).toList(),
-                    isCurved: true,
-                    color: AppColors.primaryColor,
-                    barWidth: 3,
-                    dotData: FlDotData(show: false),
+    );
+  }
+
+  Widget _buildEntryCard(PettyCashEntryModel entry) {
+    final isReceived = entry.ledgerType == 'received';
+    final color = isReceived ? Colors.green : Colors.red;
+    final icon = isReceived ? Icons.arrow_downward : Icons.arrow_upward;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          NavigationUtils.push(
+            context,
+            AddPettyCashEntryScreen(site: widget.site, entry: entry),
+          ).then((_) => _refreshEntries());
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isReceived ? 'Received' : 'Spent',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          '₹${entry.amount.toStringAsFixed(2)}',
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton(
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('Edit'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 20, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        NavigationUtils.push(
+                          context,
+                          AddPettyCashEntryScreen(site: widget.site, entry: entry),
+                        ).then((_) => _refreshEntries());
+                      } else if (value == 'delete') {
+                        _deleteEntry(entry);
+                      }
+                    },
                   ),
                 ],
               ),
-            ),
-    );
-  }
-
-  Widget _buildEntriesList() {
-    final filteredEntries = _filteredEntries;
-
-    if (filteredEntries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: 16),
-            Text(
-              'No petty cash entries found',
-              style: AppTypography.titleMedium.copyWith(
-                color: Colors.grey[600],
+              const SizedBox(height: 12),
+              if (isReceived && entry.receivedFromName != null)
+                _buildInfoRow('From', entry.receivedFromName!),
+              if (!isReceived && entry.paidToName != null)
+                _buildInfoRow('To', entry.paidToName!),
+              if (entry.remark != null && entry.remark!.isNotEmpty)
+                _buildInfoRow('Remark', entry.remark!),
+              _buildInfoRow(
+                'Date',
+                _formatDate(entry.entryDate),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Tap the + button to add your first entry',
-              style: AppTypography.bodyMedium.copyWith(
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Ledger Header
-        _buildLedgerHeader(),
-        // Entries List
-        Expanded(
-          child: Builder(
-            builder: (context) {
-              // Sort entries by date (oldest first) for proper balance calculation
-              final sortedEntries = List<PettyCashEntry>.from(filteredEntries);
-              sortedEntries.sort((a, b) => a.entryDate.compareTo(b.entryDate));
-              
-              return ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                itemCount: sortedEntries.length,
-                itemBuilder: (context, index) {
-                  final entry = sortedEntries[index];
-                  final runningBalance = _calculateRunningBalance(index, sortedEntries);
-                  return _buildLedgerEntry(entry, runningBalance, index);
-                },
-              );
-            },
+              if (entry.transactionId != null && entry.transactionId!.isNotEmpty)
+                _buildInfoRow('Transaction ID', entry.transactionId!),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildLedgerHeader() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryColor.withOpacity(0.3)),
-      ),
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 100,
             child: Text(
-              'Entry',
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryColor,
+              '$label:',
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
             child: Text(
-              'Amount',
-              textAlign: TextAlign.center,
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryColor,
-              ),
+              value,
+              style: AppTypography.bodySmall,
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              'Balance',
-              textAlign: TextAlign.center,
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryColor,
-              ),
-            ),
-          ),
-
         ],
       ),
     );
   }
 
-  Widget _buildLedgerEntry(PettyCashEntry entry, double runningBalance, int index) {
-    final isReceived = entry.ledgerType == 'received';
-    final amountColor = isReceived ? AppColors.successColor : AppColors.errorColor;
-    final backgroundColor = isReceived 
-        ? AppColors.successColor.withOpacity(0.1)
-        : AppColors.errorColor.withOpacity(0.1);
-    
-    return Container(
-      margin: EdgeInsets.only(bottom: 4),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: amountColor.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Entry Details
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                Text(
-                  _getEntryDescription(entry),
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Colors.grey[700],
-                    fontSize: 11,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Updated by ${_getUserDisplayName(entry)} on ${_formatDate(entry.entryDate)}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Colors.grey[600],
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '${isReceived ? '+' : '-'}${formatCurrencyWithoutSymbol(entry.amount)}',
-              textAlign: TextAlign.center,
-              style: AppTypography.titleSmall.copyWith(
-                color: amountColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          // Running Balance
-          Expanded(
-            flex: 2,
-            child: Text(
-              formatCurrency(runningBalance),
-              textAlign: TextAlign.center,
-              style: AppTypography.titleSmall.copyWith(
-                color: runningBalance.isNegative ? AppColors.errorColor : AppColors.successColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          // Transaction Amount
-
-        ],
-      ),
-    );
-  }
-
-  String _getEntryDescription(PettyCashEntry entry) {
-    if (entry.ledgerType == 'received') {
-      return 'Via: ${_formatPaymentMethod(entry.receivedVia)} • From: ${_formatRecipientName(entry.receivedFrom)}';
-    } else {
-      // Use the proper name from the new fields if available
-      String recipientName = entry.paidToName ?? entry.paidTo;
-      if (entry.paidToType == 'other' && entry.otherRecipient != null) {
-        recipientName = entry.otherRecipient!;
-      }
-      return 'Via: ${_formatPaymentMethod(entry.paidVia)} • To: ${_formatRecipientName(recipientName)}';
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('dd-MM-yyyy').format(date);
+    } catch (e) {
+      return dateString;
     }
-  }
-
-  String _formatPaymentMethod(String method) {
-    switch (method.toLowerCase()) {
-      case 'cash':
-        return 'CASH';
-      case 'bank_transfer':
-        return 'BANK TRANSFER';
-      case 'cheque':
-        return 'CHEQUE';
-      case 'upi':
-        return 'UPI';
-      case 'credit_card':
-        return 'CREDIT CARD';
-      case 'other':
-        return 'OTHER';
-      default:
-        return method.replaceAll('_', ' ').toUpperCase();
-    }
-  }
-
-  String _formatRecipientName(String name) {
-    if (name.isEmpty) return 'Unknown';
-    
-    // If it's a generic placeholder, show it as is
-    if (name.toLowerCase().contains('vendor') || 
-        name.toLowerCase().contains('agency') || 
-        name.toLowerCase().contains('engineer') ||
-        name.toLowerCase().contains('coordinator')) {
-      return name;
-    }
-    
-    // Otherwise, capitalize properly
-    return name.split(' ').map((word) => 
-      word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : word
-    ).join(' ');
-  }
-
-  String _getUserDisplayName(PettyCashEntry entry) {
-    if (entry.ledgerType == 'received') {
-      return entry.receivedBy.isNotEmpty ? _formatRecipientName(entry.receivedBy) : 'Unknown';
-    } else {
-      return entry.paidBy.isNotEmpty ? _formatRecipientName(entry.paidBy) : 'Unknown';
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final hours = date.hour > 12 ? date.hour - 12 : date.hour;
-    final ampm = date.hour >= 12 ? 'PM' : 'AM';
-    final minutes = date.minute.toString().padLeft(2, '0');
-    
-    return '${date.day} ${months[date.month - 1]}, ${date.year} $hours:$minutes $ampm';
-  }
-
-  double _calculateRunningBalance(int index, List<PettyCashEntry> entries) {
-    double balance = 0.0; // Start from 0
-    
-    // Calculate balance up to and including this index
-    // entries are already sorted by date (oldest first)
-    for (int i = 0; i <= index; i++) {
-      final entry = entries[i];
-      if (entry.ledgerType == 'received') {
-        balance += entry.amount;
-      } else {
-        balance -= entry.amount;
-      }
-    }
-    
-    return balance;
-  }
-
-
-  void _addEntry() {
-    NavigationUtils.push(
-      context,
-      AddPettyCashEntryScreen(site: widget.site),
-    ).then((_) {
-      _loadData(); // Refresh data after adding entry
-    });
-  }
-
-  void _showDateFilter() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Filter by Date'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('Start Date'),
-              subtitle: Text(_startDate != null 
-                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                  : 'Not selected'),
-              trailing: Icon(Icons.calendar_today),
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _startDate ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null) {
-                  setState(() {
-                    _startDate = date;
-                  });
-                }
-              },
-            ),
-            ListTile(
-              title: Text('End Date'),
-              subtitle: Text(_endDate != null 
-                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                  : 'Not selected'),
-              trailing: Icon(Icons.calendar_today),
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _endDate ?? DateTime.now(),
-                  firstDate: _startDate ?? DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null) {
-                  setState(() {
-                    _endDate = date;
-                  });
-                }
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _startDate = null;
-                _endDate = null;
-              });
-              _loadData();
-              Navigator.pop(context);
-            },
-            child: Text('Clear'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('Cancel'),
-          ),
-          CustomButton(
-            text: 'Apply',
-            onPressed: () {
-              _loadData();
-              Navigator.pop(context);
-            },
-            backgroundColor: AppColors.primaryColor,
-            textColor: Colors.white,
-          ),
-        ],
-      ),
-    );
   }
 }

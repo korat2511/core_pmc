@@ -1,11 +1,10 @@
-import 'package:core_pmc/core/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
-import '../core/theme/app_typography.dart';
 import '../services/auth_service.dart';
 import '../services/permission_service.dart';
 import '../services/session_manager.dart';
+import 'signup_next_step_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -67,7 +66,36 @@ class _SplashScreenState extends State<SplashScreen>
       } else {
         // Skip permission screen and go directly to welcome/home
         if (AuthService.isLoggedIn() && SessionManager.isSessionValid()) {
-          Navigator.of(context).pushReplacementNamed('/home');
+          // Check if user has a company
+          final currentUser = AuthService.currentUser;
+          final hasCompany = currentUser?.company != null || 
+                            (currentUser?.allowedCompanies != null && 
+                             currentUser!.allowedCompanies!.isNotEmpty);
+          
+          if (hasCompany) {
+            // User has a company, navigate to home
+            Navigator.of(context).pushReplacementNamed('/home');
+          } else {
+            // User has no company, navigate to signup next step
+            if (currentUser != null) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => SignupNextStepScreen(
+                    userData: {
+                      'id': currentUser.id,
+                      'first_name': currentUser.firstName,
+                      'last_name': currentUser.lastName,
+                      'email': currentUser.email,
+                      'mobile': currentUser.mobile,
+                    },
+                  ),
+                ),
+              );
+            } else {
+              // Fallback to welcome if user data is not available
+              Navigator.of(context).pushReplacementNamed('/welcome');
+            }
+          }
         } else {
           Navigator.of(context).pushReplacementNamed('/welcome');
         }
@@ -84,12 +112,12 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: AppColors.surfaceColor,
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration:  BoxDecoration(
-         color: AppColors.backgroundColor
+         color: AppColors.surfaceColor
         ),
         child: Center(
           child: AnimatedBuilder(
@@ -114,7 +142,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
 
                     child: Image.asset(
-                      'assets/images/pmc_transparent_1.png',
+                      'assets/images/pmc.png',
                       fit: BoxFit.contain,
 
                     ),

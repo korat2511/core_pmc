@@ -60,6 +60,9 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
     'can_delete_meeting',
     'can_manage_designations',
     'can_manage_company_settings',
+    'can_view_petty_cash',
+    'can_add_petty_cash',
+    'can_edit_petty_cash',
   ];
 
   bool _isLoading = false;

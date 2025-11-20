@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -5,9 +6,9 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/image_picker_utils.dart';
 import '../services/attendance_check_service.dart';
 import '../services/api_service.dart';
-import '../models/attendance_check_model.dart';
 
 class AttendanceCard extends StatefulWidget {
   final VoidCallback? onPunchInPressed;
@@ -149,6 +150,12 @@ class _AttendanceCardState extends State<AttendanceCard> {
   Future<void> _handlePunchOut() async {
     if (!mounted) return;
     
+    // First, capture image
+    final image = await _captureAttendanceImage('Check Out');
+    if (image == null) {
+      return; // User cancelled image capture
+    }
+    
     setState(() {
       _isLoading = true;
     });
@@ -170,7 +177,7 @@ class _AttendanceCardState extends State<AttendanceCard> {
           ? '${placemarks.first.street}, ${placemarks.first.locality}, ${placemarks.first.administrativeArea}'
           : 'Location not available';
 
-      // Call saveAttendance API for check-out
+      // Call saveAttendance API for check-out with image
       final success = await ApiService.saveAttendance(
         type: 'check_out',
         siteId: '', // Empty for check-out (no site validation needed)
@@ -178,6 +185,7 @@ class _AttendanceCardState extends State<AttendanceCard> {
         remark: '',
         latitude: currentPosition.latitude.toString(),
         longitude: currentPosition.longitude.toString(),
+        image: image,
       );
 
       if (success && mounted) {
@@ -236,12 +244,40 @@ class _AttendanceCardState extends State<AttendanceCard> {
     return '$hour:$minute $period';
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
-  }
 
-  String _getCurrentDate() {
-    return _formatDate(DateTime.now());
+  Future<File?> _captureAttendanceImage(String action) async {
+    // Use existing showImageSourceDialog from ImagePickerUtils
+    final file = await ImagePickerUtils.showImageSourceDialog(
+      context: context,
+      chooseMultiple: false,
+      imageQuality: 50, // Lower quality for smaller file size
+    );
+    
+    if (file == null) {
+      return null; // User cancelled
+    }
+    
+    // Compress to 512 KB max
+    final compressedFile = await ImagePickerUtils.compressImageToSize(
+      file,
+      maxSizeInKB: 512.0,
+    );
+    
+    if (compressedFile == null) {
+      return null;
+    }
+    
+    // Validate final size
+    final finalSizeKB = ImagePickerUtils.getImageSizeInMB(compressedFile) * 1024;
+    if (finalSizeKB > 512.0 && mounted) {
+      SnackBarUtils.showError(
+        context,
+        message: 'Image is too large (${finalSizeKB.toStringAsFixed(0)} KB). Please try again with a smaller image.',
+      );
+      return null;
+    }
+    
+    return compressedFile;
   }
 
   String _getErrorMessage(String error) {
@@ -859,85 +895,4 @@ class _AttendanceCardState extends State<AttendanceCard> {
     );
   }
 
-  Widget _buildTimeCard(
-    BuildContext context, {
-    required String title,
-    required String time,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: ResponsiveUtils.responsivePadding(context),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.responsiveSpacing(
-            context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20,
-          ),
-        ),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: ResponsiveUtils.responsiveFontSize(
-              context,
-              mobile: 20,
-              tablet: 22,
-              desktop: 24,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 8,
-              tablet: 12,
-              desktop: 16,
-            ),
-          ),
-          Text(
-            title,
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 10,
-                tablet: 12,
-                desktop: 14,
-              ),
-              color: AppColors.textSecondary,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.responsiveSpacing(
-              context,
-              mobile: 4,
-              tablet: 6,
-              desktop: 8,
-            ),
-          ),
-          Text(
-            time,
-            style: AppTypography.titleMedium.copyWith(
-              fontSize: ResponsiveUtils.responsiveFontSize(
-                context,
-                mobile: 16,
-                tablet: 18,
-                desktop: 20,
-              ),
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 } 

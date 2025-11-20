@@ -163,9 +163,9 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: AppColors.surfaceColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
@@ -196,7 +196,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       desktop: 120,
                     ),
                     child: Image.asset(
-                      'assets/images/pmc_transparent_1.png',
+                      'assets/images/pmc.png',
                       fit: BoxFit.contain,
                     ),
                   ),

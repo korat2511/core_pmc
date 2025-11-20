@@ -14,12 +14,22 @@ class ApiResponse<T> {
   });
 
   factory ApiResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>)? fromJson) {
-    return ApiResponse(
-      status: json['status'] ?? 0,
-      message: json['message'] ?? '',
-      data: json['data'] != null && fromJson != null ? fromJson(json['data']) : null,
-      token: json['token'],
-    );
+    try {
+      return ApiResponse(
+        status: json['status'] is int ? json['status'] : (json['status'] is String ? int.tryParse(json['status']) ?? 0 : 0),
+        message: json['message']?.toString() ?? '',
+        data: json['data'] != null && fromJson != null ? fromJson(json['data'] as Map<String, dynamic>) : null,
+        token: json['token']?.toString(),
+      );
+    } catch (e) {
+      // Fallback if parsing fails
+      return ApiResponse(
+        status: 0,
+        message: 'Failed to parse response: ${e.toString()}',
+        data: null,
+        token: null,
+      );
+    }
   }
 
   bool get isSuccess {
@@ -59,7 +69,16 @@ class LoginResponse {
       user = UserModel.fromJson(userData);
     }
     
-    final permissions = json['permissions'] as Map<String, dynamic>?;
+    // Handle permissions - can be either a List (empty array) or Map
+    Map<String, dynamic>? permissions;
+    if (json['permissions'] != null) {
+      if (json['permissions'] is Map) {
+        permissions = json['permissions'] as Map<String, dynamic>;
+      } else if (json['permissions'] is List) {
+        // If permissions is a List (empty array), set to null or empty map
+        permissions = null;
+      }
+    }
     
     return LoginResponse(
       status: status,

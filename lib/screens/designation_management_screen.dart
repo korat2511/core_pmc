@@ -14,7 +14,6 @@ import '../services/company_notifier.dart';
 import '../services/designation_service.dart';
 import '../services/permission_service.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_drawer.dart';
 import '../widgets/custom_search_bar.dart';
 import '../widgets/dismiss_keyboard.dart';
 import 'designation_permissions_screen.dart';
@@ -153,7 +152,10 @@ class _DesignationManagementScreenState
     if (!mounted) return;
 
     if (created != null) {
-      setState(() {});
+      // Force rebuild to show the new designation
+      setState(() {
+        // The getter will automatically pick up the new designation from DesignationService
+      });
       SnackBarUtils.showSuccess(
         context,
         message: 'Designation "${created.name}" created successfully',
@@ -189,7 +191,11 @@ class _DesignationManagementScreenState
     if (!mounted) return;
 
     if (updated != null) {
-      setState(() {});
+      // Force a complete refresh to ensure the list is updated
+      setState(() {
+        // The getter will automatically pick up the updated designation from DesignationService
+        // which has already been sorted by order
+      });
       SnackBarUtils.showSuccess(
         context,
         message: 'Designation "${updated.name}" updated successfully',
@@ -280,11 +286,12 @@ class _DesignationManagementScreenState
     final updatedList = List<DesignationModel>.from(_designations);
     final item = updatedList.removeAt(oldIndex);
     updatedList.insert(newIndex, item);
+    // Update order to be 1-indexed (1, 2, 3, etc.)
     final adjustedList = updatedList
         .asMap()
         .entries
         .map(
-          (entry) => entry.value.copyWith(order: entry.key),
+          (entry) => entry.value.copyWith(order: entry.key + 1),
         )
         .toList();
 
@@ -754,6 +761,7 @@ class _DesignationFormSheetState extends State<DesignationFormSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.designation?.name ?? '');
+    // Display order as-is (1, 2, 3, etc.)
     _orderController = TextEditingController(
       text: widget.designation != null ? '${widget.designation!.order}' : '',
     );
@@ -780,11 +788,11 @@ class _DesignationFormSheetState extends State<DesignationFormSheet> {
       if (parsed == null || parsed <= 0) {
         SnackBarUtils.showError(
           context,
-          message: 'Order must be a positive number',
+          message: 'Order must be a positive number (1, 2, 3, etc.)',
         );
         return;
       }
-      orderValue = parsed - 1;
+      orderValue = parsed; // Use as-is (1, 2, 3, etc.)
     }
 
     Navigator.of(context).pop(

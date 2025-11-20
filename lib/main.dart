@@ -15,6 +15,7 @@ import 'screens/site_album_screen.dart';
 import 'screens/create_site_screen.dart';
 import 'screens/task_details_screen.dart';
 import 'screens/invite_team_screen.dart';
+import 'screens/company_details_screen.dart';
 import 'models/task_model.dart';
 import 'services/session_manager.dart';
 import 'providers/theme_provider.dart';
@@ -72,6 +73,7 @@ class MyApp extends StatelessWidget {
                 task: ModalRoute.of(context)!.settings.arguments as TaskModel,
               ),
               '/invite-team': (context) => const InviteTeamScreen(),
+              '/company-details': (context) => const CompanyDetailsScreen(),
             },
           );
         },

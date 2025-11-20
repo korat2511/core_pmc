@@ -1,194 +1,194 @@
-
-class PettyCashEntry {
-  final String id;
-  final String siteId;
-  final String siteName;
-  final String ledgerType; // 'received' or 'spent'
+class PettyCashEntryModel {
+  final int id;
+  final int siteId;
+  final int? companyId;
+  final String ledgerType; // 'spent' or 'received'
   final double amount;
-  final String receivedBy; // For received entries
-  final String paidBy; // For spent entries
-  final String receivedVia; // For received entries (cash, bank, etc.)
-  final String paidVia; // For spent entries (cash, bank, etc.)
-  final String receivedFrom; // For received entries
-  final String paidTo; // For spent entries
-  final String? transactionId; // For non-cash payments
-  final String? paidToType; // 'site_engineer', 'project_co_ordinator', 'agency', 'vendor', 'other'
-  final int? paidToId; // ID of selected user/agency/vendor
-  final String? paidToName; // Name of selected user/agency/vendor
-  final String? otherRecipient; // For 'other' type
-  final List<String> imageUrls; // Firebase storage URLs
-  final String remark;
-  final DateTime entryDate;
-  final DateTime createdAt;
-  final String createdBy;
-  final String createdByName;
+  final String paymentMode; // 'cash', 'bank', 'upi', 'other'
+  
+  // For received entries
+  final String? receivedBy;
+  final String? receivedVia;
+  final String? receivedFrom;
+  final String? receivedFromType;
+  final int? receivedFromId;
+  final String? receivedFromName;
+  
+  // For spent entries
+  final String? paidBy;
+  final String? paidVia;
+  final String? paidTo;
+  final String? paidToType;
+  final int? paidToId;
+  final String? paidToName;
+  
+  final String? transactionId;
+  final String? remark;
+  final String entryDate;
+  final int userId;
+  final String? createdAt;
+  final String? updatedAt;
+  
+  // Relationships
+  final Map<String, dynamic>? site;
+  final Map<String, dynamic>? company;
+  final Map<String, dynamic>? user;
+  final List<PettyCashImageModel> images;
 
-  PettyCashEntry({
+  PettyCashEntryModel({
     required this.id,
     required this.siteId,
-    required this.siteName,
+    this.companyId,
     required this.ledgerType,
     required this.amount,
-    required this.receivedBy,
-    required this.paidBy,
-    required this.receivedVia,
-    required this.paidVia,
-    required this.receivedFrom,
-    required this.paidTo,
-    this.transactionId,
+    required this.paymentMode,
+    this.receivedBy,
+    this.receivedVia,
+    this.receivedFrom,
+    this.receivedFromType,
+    this.receivedFromId,
+    this.receivedFromName,
+    this.paidBy,
+    this.paidVia,
+    this.paidTo,
     this.paidToType,
     this.paidToId,
     this.paidToName,
-    this.otherRecipient,
-    required this.imageUrls,
-    required this.remark,
+    this.transactionId,
+    this.remark,
     required this.entryDate,
-    required this.createdAt,
-    required this.createdBy,
-    required this.createdByName,
+    required this.userId,
+    this.createdAt,
+    this.updatedAt,
+    this.site,
+    this.company,
+    this.user,
+    required this.images,
   });
 
-  factory PettyCashEntry.fromMap(Map<String, dynamic> map) {
-    return PettyCashEntry(
-      id: map['id'] ?? '',
-      siteId: map['site_id'] ?? '',
-      siteName: map['site_name'] ?? '',
-      ledgerType: map['ledger_type'] ?? '',
-      amount: (map['amount'] ?? 0.0).toDouble(),
-      receivedBy: map['received_by'] ?? '',
-      paidBy: map['paid_by'] ?? '',
-      receivedVia: map['received_via'] ?? '',
-      paidVia: map['paid_via'] ?? '',
-      receivedFrom: map['received_from'] ?? '',
-      paidTo: map['paid_to'] ?? '',
-      transactionId: map['transaction_id'],
-      paidToType: map['paid_to_type'],
-      paidToId: map['paid_to_id'],
-      paidToName: map['paid_to_name'],
-      otherRecipient: map['other_recipient'],
-      imageUrls: List<String>.from(map['image_urls'] ?? []),
-      remark: map['remark'] ?? '',
-      entryDate: DateTime.parse(map['entry_date']),
-      createdAt: DateTime.parse(map['created_at']),
-      createdBy: map['created_by'] ?? '',
-      createdByName: map['created_by_name'] ?? '',
+  factory PettyCashEntryModel.fromJson(Map<String, dynamic> json) {
+    return PettyCashEntryModel(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      siteId: json['site_id'] is int ? json['site_id'] : int.tryParse(json['site_id']?.toString() ?? '0') ?? 0,
+      companyId: json['company_id'] == null 
+          ? null 
+          : json['company_id'] is int 
+              ? json['company_id'] 
+              : int.tryParse(json['company_id']?.toString() ?? ''),
+      ledgerType: json['ledger_type'] ?? '',
+      amount: json['amount'] is double 
+          ? json['amount'] 
+          : json['amount'] is int 
+              ? json['amount'].toDouble() 
+              : double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
+      paymentMode: json['payment_mode'] ?? 'cash',
+      receivedBy: json['received_by'],
+      receivedVia: json['received_via'],
+      receivedFrom: json['received_from'],
+      receivedFromType: json['received_from_type'],
+      receivedFromId: json['received_from_id'] == null 
+          ? null 
+          : json['received_from_id'] is int 
+              ? json['received_from_id'] 
+              : int.tryParse(json['received_from_id']?.toString() ?? ''),
+      receivedFromName: json['received_from_name'],
+      paidBy: json['paid_by'],
+      paidVia: json['paid_via'],
+      paidTo: json['paid_to'],
+      paidToType: json['paid_to_type'],
+      paidToId: json['paid_to_id'] == null 
+          ? null 
+          : json['paid_to_id'] is int 
+              ? json['paid_to_id'] 
+              : int.tryParse(json['paid_to_id']?.toString() ?? ''),
+      paidToName: json['paid_to_name'],
+      transactionId: json['transaction_id'],
+      remark: json['remark'],
+      entryDate: json['entry_date'] ?? '',
+      userId: json['user_id'] is int ? json['user_id'] : int.tryParse(json['user_id']?.toString() ?? '0') ?? 0,
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
+      site: json['site'],
+      company: json['company'],
+      user: json['user'],
+      images: (json['images'] as List<dynamic>?)
+          ?.map((img) => PettyCashImageModel.fromJson(img))
+          .toList() ?? [],
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'site_id': siteId,
-      'site_name': siteName,
+      'company_id': companyId,
       'ledger_type': ledgerType,
       'amount': amount,
+      'payment_mode': paymentMode,
       'received_by': receivedBy,
-      'paid_by': paidBy,
       'received_via': receivedVia,
-      'paid_via': paidVia,
       'received_from': receivedFrom,
+      'received_from_type': receivedFromType,
+      'received_from_id': receivedFromId,
+      'received_from_name': receivedFromName,
+      'paid_by': paidBy,
+      'paid_via': paidVia,
       'paid_to': paidTo,
-      'transaction_id': transactionId,
       'paid_to_type': paidToType,
       'paid_to_id': paidToId,
       'paid_to_name': paidToName,
-      'other_recipient': otherRecipient,
-      'image_urls': imageUrls,
+      'transaction_id': transactionId,
       'remark': remark,
-      'entry_date': entryDate.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      'created_by': createdBy,
-      'created_by_name': createdByName,
+      'entry_date': entryDate,
+      'user_id': userId,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
     };
   }
+}
 
-  PettyCashEntry copyWith({
-    String? id,
-    String? siteId,
-    String? siteName,
-    String? ledgerType,
-    double? amount,
-    String? receivedBy,
-    String? paidBy,
-    String? receivedVia,
-    String? paidVia,
-    String? receivedFrom,
-    String? paidTo,
-    String? transactionId,
-    String? paidToType,
-    int? paidToId,
-    String? paidToName,
-    String? otherRecipient,
-    List<String>? imageUrls,
-    String? remark,
-    DateTime? entryDate,
-    DateTime? createdAt,
-    String? createdBy,
-    String? createdByName,
-  }) {
-    return PettyCashEntry(
-      id: id ?? this.id,
-      siteId: siteId ?? this.siteId,
-      siteName: siteName ?? this.siteName,
-      ledgerType: ledgerType ?? this.ledgerType,
-      amount: amount ?? this.amount,
-      receivedBy: receivedBy ?? this.receivedBy,
-      paidBy: paidBy ?? this.paidBy,
-      receivedVia: receivedVia ?? this.receivedVia,
-      paidVia: paidVia ?? this.paidVia,
-      receivedFrom: receivedFrom ?? this.receivedFrom,
-      paidTo: paidTo ?? this.paidTo,
-      transactionId: transactionId ?? this.transactionId,
-      paidToType: paidToType ?? this.paidToType,
-      paidToId: paidToId ?? this.paidToId,
-      paidToName: paidToName ?? this.paidToName,
-      otherRecipient: otherRecipient ?? this.otherRecipient,
-      imageUrls: imageUrls ?? this.imageUrls,
-      remark: remark ?? this.remark,
-      entryDate: entryDate ?? this.entryDate,
-      createdAt: createdAt ?? this.createdAt,
-      createdBy: createdBy ?? this.createdBy,
-      createdByName: createdByName ?? this.createdByName,
+class PettyCashImageModel {
+  final int id;
+  final int pettyCashEntryId;
+  final String image;
+  final String? imagePath;
+
+  PettyCashImageModel({
+    required this.id,
+    required this.pettyCashEntryId,
+    required this.image,
+    this.imagePath,
+  });
+
+  factory PettyCashImageModel.fromJson(Map<String, dynamic> json) {
+    return PettyCashImageModel(
+      id: json['id'] ?? 0,
+      pettyCashEntryId: json['petty_cash_entry_id'] ?? 0,
+      image: json['image'] ?? '',
+      imagePath: json['image_path'],
     );
   }
 }
 
-class PettyCashBalance {
-  final String siteId;
-  final String siteName;
-  final double totalReceived;
-  final double totalSpent;
-  final double currentBalance;
-  final DateTime lastUpdated;
+class PettyCashOptionModel {
+  final int? id;
+  final String name;
+  final String? email;
+  final String? mobile;
 
-  PettyCashBalance({
-    required this.siteId,
-    required this.siteName,
-    required this.totalReceived,
-    required this.totalSpent,
-    required this.currentBalance,
-    required this.lastUpdated,
+  PettyCashOptionModel({
+    this.id,
+    required this.name,
+    this.email,
+    this.mobile,
   });
 
-  factory PettyCashBalance.fromMap(Map<String, dynamic> map) {
-    return PettyCashBalance(
-      siteId: map['site_id'] ?? '',
-      siteName: map['site_name'] ?? '',
-      totalReceived: (map['total_received'] ?? 0.0).toDouble(),
-      totalSpent: (map['total_spent'] ?? 0.0).toDouble(),
-      currentBalance: (map['current_balance'] ?? 0.0).toDouble(),
-      lastUpdated: DateTime.parse(map['last_updated']),
+  factory PettyCashOptionModel.fromJson(Map<String, dynamic> json) {
+    return PettyCashOptionModel(
+      id: json['id'],
+      name: json['name'] ?? '',
+      email: json['email'],
+      mobile: json['mobile'],
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'site_id': siteId,
-      'site_name': siteName,
-      'total_received': totalReceived,
-      'total_spent': totalSpent,
-      'current_balance': currentBalance,
-      'last_updated': lastUpdated.toIso8601String(),
-    };
   }
 }

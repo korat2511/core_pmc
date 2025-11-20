@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
-import '../core/utils/responsive_utils.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../models/designation_model.dart';
 import '../services/designation_service.dart';
@@ -84,6 +83,11 @@ class _DesignationPermissionsScreenState
       'can_manage_designations',
       'can_manage_company_settings',
       'can_invite_user',
+    ],
+    'Petty Cash': [
+      'can_view_petty_cash',
+      'can_add_petty_cash',
+      'can_edit_petty_cash',
     ],
   };
 
@@ -226,7 +230,7 @@ class _DesignationPermissionsScreenState
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -238,20 +242,29 @@ class _DesignationPermissionsScreenState
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          OutlinedButton.icon(
-                            onPressed: () => _toggleAll(true),
-                            icon: const Icon(Icons.done_all),
-                            label: const Text('Grant All'),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _toggleAll(true),
+                              icon: const Icon(Icons.done_all, size: 18),
+                              label: const Text('Grant All', style: TextStyle(fontSize: 13)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () => _toggleAll(false),
-                            icon: const Icon(Icons.block),
-                            label: const Text('Revoke All'),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _toggleAll(false),
+                              icon: const Icon(Icons.block, size: 18),
+                              label: const Text('Revoke All', style: TextStyle(fontSize: 13)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -259,30 +272,30 @@ class _DesignationPermissionsScreenState
                   ),
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: ResponsiveUtils.responsivePadding(context),
-                    children: filteredGroups.isEmpty
-                        ? [
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 64),
-                                child: Text(
-                                  'No permissions match your search.',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
+                  child: filteredGroups.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 64),
+                            child: Text(
+                              'No permissions match your search.',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
                               ),
                             ),
-                          ]
-                        : filteredGroups
-                            .map((entry) => _buildPermissionGroup(
-                                  context,
-                                  entry.key,
-                                  entry.value.where(_matchesSearch).toList(),
-                                ))
-                            .toList(),
-                  ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: filteredGroups.length,
+                          itemBuilder: (context, index) {
+                            final entry = filteredGroups.elementAt(index);
+                            return _buildPermissionGroup(
+                              context,
+                              entry.key,
+                              entry.value.where(_matchesSearch).toList(),
+                            );
+                          },
+                        ),
                 ),
                 if (_isSaving)
                   Container(
@@ -320,41 +333,41 @@ class _DesignationPermissionsScreenState
         groupPermissions.isNotEmpty && groupPermissions.every((key) => _permissions[key] == true);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        leading: Icon(
+          Icons.shield_moon_outlined,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
+        title: Text(
+          groupName,
+          style: AppTypography.bodyLarge.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.shield_moon_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    groupName,
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Switch(
-                  value: allEnabled,
-                  onChanged: (value) => _toggleGroup(groupName, value),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            ...permissions.map(
-              (permissionKey) => _buildPermissionRow(permissionKey),
+            Switch(
+              value: allEnabled,
+              onChanged: (value) => _toggleGroup(groupName, value),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],
         ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: permissions.map((permissionKey) => _buildPermissionRow(permissionKey)).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -363,13 +376,13 @@ class _DesignationPermissionsScreenState
     final isEnabled = _permissions[permissionKey] ?? false;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
         children: [
           Expanded(
             child: Text(
               _formatPermissionName(permissionKey),
-              style: AppTypography.bodyMedium.copyWith(
+              style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.w500,
                 color: isEnabled ? AppColors.textPrimary : AppColors.textSecondary,
               ),
@@ -379,6 +392,7 @@ class _DesignationPermissionsScreenState
             value: isEnabled,
             onChanged: (value) => _togglePermission(permissionKey, value),
             activeColor: AppColors.successColor,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ),
