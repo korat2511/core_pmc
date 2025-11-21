@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.pmcprojects.pmcstaging"
+    namespace = "com.corepmc.core_pmc"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.pmcprojects.pmcstaging"
+        applicationId = "com.corepmc.core_pmc"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
