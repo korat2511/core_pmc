@@ -244,11 +244,11 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
           );
         } catch (locationError) {
         print('Location error during auto punch-in: $locationError');
-        // If location fails, allow check-in from somewhere else
+        // If location fails, allow check-in from somewhere else (pass the already captured image)
         setState(() {
           _isLoading = false;
         });
-        _showRemarkDialog();
+        _showRemarkDialog(_capturedImage);
         return;
       }
 
@@ -286,8 +286,8 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         // Site found within 500 meters - auto check-in (image already captured)
         _performPunchInWithLocation(nearbySite, currentPosition, _capturedImage);
       } else {
-        // No site found within 500 meters - ask for remark
-        _showRemarkDialog();
+        // No site found within 500 meters - ask for remark (pass the already captured image)
+        _showRemarkDialog(_capturedImage);
       }
     } catch (e) {
       print('Error during auto punch-in: $e');
@@ -300,7 +300,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
 
   // Removed site selection dialog - now using automatic site detection
 
-  void _showRemarkDialog() {
+  void _showRemarkDialog(File? preCapturedImage) {
     final remarkController = TextEditingController();
     
     showDialog(
@@ -337,7 +337,13 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Clear captured image if user cancels
+              setState(() {
+                _capturedImage = null;
+              });
+            },
             child: Text('Cancel'),
           ),
           ElevatedButton(
@@ -345,7 +351,7 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
               final remark = remarkController.text.trim();
               if (remark.isNotEmpty) {
                 Navigator.of(context).pop();
-                _performRemoteCheckIn(remark);
+                _performRemoteCheckIn(remark, preCapturedImage);
               } else {
                 SnackBarUtils.showError(
                   context,
@@ -360,11 +366,14 @@ class _AttendanceCheckScreenState extends State<AttendanceCheckScreen> {
     );
   }
 
-  Future<void> _performRemoteCheckIn(String remark) async {
-    // First, capture image
-    final image = await _captureAttendanceImage('Check In');
+  Future<void> _performRemoteCheckIn(String remark, [File? preCapturedImage]) async {
+    // Use pre-captured image if available, otherwise capture new one
+    File? image = preCapturedImage;
     if (image == null) {
-      return; // User cancelled image capture
+      image = await _captureAttendanceImage('Check In');
+      if (image == null) {
+        return; // User cancelled image capture
+      }
     }
 
     setState(() {

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../core/utils/navigation_utils.dart';
+import '../core/utils/number_formatter.dart';
 import '../models/site_model.dart';
 import '../models/petty_cash_entry_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_search_bar.dart';
+import '../widgets/dismiss_keyboard.dart';
 import 'add_petty_cash_entry_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -219,151 +222,178 @@ class _PettyCashScreenState extends State<PettyCashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Petty Cash - ${widget.site.name}',
-        showDrawer: false,
-        showBackButton: true,
-      ),
-      body: Column(
-        children: [
-          // Summary Cards
-          _buildSummaryCards(),
-          
-          // Filter and Search
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+    return WillPopScope(
+      onWillPop: () async {
+        // Dismiss keyboard when back button is pressed
+        dismissKeyboard(context);
+        return true;
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Petty Cash - ${widget.site.name}',
+          showDrawer: false,
+          showBackButton: true,
+        ),
+        body: DismissKeyboard(
+          child: GestureDetector(
+            onTap: () {
+              // Dismiss keyboard when tapping outside
+              dismissKeyboard(context);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Column(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: SizedBox(
-                    height: 40,
-                    child: CustomSearchBar(
-                      hintText: 'Search entries...',
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
-                        // Apply filter after the frame is built
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _applySearchFilter();
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 40,
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedLedgerType,
-                      decoration: InputDecoration(
-                        labelText: 'Filter',
-                        labelStyle: AppTypography.bodySmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
+                // Summary Cards
+                _buildSummaryCards(),
+                
+                // Filter and Search
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: SizedBox(
+                          height: 40,
+                          child: CustomSearchBar(
+                            hintText: 'Search entries...',
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                              // Apply filter after the frame is built
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _applySearchFilter();
+                              });
+                            },
                           ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        filled: true,
-                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('All'),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: SizedBox(
+                          height: 40,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedLedgerType,
+                            decoration: InputDecoration(
+                              labelText: 'Filter',
+                              labelStyle: AppTypography.bodySmall.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('All'),
+                              ),
+                              const DropdownMenuItem<String>(
+                                value: 'spent',
+                                child: Text('Spent'),
+                              ),
+                              const DropdownMenuItem<String>(
+                                value: 'received',
+                                child: Text('Received'),
+                              ),
+                            ],
+                            onTap: () {
+                              // Dismiss keyboard when filter dropdown is tapped
+                              dismissKeyboard(context);
+                            },
+                            onChanged: (value) {
+                              // Dismiss keyboard when filter value changes
+                              dismissKeyboard(context);
+                              setState(() {
+                                _selectedLedgerType = value;
+                              });
+                              // Refresh entries after the frame is built
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _refreshEntries();
+                              });
+                            },
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            icon: Icon(
+                              Icons.filter_list,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                            dropdownColor: Theme.of(context).colorScheme.surface,
+                          ),
                         ),
-                        const DropdownMenuItem<String>(
-                          value: 'spent',
-                          child: Text('Spent'),
-                        ),
-                        const DropdownMenuItem<String>(
-                          value: 'received',
-                          child: Text('Received'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedLedgerType = value;
-                        });
-                        // Refresh entries after the frame is built
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _refreshEntries();
-                        });
-                      },
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      icon: Icon(
-                        Icons.filter_list,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                      dropdownColor: Theme.of(context).colorScheme.surface,
-                    ),
+                    ],
                   ),
+                ),
+
+                // Entries List
+                Expanded(
+                  child: _isLoading && _entries.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : _filteredEntries.isEmpty
+                          ? _buildEmptyState()
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                dismissKeyboard(context);
+                                await _refreshEntries();
+                              },
+                              child: ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _filteredEntries.length + (_hasMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == _filteredEntries.length) {
+                                    // Load more trigger
+                                    if (!_isLoadingMore) {
+                                      _loadMoreEntries();
+                                    }
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+                                  return _buildEntryCard(_filteredEntries[index]);
+                                },
+                              ),
+                            ),
                 ),
               ],
             ),
           ),
-
-          // Entries List
-          Expanded(
-            child: _isLoading && _entries.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredEntries.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _refreshEntries,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _filteredEntries.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _filteredEntries.length) {
-                              // Load more trigger
-                              if (!_isLoadingMore) {
-                                _loadMoreEntries();
-                              }
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-                            return _buildEntryCard(_filteredEntries[index]);
-                          },
-                        ),
-                      ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          NavigationUtils.push(
-            context,
-            AddPettyCashEntryScreen(site: widget.site),
-          ).then((_) => _refreshEntries());
-        },
-        backgroundColor: AppColors.primaryColor,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Entry'),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            // Dismiss keyboard before navigating
+            dismissKeyboard(context);
+            NavigationUtils.push(
+              context,
+              AddPettyCashEntryScreen(site: widget.site),
+            ).then((_) => _refreshEntries());
+          },
+          backgroundColor: AppColors.primaryColor,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Entry'),
+        ),
       ),
     );
   }
@@ -430,7 +460,7 @@ class _PettyCashScreenState extends State<PettyCashScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '₹${amount.toStringAsFixed(2)}',
+            NumberFormatter.formatIndianCurrency(amount, showDecimals: true),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w600,
               color: color,
@@ -479,6 +509,8 @@ class _PettyCashScreenState extends State<PettyCashScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
+          // Dismiss keyboard before navigating
+          dismissKeyboard(context);
           NavigationUtils.push(
             context,
             AddPettyCashEntryScreen(site: widget.site, entry: entry),
@@ -511,7 +543,7 @@ class _PettyCashScreenState extends State<PettyCashScreen> {
                           ),
                         ),
                         Text(
-                          '₹${entry.amount.toStringAsFixed(2)}',
+                          NumberFormatter.formatIndianCurrency(entry.amount, showDecimals: true),
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: color,

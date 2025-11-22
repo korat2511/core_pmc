@@ -13,12 +13,14 @@ class MaterialDetailsScreen extends StatefulWidget {
   final int materialId;
   final String materialName;
   final String siteName;
+  final int siteId;
 
   const MaterialDetailsScreen({
     super.key,
     required this.materialId,
     required this.materialName,
     required this.siteName,
+    required this.siteId,
   });
 
   @override
@@ -51,6 +53,7 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
     try {
       final response = await ApiService.getMaterialStock(
         materialId: widget.materialId,
+        siteId: widget.siteId,
         page: 1,
       );
 
@@ -755,7 +758,11 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(title: widget.siteName, showBackButton: true),
+      appBar: CustomAppBar(
+        title: widget.materialName,
+        showDrawer: false,
+        showBackButton: true,
+      ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -1376,6 +1383,7 @@ class _MaterialDetailsScreenState extends State<MaterialDetailsScreen> {
               material: _materialStock!.material,
               currentStock: _materialStock!.currentStock,
               siteName: widget.siteName,
+              siteId: widget.siteId,
             ),
           );
         },

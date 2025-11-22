@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.pmcprojects.pmcstaging</string>
+	<string>com.corepmc.corePmc</string>
 	<key>PROJECT_ID</key>
 	<string>pmc-projects-18ba4</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:963319091501:ios:ee2ee4c4866b5c0927c3a4</string>
+	<string>1:963319091501:ios:c186e27e0eb3352127c3a4</string>
 </dict>
 </plist>

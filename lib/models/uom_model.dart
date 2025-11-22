@@ -19,11 +19,11 @@ class UOMModel {
 
   factory UOMModel.fromJson(Map<String, dynamic> json) {
     return UOMModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       abbreviation: json['abbreviation'] ?? '',
       fullName: json['fullName'] ?? '',
       category: json['category'] ?? '',
-      userId: json['userId'],
+      userId: json['userId']?.toString(),
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );

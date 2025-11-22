@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:963319091501:android:644f0940c133b74d27c3a4",
+        "android_client_info": {
+          "package_name": "com.corepmc.core_pmc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANTL0cYSvblWuqRqlPjCTIRuZZnxzZm0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:963319091501:android:51a5825e7060d98427c3a4",
         "android_client_info": {
           "package_name": "com.pmcprojects.pmcstaging"

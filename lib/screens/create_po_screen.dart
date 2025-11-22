@@ -19,6 +19,7 @@ import '../core/utils/state_picker_utils.dart';
 import '../core/utils/payment_terms_picker_utils.dart';
 import '../services/auth_service.dart';
 import 'add_material_screen.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 
 class CreatePOScreen extends StatefulWidget {
   final SiteModel site;
@@ -94,7 +95,11 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     });
 
     try {
-      final response = await ApiService.getMaterials(page: 1);
+      final response = await ApiService.getMaterials(
+        siteId: widget.site.id,
+        page: 1,
+        search: _materialSearchController.text.trim().isEmpty ? null : _materialSearchController.text.trim(),
+      );
 
       if (response != null && response.status == 1) {
         setState(() {
@@ -204,9 +209,60 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
   void _previousStep() {
     if (_currentStep > 0) {
       setState(() {
+        // Clear data for the step we're going back to
+        if (_currentStep == 2) {
+          // Going back from Step 3 to Step 2, clear Step 2 data
+          _clearStep2Data();
+        } else if (_currentStep == 1) {
+          // Going back from Step 2 to Step 1, clear Step 1 data
+          _clearStep1Data();
+        }
         _currentStep--;
       });
     }
+  }
+
+  // Clear Step 1 data (Quantities & Rates)
+  void _clearStep1Data() {
+    // Clear all quantity, unit price, discount, and tax controllers
+    for (final materialId in _selectedMaterialIds) {
+      _quantityControllers[materialId]?.clear();
+    
+      _discountControllers[materialId]?.clear();
+      _taxControllers[materialId]?.clear();
+    }
+  }
+
+  // Clear Step 2 data (Delivery & Terms)
+  void _clearStep2Data() {
+    _purchaseOrderIdController.clear();
+    _isCustomOrderId = false;
+    _selectedVendor = null;
+    _expectedDeliveryDate = null;
+    _selectedDeliveryAddress = null;
+    _selectedBillingAddress = null;
+    _selectedTermsAndCondition = null;
+    _selectedPaymentTerms = null;
+    _remarksController.clear();
+    // Regenerate auto order ID
+    _generateAutoOrderId();
+  }
+
+  // Clear all data (when back button is clicked)
+  void _clearAllData() {
+    // Clear Step 1 data
+    _clearStep1Data();
+    
+    // Clear Step 2 data
+    _clearStep2Data();
+    
+    // Clear Step 0 data (material selection)
+    _selectedMaterialIds.clear();
+    _materialSearchController.clear();
+    _filteredMaterials = List.from(_materials);
+    
+    // Reset to first step
+    _currentStep = 0;
   }
 
   double _calculateTotalPrice(int materialId) {
@@ -277,13 +333,62 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     return total;
   }
 
+
+  // Helper method to format currency with Indian numbering system (commas every 2 digits from right)
+  // Example: 290000 -> 2,90,000.00
+  // Returns only the number part (without ₹) since ₹ is added in display strings
+  String _formatCurrency(double amount) {
+    if (amount == 0) {
+      return '0.00';
+    }
+
+    final isNegative = amount < 0;
+    final absAmount = amount.abs();
+
+    // Split into integer and decimal parts
+    final parts = absAmount.toStringAsFixed(2).split('.');
+    final integerPart = parts[0];
+    final decimalPart = parts[1];
+
+    // Format integer part with Indian numbering system
+    // Pattern: first 3 digits from right, then groups of 2 digits
+    // Example: 290000 -> 2,90,000
+    String formattedInteger = '';
+    final reversed = integerPart.split('').reversed.toList();
+    
+    for (int i = 0; i < reversed.length; i++) {
+      // Add comma before digit if needed
+      if (i == 3) {
+        // After first 3 digits, add comma before this digit
+        formattedInteger = ',' + formattedInteger;
+      } else if (i > 3 && (i - 3) % 2 == 0) {
+     
+        formattedInteger = ',' + formattedInteger;
+      }
+    
+      formattedInteger = reversed[i] + formattedInteger;
+    }
+
+    final prefix = isNegative ? '-' : '';
+    return '$prefix$formattedInteger.$decimalPart';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        _clearAllData();
+        return true; // Allow navigation back
+      },
+      child: Scaffold(
       appBar: CustomAppBar(
         title: 'Create Purchase Order',
         showDrawer: false,
         showBackButton: true,
+          onBackPressed: () {
+            _clearAllData();
+            Navigator.of(context).pop();
+          },
       ),
       body: Column(
         children: [
@@ -395,6 +500,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -640,28 +746,28 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                       children: [
                         _buildCalculationRow(
                           'Subtotal',
-                          '₹${(double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '0') ?? 0) * (double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '0') ?? 0)}',
+                          '₹${_formatCurrency((double.tryParse(_quantityControllers[materialId]?.text.trim() ?? '0') ?? 0) * (double.tryParse(_unitPriceControllers[materialId]?.text.trim() ?? '0') ?? 0))}',
                         ),
                         _buildCalculationRow(
                           'Discount',
-                          '-₹${_calculateDiscountAmount(materialId).toStringAsFixed(2)}',
+                          '-₹${_formatCurrency(_calculateDiscountAmount(materialId))}',
                         ),
                         _buildCalculationRow(
                           'Taxable Value',
-                          '₹${_calculateTotalTaxableValue(materialId).toStringAsFixed(2)}',
+                          '₹${_formatCurrency(_calculateTotalTaxableValue(materialId))}',
                         ),
                                                  _buildCalculationRow(
                            'CGST (${(double.tryParse(_taxControllers[materialId]?.text.trim() ?? '0') ?? 0) / 2}%)',
-                           '₹${(_calculateTaxAmount(materialId) / 2).toStringAsFixed(2)}',
+                           '₹${_formatCurrency(_calculateTaxAmount(materialId) / 2)}',
                          ),
                          _buildCalculationRow(
                            'SGST (${(double.tryParse(_taxControllers[materialId]?.text.trim() ?? '0') ?? 0) / 2}%)',
-                           '₹${(_calculateTaxAmount(materialId) / 2).toStringAsFixed(2)}',
+                           '₹${_formatCurrency(_calculateTaxAmount(materialId) / 2)}',
                          ),
                         Divider(),
                         _buildCalculationRow(
                           'Total Price',
-                          '₹${_calculateTotalPrice(materialId).toStringAsFixed(2)}',
+                          '₹${_formatCurrency(_calculateTotalPrice(materialId))}',
                           isTotal: true,
                         ),
                       ],
@@ -1086,7 +1192,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                     ),
                     SizedBox(height: 12),
                     _buildCalculationRow('Total Items', '${_selectedMaterialIds.length}'),
-                    _buildCalculationRow('Total Amount', '₹${_calculateTotalOrderAmount().toStringAsFixed(2)}'),
+                    _buildCalculationRow('Total Amount', '₹${_formatCurrency(_calculateTotalOrderAmount())}'),
                     Divider(height: 16),
                     Text(
                       'Ready to create purchase order',
@@ -1250,7 +1356,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
           context,
           message: response.message.isNotEmpty ? response.message : "Purchase Order created successfully!",
         );
-        Navigator.of(context).pop(); // Close the screen
+        Navigator.of(context).pop(true); // Return true to indicate success
       } else {
         SnackBarUtils.showError(
           context,
@@ -1278,6 +1384,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
         final response = await ApiService.generateOrderId(
           apiToken: token,
           type: 'po',
+          siteId: widget.site.id,
         );
 
         if (response.status == 1 && response.data != null) {
@@ -1476,7 +1583,10 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
     try {
       final token = await AuthService.currentToken;
       if (token != null) {
-        final response = await ApiService.getBillingAddresses(apiToken: token);
+        final response = await ApiService.getBillingAddresses(
+          apiToken: token,
+          siteId: widget.site.id,
+        );
 
         if (response != null && response.status == 1) {
           setState(() {
@@ -1736,106 +1846,116 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     itemCount: _billingAddresses.length,
                     itemBuilder: (context, index) {
                       final address = _billingAddresses[index];
                       return Card(
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(address),
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
+                        margin: EdgeInsets.only(bottom: 8),
+                        elevation: 1,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          dense: true,
+                          title: Text(
                                         address.companyName,
-                                        style: AppTypography.titleSmall
-                                            .copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ),
-                                    PopupMenuButton<String>(
-                                      onSelected: (value) {
-                                        if (value == 'edit') {
-                                          _showEditAddressDialog(address);
-                                        }
-                                      },
-                                      itemBuilder: (context) => [
-                                        PopupMenuItem(
-                                          value: 'edit',
-                                          child: Row(
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.edit, size: 16),
-                                              SizedBox(width: 8),
-                                              Text('Edit'),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                Divider(height: 16),
-                                Row(
+                              SizedBox(height: 4),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Icon(
                                       Icons.location_on,
-                                      size: 16,
+                                    size: 14,
                                       color: AppColors.textSecondary,
                                     ),
-                                    SizedBox(width: 8),
+                                  SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         address.address,
-                                        style: AppTypography.bodyMedium,
+                                      style: AppTypography.bodySmall,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
-                                Row(
+                              SizedBox(height: 4),
+                              Wrap(
+                                spacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.map,
-                                      size: 16,
+                                        size: 12,
                                       color: AppColors.textSecondary,
                                     ),
-                                    SizedBox(width: 8),
+                                      SizedBox(width: 4),
                                     Text(
                                       address.state,
-                                      style: AppTypography.bodyMedium.copyWith(
+                                        style: AppTypography.bodySmall.copyWith(
                                         color: AppColors.textSecondary,
                                       ),
+                                      ),
+                                    ],
                                     ),
                                     if (address.gstin.isNotEmpty &&
-                                        address.gstin != 'NA') ...[
-                                      SizedBox(width: 16),
+                                      address.gstin != 'NA')
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
                                       Icon(
                                         Icons.receipt,
-                                        size: 16,
+                                          size: 12,
                                         color: AppColors.textSecondary,
                                       ),
-                                      SizedBox(width: 8),
+                                        SizedBox(width: 4),
                                       Text(
                                         'GSTIN: ${address.gstin}',
                                         style: AppTypography.bodySmall.copyWith(
                                           color: AppColors.textSecondary,
+                                            fontSize: 11,
                                         ),
                                       ),
                                     ],
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
+                          trailing: PopupMenuButton<String>(
+                            icon: Icon(Icons.more_vert, size: 20),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                Navigator.of(context).pop(); // Close picker first
+                                _showEditAddressDialog(address);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit, size: 16),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
+                          onTap: () => Navigator.of(context).pop(address),
                         ),
                       );
                     },
@@ -2231,6 +2351,7 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
                 if (token != null) {
                   final response = await ApiService.storeBillingAddress(
                     apiToken: token,
+                    siteId: widget.site.id,
                     companyName: companyController.text,
                     address: addressController.text,
                     state: selectedState!,
@@ -2406,119 +2527,348 @@ class _CreatePOScreenState extends State<CreatePOScreen> {
 
   // Vendor Dialog Methods
   void _showAddVendorDialog() {
-    final nameController = TextEditingController();
-    final mobileController = TextEditingController();
-    final emailController = TextEditingController();
-    final gstController = TextEditingController();
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add New Vendor'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomTextField(
-                label: 'Name *',
-                controller: nameController,
-                hintText: 'Enter vendor name',
-              ),
-              SizedBox(height: 16),
-              CustomTextField(
-                label: 'Mobile *',
-                controller: mobileController,
-                hintText: 'Enter mobile number',
-                keyboardType: TextInputType.phone,
-              ),
-              SizedBox(height: 16),
-              CustomTextField(
-                label: 'Email',
-                controller: emailController,
-                hintText: 'Enter email address (optional)',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              SizedBox(height: 16),
-              CustomTextField(
-                label: 'GST Number',
-                controller: gstController,
-                hintText: 'Enter GST number (optional)',
-              ),
-            ],
-          ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.trim().isEmpty ||
-                  mobileController.text.trim().isEmpty) {
+        child: _VendorDialog(
+          site: widget.site,
+          onSuccess: () async {
+            Navigator.of(context).pop();
+            // Reload vendors
+            await _loadVendors();
+            // If a new vendor was just added, it will be in the list
+            // The user can select it from the vendor picker
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _VendorDialog extends StatefulWidget {
+  final SiteModel site;
+  final VoidCallback onSuccess;
+
+  const _VendorDialog({
+    required this.site,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_VendorDialog> createState() => _VendorDialogState();
+}
+
+class _VendorDialogState extends State<_VendorDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _gstController = TextEditingController();
+  
+  bool _isLoading = false;
+  bool _isDialogClosing = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _mobileController.dispose();
+    _emailController.dispose();
+    _gstController.dispose();
+    _isDialogClosing = true;
+    super.dispose();
+  }
+
+  Future<void> _openNativeContacts() async {
+    try {
+      // Check if widget is still mounted
+      if (!mounted || _isDialogClosing) return;
+
+      // Check current permission status
+      bool hasPermission = await FlutterContacts.requestPermission(readonly: true);
+      
+      // If permission is not granted, return silently
+      if (!hasPermission) {
+        if (!mounted) return;
                 SnackBarUtils.showError(
                   context,
-                  message: 'Please fill all required fields',
+          message: 'Contacts permission denied',
                 );
                 return;
               }
 
-              // Show loading
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+      // Open native contact picker
+      final Contact? contact = await FlutterContacts.openExternalPick();
+      
+      if (contact != null && mounted) {
+        _selectContact(contact);
+      }
+    } catch (e) {
+      // Check if widget is still mounted before showing error
+      if (!mounted) return;
+      
+      SnackBarUtils.showError(
+        context,
+        message: 'Error opening contacts: ${e.toString()}',
+      );
+    }
+  }
+
+  void _selectContact(Contact contact) {
+    setState(() {
+      _nameController.text = contact.displayName;
+      
+      // Set first phone number
+      if (contact.phones.isNotEmpty) {
+        _mobileController.text = contact.phones.first.number;
+      }
+      
+      // Set first email if available
+      if (contact.emails.isNotEmpty) {
+        _emailController.text = contact.emails.first.address;
+      }
+    });
+  }
+
+  Future<void> _saveVendor() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
               try {
                 final result = await ApiService.saveSiteVendor(
                   siteId: widget.site.id,
-                  name: nameController.text.trim(),
-                  mobile: mobileController.text.trim(),
-                  email: emailController.text.trim().isEmpty ? '' : emailController.text.trim(),
-                  gstNo: gstController.text.trim().isEmpty ? null : gstController.text.trim(),
-                );
+        name: _nameController.text.trim(),
+        mobile: _mobileController.text.trim(),
+        email: _emailController.text.trim(),
+        gstNo: _gstController.text.trim().isEmpty ? null : _gstController.text.trim(),
+      );
 
-                Navigator.of(context).pop(); // Close loading dialog
-
-                if (result != null && result['status'] == 'success') {
+      if (result != null) {
+        if (result['status'] == 'success') {
                   SnackBarUtils.showSuccess(
                     context,
                     message: result['message'] ?? 'Vendor added successfully',
                   );
-                  Navigator.of(context).pop(); // Close add vendor dialog
-                  
-                  // Reload vendors and select the new vendor
-                  await _loadVendors();
-                  
-                  // Find and select the newly added vendor by name
-                  final newVendor = _vendors.firstWhere(
-                    (vendor) => vendor.name == nameController.text.trim(),
-                    orElse: () => _vendors.first, // Fallback to first vendor if not found
-                  );
-                  
-                  setState(() {
-                    _selectedVendor = newVendor;
-                  });
+          widget.onSuccess();
+        } else {
+          SnackBarUtils.showError(
+            context,
+            message: result['message'] ?? 'Failed to add vendor',
+          );
+        }
                 } else {
                   SnackBarUtils.showError(
                     context,
-                    message: result?['message'] ?? 'Failed to add vendor',
+          message: 'Failed to add vendor',
                   );
                 }
               } catch (e) {
-                Navigator.of(context).pop(); // Close loading dialog
                 SnackBarUtils.showError(
                   context,
-                  message: 'Error adding vendor: ${e.toString()}',
-                );
-              }
-            },
-            child: Text('Add'),
-          ),
-        ],
+        message: 'Error: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: EdgeInsets.only(top: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // Title
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    'Add New Vendor',
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Spacer(),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isDialogClosing = true;
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    icon: Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // Form Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // GST Number Field
+                      CustomTextField(
+                        controller: _gstController,
+                        label: 'GST Number',
+                        hintText: 'Enter GST number (optional)',
+                        validator: (value) {
+                          return null; // GST is optional
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Contact Selection Section
+                      GestureDetector(
+                        onTap: _openNativeContacts,
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Theme.of(context).colorScheme.primary),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.contacts,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Select from Contacts',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Spacer(),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Name Field
+                      CustomTextField(
+                        controller: _nameController,
+                        label: 'Name *',
+                        hintText: 'Enter vendor name',
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter vendor name';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Mobile Field
+                      CustomTextField(
+                        controller: _mobileController,
+                        label: 'Mobile *',
+                        hintText: 'Enter mobile number',
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter mobile number';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Email Field
+                      CustomTextField(
+                        controller: _emailController,
+                        label: 'Email',
+                        hintText: 'Enter email address (optional)',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          // Email is optional, but if provided, it must be valid
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                              return 'Please enter a valid email address';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+                      
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isDialogClosing = true;
+                                });
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('Cancel'),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: CustomButton(
+                              text: 'Add',
+                              onPressed: _isLoading ? null : _saveVendor,
+                              isLoading: _isLoading,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20), // Bottom padding for safe area
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

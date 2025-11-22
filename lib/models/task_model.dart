@@ -35,6 +35,7 @@ class TaskModel {
   final String createdByName;
   final String? voiceNotePath;
   final SiteModel site;
+  final Map<String, dynamic>? company;
 
   TaskModel({
     required this.id,
@@ -70,6 +71,7 @@ class TaskModel {
     required this.createdByName,
     this.voiceNotePath,
     required this.site,
+    this.company,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -109,6 +111,9 @@ class TaskModel {
       createdByName: json['created_by_name'] ?? '',
       voiceNotePath: json['voice_note_path'],
       site: SiteModel.fromJson(json['site'] ?? {}),
+      company: json['company'] != null && json['company'] is Map 
+          ? Map<String, dynamic>.from(json['company']) 
+          : null,
     );
   }
 
@@ -147,6 +152,7 @@ class TaskModel {
       'created_by_name': createdByName,
       'voice_note_path': voiceNotePath,
       'site': site.toJson(),
+      'company': company,
     };
   }
 

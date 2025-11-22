@@ -4328,17 +4328,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
             ),
           ],
         ),
-        SizedBox(height: 16),
-        Text(
-          'Material Used',
-          style: AppTypography.bodySmall.copyWith(
-            fontSize: 11,
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+
+
         // Used Materials Section (if any materials were used)
         if (progress.usedMaterial.isNotEmpty) ...[
+          SizedBox(height: 16),
+          Text(
+            'Material Used',
+            style: AppTypography.bodySmall.copyWith(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           SizedBox(height: 5,),
           _buildUsedMaterialsSection(context, progress.usedMaterial),
         ],
@@ -4375,7 +4377,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              (material.material.specification != null) ? '${material.material.specification}' : "Material",
+             '${material.material.name}',
               style: AppTypography.bodySmall.copyWith(
                 fontSize: 11,
                 color: Theme.of(context).colorScheme.onSurface,

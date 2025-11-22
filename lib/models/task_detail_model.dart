@@ -433,6 +433,7 @@ class ProgressDetailModel {
   final List<ProgressImageModel> progressImages;
   final List<TaskQuestionModel> taskQuestions;
   final List<UsedMaterialModel> usedMaterial;
+  final Map<String, dynamic>? company;
 
   ProgressDetailModel({
     required this.id,
@@ -454,6 +455,7 @@ class ProgressDetailModel {
     required this.progressImages,
     required this.taskQuestions,
     required this.usedMaterial,
+    this.company,
   });
 
   factory ProgressDetailModel.fromJson(Map<String, dynamic> json) {
@@ -483,6 +485,9 @@ class ProgressDetailModel {
       usedMaterial: (json['used_material'] as List<dynamic>?)
           ?.map((material) => UsedMaterialModel.fromJson(material))
           .toList() ?? [],
+      company: json['company'] != null && json['company'] is Map 
+          ? Map<String, dynamic>.from(json['company']) 
+          : null,
     );
   }
 
@@ -507,6 +512,7 @@ class ProgressDetailModel {
       'progress_images': progressImages,
       'task_questions': taskQuestions.map((question) => question.toJson()).toList(),
       'used_material': usedMaterial.map((material) => material.toJson()).toList(),
+      'company': company,
     };
   }
 }

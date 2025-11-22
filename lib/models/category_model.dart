@@ -6,6 +6,7 @@ class CategoryModel {
   final String createdAt;
   final String updatedAt;
   final String? deletedAt;
+  final Map<String, dynamic>? company;
 
   CategoryModel({
     required this.id,
@@ -15,6 +16,7 @@ class CategoryModel {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    this.company,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,9 @@ class CategoryModel {
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
       deletedAt: json['deleted_at']?.toString(),
+      company: json['company'] != null && json['company'] is Map 
+          ? Map<String, dynamic>.from(json['company']) 
+          : null,
     );
   }
 
@@ -38,6 +43,7 @@ class CategoryModel {
       'created_at': createdAt,
       'updated_at': updatedAt,
       'deleted_at': deletedAt,
+      'company': company,
     };
   }
 

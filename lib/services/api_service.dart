@@ -31,6 +31,7 @@ import '../models/meeting_model.dart';
 import '../models/material_stock_model.dart';
 import '../models/site_gallery_image_model.dart';
 import '../models/petty_cash_entry_model.dart';
+import '../models/uom_model.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 
@@ -127,22 +128,181 @@ class ApiService {
         final loginResponse = LoginResponse.fromJson(jsonData);
         return loginResponse;
       } else {
-        return LoginResponse(
+      return LoginResponse(
+        status: 0,
+        message: getErrorMessage(response.statusCode),
+      );
+    }
+  } catch (e) {
+    return LoginResponse(
+      status: 0,
+      message: 'Network error. Please try again.',
+    );
+  }
+}
+
+  // Change Password API
+  static Future<ApiResponse?> changePassword({
+    required String apiToken,
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async
+  {
+    try {
+      final Map<String, dynamic> requestData = {
+        'api_token': apiToken,
+        'old_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/changePassword'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        return ApiResponse(
           status: 0,
           message: getErrorMessage(response.statusCode),
         );
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('TimeoutException')) {
-        return LoginResponse(
+      return ApiResponse(
+        status: 0,
+        message: 'Network error. Please try again.',
+      );
+    }
+  }
+
+  // Forgot Password API (Send OTP)
+  static Future<ApiResponse?> forgotPassword({
+    required String email,
+    required String mobile,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'email': email,
+        'mobile': mobile,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/forgotPassword'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        // Try to parse error message from response body
+        try {
+          final Map<String, dynamic> errorData = json.decode(response.body);
+          return ApiResponse(
+            status: 0,
+            message: errorData['message'] ?? getErrorMessage(response.statusCode),
+          );
+        } catch (_) {
+          return ApiResponse(
+            status: 0,
+            message: getErrorMessage(response.statusCode),
+          );
+        }
+      }
+    } catch (e) {
+      return ApiResponse(
+        status: 0,
+        message: 'Network error. Please try again.',
+      );
+    }
+  }
+
+  // Verify OTP API
+  static Future<ApiResponse?> verifyOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'email': email,
+        'otp': otp,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/verifyOtp'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        return ApiResponse(
           status: 0,
-          message: 'No internet connection. Please check your network.',
+          message: getErrorMessage(response.statusCode),
         );
       }
-      return LoginResponse(
+    } catch (e) {
+      return ApiResponse(
         status: 0,
-        message: 'Something went wrong. $e',
+        message: 'Network error. Please try again.',
+      );
+    }
+  }
+
+  // Reset Password API
+  static Future<ApiResponse?> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'email': email,
+        'otp': otp,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/user/resetPassword'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return ApiResponse.fromJson(jsonData, null);
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+        );
+      }
+    } catch (e) {
+      return ApiResponse(
+        status: 0,
+        message: 'Network error. Please try again.',
       );
     }
   }
@@ -2670,6 +2830,7 @@ class ApiService {
     String? instruction,
     List<File> images = const [],
     List<Map<String, dynamic>>? usedMaterials,
+    int? siteId,
   }) async {
     try {
       final request = http.MultipartRequest(
@@ -2684,6 +2845,11 @@ class ApiService {
       request.fields['work_left'] = workLeft;
       request.fields['skill_workers'] = skillWorkers;
       request.fields['unskill_workers'] = unskilledWorkers;
+
+      // Add site_id if provided (required for material stock updates)
+      if (siteId != null) {
+        request.fields['site_id'] = siteId.toString();
+      }
 
       // Add optional fields
       if (remark != null && remark.isNotEmpty) {
@@ -2879,6 +3045,7 @@ class ApiService {
     required String unitOfMeasurement,
     required String specification,
     required int categoryId,
+    required int siteId,
     required String sku,
     required String unitPrice,
     String? gst,
@@ -2910,6 +3077,7 @@ class ApiService {
       request.fields['unit_of_measurement'] = unitOfMeasurement;
       request.fields['specification'] = specification;
       request.fields['category_id'] = categoryId.toString();
+      request.fields['site_id'] = siteId.toString();
       request.fields['sku'] = sku;
       request.fields['unit_price'] = unitPrice;
       if (gst != null && gst.isNotEmpty) {
@@ -2960,7 +3128,9 @@ class ApiService {
 
   // Get Materials API
   static Future<MaterialResponse?> getMaterials({
+    required int siteId,
     int page = 1,
+    String? search,
   }) async {
     try {
       final token = await AuthService.currentToken;
@@ -2970,8 +3140,12 @@ class ApiService {
 
       final Map<String, dynamic> requestData = {
         'api_token': token,
+        'site_id': siteId.toString(),
         'page': page.toString(),
       };
+      if (search != null && search.isNotEmpty) {
+        requestData['search'] = search;
+      }
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/material/getMaterial'),
@@ -2995,9 +3169,118 @@ class ApiService {
     }
   }
 
+  // Get Material Units API
+  static Future<List<UOMModel>?> getMaterialUnits() async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return null;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/materialUnit/getUnits'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1 && jsonData['data'] != null) {
+          final List<dynamic> unitsList = jsonData['data'];
+          return unitsList.map((unit) => UOMModel.fromJson(unit)).toList();
+        }
+        return [];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Create Material Unit API
+  static Future<bool> createMaterialUnit({
+    required String abbreviation,
+    required String fullName,
+    required String category,
+  }) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return false;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'abbreviation': abbreviation.trim(),
+        'fullName': fullName.trim(),
+        'category': category.trim(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/materialUnit/createUnit'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData['status'] == 1;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Delete Material Unit API
+  static Future<bool> deleteMaterialUnit(String unitId) async {
+    try {
+      final token = await AuthService.currentToken;
+      if (token == null) {
+        return false;
+      }
+
+      final Map<String, dynamic> requestData = {
+        'api_token': token,
+        'unit_id': unitId,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/materialUnit/deleteUnit'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
+      ).timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return jsonData['status'] == 1;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Get Material Stock API
   static Future<MaterialStockModel?> getMaterialStock({
     required int materialId,
+    required int siteId,
     int page = 1,
   }) async {
     try {
@@ -3009,6 +3292,7 @@ class ApiService {
       final Map<String, dynamic> requestData = {
         'api_token': token,
         'material_id': materialId.toString(),
+        'site_id': siteId.toString(),
         'page': page.toString(),
       };
 
@@ -3035,6 +3319,7 @@ class ApiService {
   // Update Material Stock API (stockIn/stockOut)
   static Future<bool> updateMaterialStock({
     required int materialId,
+    required int siteId,
     required double quantity,
     required String description,
     required bool isStockIn, // true for stockIn, false for stockOut
@@ -3048,6 +3333,7 @@ class ApiService {
       final Map<String, dynamic> requestData = {
         'api_token': token,
         'material_id': materialId.toString(),
+        'site_id': siteId.toString(),
         'quantity': quantity.toString(),
         'description': description,
       };
@@ -3063,10 +3349,19 @@ class ApiService {
         body: Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query,
       ).timeout(timeout);
 
+      print('Stock Update Response Status: ${response.statusCode}');
+      print('Stock Update Response Body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        return jsonData['status'] == 1;
+        if (jsonData['status'] == 1) {
+          return true;
+        } else {
+          print('Stock Update Error: ${jsonData['message'] ?? 'Unknown error'}');
+          return false;
+        }
       } else {
+        print('Stock Update HTTP Error: ${response.statusCode}');
         return false;
       }
     } catch (e) {
@@ -3418,7 +3713,7 @@ class ApiService {
   static Future<ApiResponse<Map<String, dynamic>>?> saveGrn({
     required String grnDate,
     required String grnNumber,
-    required String deliveryChallanNumber,
+    String? deliveryChallanNumber,
     required int poId,
     required int vendorId,
     required int siteId,
@@ -3446,7 +3741,9 @@ class ApiService {
         request.fields['api_token'] = token;
         request.fields['grn_date'] = grnDate;
         request.fields['grn_number'] = grnNumber;
-        request.fields['delivery_challan_number'] = deliveryChallanNumber;
+        if (deliveryChallanNumber != null && deliveryChallanNumber.isNotEmpty) {
+          request.fields['delivery_challan_number'] = deliveryChallanNumber;
+        }
         request.fields['po_id'] = poId.toString();
         request.fields['vendor_id'] = vendorId.toString();
         request.fields['site_id'] = siteId.toString();
@@ -3530,12 +3827,16 @@ class ApiService {
           'api_token': token,
           'grn_date': grnDate,
           'grn_number': grnNumber,
-          'delivery_challan_number': deliveryChallanNumber,
           'po_id': poId.toString(),
           'vendor_id': vendorId.toString(),
           'site_id': siteId.toString(),
           'remarks': remarks ?? '',
         };
+        
+        // Add delivery challan number only if provided
+        if (deliveryChallanNumber != null && deliveryChallanNumber.isNotEmpty) {
+          requestData['delivery_challan_number'] = deliveryChallanNumber;
+        }
 
         // Add grn_materials
         for (int i = 0; i < grnMaterials.length; i++) {
@@ -3623,6 +3924,7 @@ class ApiService {
     required String selection,
     required String selectionByAgency,
     required String workUpdate,
+    required String qualityCheck,
   }) async {
     try {
       final Map<String, dynamic> requestData = {
@@ -3645,6 +3947,7 @@ class ApiService {
         'selection': selection.toString(),
         'selection_by_agency': selectionByAgency.toString(),
         'work_update': workUpdate.toString(),
+        'quality_check': qualityCheck.toString(),
       };
 
       final queryString = Uri(queryParameters: requestData.map((key, value) => MapEntry(key, value.toString()))).query;
@@ -3752,10 +4055,12 @@ class ApiService {
   // Get Billing Addresses API
   static Future<BillingAddressResponse?> getBillingAddresses({
     required String apiToken,
+    required int siteId,
   }) async {
     try {
       final Map<String, dynamic> requestData = {
         'api_token': apiToken,
+        'site_id': siteId.toString(),
       };
 
       final response = await http.post(
@@ -3782,6 +4087,7 @@ class ApiService {
   // Store Billing Address API
   static Future<BillingAddressCreateResponse?> storeBillingAddress({
     required String apiToken,
+    required int siteId,
     required String companyName,
     required String address,
     required String state,
@@ -3790,6 +4096,7 @@ class ApiService {
     try {
       final Map<String, dynamic> requestData = {
         'api_token': apiToken,
+        'site_id': siteId.toString(),
         'company_name': companyName,
         'address': address,
         'state': state,
@@ -4722,6 +5029,7 @@ class ApiService {
   static Future<ApiResponse<Map<String, dynamic>>> generateOrderId({
     required String apiToken,
     required String type, // 'po', 'payment', 'grn'
+    int? siteId,
   }) async {
 
 
@@ -4730,6 +5038,10 @@ class ApiService {
         'api_token': apiToken,
         'type': type,
       };
+
+      if (siteId != null) {
+        requestData['site_id'] = siteId.toString();
+      }
 
       final response = await http
           .post(
@@ -6117,6 +6429,67 @@ class ApiService {
         return json.decode(response.body) as Map<String, dynamic>;
       }
 
+      // Handle 400 status code (validation errors, admin deletion error, etc.)
+      if (response.statusCode == 400) {
+        final errorData = json.decode(response.body) as Map<String, dynamic>;
+        return {
+          'status': 0,
+          'message': errorData['message'] ?? 'Failed to delete account',
+        };
+      }
+
+      return {
+        'status': 0,
+        'message': _parseApiErrorMessage(response.body, response.statusCode),
+      };
+    } catch (e) {
+      return {
+        'status': 0,
+        'message': 'Network error. Please try again.',
+      };
+    }
+  }
+
+  // Delete user by admin
+  static Future<Map<String, dynamic>> deleteUser({
+    required int userId,
+  }) async {
+    final token = AuthService.currentToken;
+    if (token == null || token.isEmpty) {
+      return {
+        'status': 0,
+        'message': 'Authentication token not found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/deleteUser'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': token,
+              'user_id': userId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+
+      // Handle 400 status code (validation errors, admin deletion error, etc.)
+      if (response.statusCode == 400) {
+        final errorData = json.decode(response.body) as Map<String, dynamic>;
+        return {
+          'status': 0,
+          'message': errorData['message'] ?? 'Failed to delete user',
+        };
+      }
+
       return {
         'status': 0,
         'message': _parseApiErrorMessage(response.body, response.statusCode),
@@ -6667,6 +7040,510 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('Error deleting petty cash image: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== Issue Management APIs ====================
+
+  /// Create a new issue
+  static Future<ApiResponse<Map<String, dynamic>>> createIssue({
+    required String apiToken,
+    required int siteId,
+    required String linkType, // from_task, from_site, from_material, other
+    required String description,
+    DateTime? dueDate,
+    String? assignedTo, // Comma-separated user IDs
+    String? tagId, // Comma-separated tag IDs
+    String? status,
+    int? taskId,
+    int? materialId,
+    int? agencyId,
+    required List<File> attachments,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/issue/create'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+      });
+
+      request.fields.addAll({
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'link_type': linkType,
+        'description': description,
+      });
+
+      if (dueDate != null) {
+        request.fields['due_date'] = dueDate.toIso8601String().split('T')[0];
+      }
+      if (assignedTo != null && assignedTo.isNotEmpty) {
+        request.fields['assigned_to'] = assignedTo;
+      }
+      if (tagId != null && tagId.isNotEmpty) {
+        request.fields['tag_id'] = tagId;
+      }
+      if (status != null) {
+        request.fields['status'] = status;
+      }
+      if (taskId != null) {
+        request.fields['task_id'] = taskId.toString();
+      }
+      if (materialId != null) {
+        request.fields['material_id'] = materialId.toString();
+      }
+      if (agencyId != null) {
+        request.fields['agency_id'] = agencyId.toString();
+      }
+
+      // Add attachments
+      for (int i = 0; i < attachments.length; i++) {
+        final file = attachments[i];
+        if (await file.exists()) {
+          final stream = http.ByteStream(file.openRead());
+          final length = await file.length();
+          final multipartFile = http.MultipartFile(
+            'attachments',
+            stream,
+            length,
+            filename: file.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issue created successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to create issue',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating issue: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Get issues list with filters and search
+  static Future<ApiResponse<Map<String, dynamic>>> getIssues({
+    required String apiToken,
+    required int siteId,
+    String? status,
+    String? linkType,
+    int? assignedTo,
+    int? createdBy,
+    int? tagId,
+    String? search,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final requestData = <String, String>{
+        'api_token': apiToken,
+        'site_id': siteId.toString(),
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+
+      if (status != null) requestData['status'] = status;
+      if (linkType != null) requestData['link_type'] = linkType;
+      if (assignedTo != null) requestData['assigned_to'] = assignedTo.toString();
+      if (createdBy != null) requestData['created_by'] = createdBy.toString();
+      if (tagId != null) requestData['tag_id'] = tagId.toString();
+      if (search != null && search.isNotEmpty) requestData['search'] = search;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/issue/getList'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: requestData,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issues fetched successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to fetch issues',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching issues: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Get issue detail with comments
+  static Future<ApiResponse<Map<String, dynamic>>> getIssueDetail({
+    required String apiToken,
+    required int issueId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/issue/getDetail'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'issue_id': issueId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issue detail fetched successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to fetch issue detail',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching issue detail: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Update issue
+  static Future<ApiResponse<Map<String, dynamic>>> updateIssue({
+    required String apiToken,
+    required int issueId,
+    required String description,
+    DateTime? dueDate,
+    String? assignedTo, // Comma-separated user IDs
+    String? tagId, // Comma-separated tag IDs
+    String? status,
+    required List<File> attachments,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/issue/update'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+      });
+
+      request.fields.addAll({
+        'api_token': apiToken,
+        'issue_id': issueId.toString(),
+        'description': description,
+      });
+
+      if (dueDate != null) {
+        request.fields['due_date'] = dueDate.toIso8601String().split('T')[0];
+      }
+      if (assignedTo != null && assignedTo.isNotEmpty) {
+        request.fields['assigned_to'] = assignedTo;
+      }
+      if (tagId != null && tagId.isNotEmpty) {
+        request.fields['tag_id'] = tagId;
+      }
+      if (status != null) {
+        request.fields['status'] = status;
+      }
+
+      // Add attachments
+      for (int i = 0; i < attachments.length; i++) {
+        final file = attachments[i];
+        if (await file.exists()) {
+          final stream = http.ByteStream(file.openRead());
+          final length = await file.length();
+          final multipartFile = http.MultipartFile(
+            'attachments',
+            stream,
+            length,
+            filename: file.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issue updated successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to update issue',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating issue: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Delete issue
+  static Future<ApiResponse> deleteIssue({
+    required String apiToken,
+    required int issueId,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/issue/delete'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'issue_id': issueId.toString(),
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issue deleted successfully',
+            data: null,
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to delete issue',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting issue: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Add comment to issue (with images)
+  static Future<ApiResponse<Map<String, dynamic>>> addIssueComment({
+    required String apiToken,
+    required int issueId,
+    String? comment,
+    required List<File> images,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/issue/addComment'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+      });
+
+      request.fields.addAll({
+        'api_token': apiToken,
+        'issue_id': issueId.toString(),
+      });
+
+      if (comment != null && comment.isNotEmpty) {
+        request.fields['comment'] = comment;
+      }
+
+      // Add images
+      for (int i = 0; i < images.length; i++) {
+        final file = images[i];
+        if (await file.exists()) {
+          final stream = http.ByteStream(file.openRead());
+          final length = await file.length();
+          final multipartFile = http.MultipartFile(
+            'images',
+            stream,
+            length,
+            filename: file.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Comment added successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to add comment',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error adding issue comment: $e');
+      return ApiResponse(
+        status: 0,
+        message: 'Network error occurred',
+        data: null,
+      );
+    }
+  }
+
+  /// Update issue status
+  static Future<ApiResponse<Map<String, dynamic>>> updateIssueStatus({
+    required String apiToken,
+    required int issueId,
+    required String status, // Open, working, QC, solved, done
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/issue/updateStatus'),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: {
+              'api_token': apiToken,
+              'issue_id': issueId.toString(),
+              'status': status,
+            },
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 1) {
+          return ApiResponse(
+            status: 1,
+            message: jsonData['message'] ?? 'Issue status updated successfully',
+            data: Map<String, dynamic>.from(jsonData['data'] ?? {}),
+          );
+        } else {
+          return ApiResponse(
+            status: 0,
+            message: jsonData['message'] ?? 'Failed to update issue status',
+            data: null,
+          );
+        }
+      } else {
+        return ApiResponse(
+          status: 0,
+          message: getErrorMessage(response.statusCode),
+          data: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating issue status: $e');
       return ApiResponse(
         status: 0,
         message: 'Network error occurred',

@@ -8,6 +8,7 @@ class SiteVendorModel {
   final String? deletedAt;
   final String? createdAt;
   final String? updatedAt;
+  final Map<String, dynamic>? company;
 
   SiteVendorModel({
     required this.id,
@@ -19,6 +20,7 @@ class SiteVendorModel {
     this.deletedAt,
     this.createdAt,
     this.updatedAt,
+    this.company,
   });
 
   factory SiteVendorModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,9 @@ class SiteVendorModel {
       deletedAt: json['deleted_at'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
+      company: json['company'] != null && json['company'] is Map 
+          ? Map<String, dynamic>.from(json['company']) 
+          : null,
     );
   }
 
@@ -46,6 +51,7 @@ class SiteVendorModel {
       'deleted_at': deletedAt,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'company': company,
     };
   }
 

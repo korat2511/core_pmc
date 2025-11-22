@@ -21,10 +21,7 @@ class _SiteChatScreenState extends State<SiteChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Chat - ${widget.site.name}',
-        showDrawer: false,
-      ),
+
       body: Container(
         padding: ResponsiveUtils.responsivePadding(context),
         child: Column(

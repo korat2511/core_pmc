@@ -73,7 +73,8 @@ class _RecordAdvanceScreenState extends State<RecordAdvanceScreen> {
 
       final response = await ApiService.generateOrderId(
           apiToken: user!.apiToken,
-          type: 'advance');
+          type: 'advance',
+          siteId: widget.poDetail?.siteId ?? widget.grnDetail?.siteId);
       
       if (response.status == 1) {
         setState(() {

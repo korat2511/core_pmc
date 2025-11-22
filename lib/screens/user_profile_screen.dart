@@ -10,7 +10,9 @@ import '../services/user_detail_service.dart';
 import '../services/session_manager.dart';
 import '../services/permission_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_button.dart';
 import 'edit_user_screen.dart';
+import 'change_password_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int? userId; // If null, shows current user's profile
@@ -294,6 +296,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         title: 'Joined On',
                         value: _formatDate(user?.createdAt) ?? 'N/A',
                       ),
+                      
+                      // Change Password Button (only for self)
+                      if (_isSelf) ...[
+                        SizedBox(
+                          height: ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                            desktop: 24,
+                          ),
+                        ),
+                        Divider(),
+                        SizedBox(
+                          height: ResponsiveUtils.responsiveSpacing(
+                            context,
+                            mobile: 16,
+                            tablet: 20,
+                            desktop: 24,
+                          ),
+                        ),
+                        CustomButton(
+                          text: 'Change Password',
+                          onPressed: () async {
+                            final result = await NavigationUtils.push(
+                              context,
+                              ChangePasswordScreen(),
+                            );
+                            if (result == true) {
+                              // Password changed successfully
+                              SnackBarUtils.showSuccess(
+                                context,
+                                message: 'Password changed successfully',
+                              );
+                            }
+                          },
+                          buttonType: ButtonType.secondary,
+                        ),
+                      ],
                     ],
                   ),
             ),

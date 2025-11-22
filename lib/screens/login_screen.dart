@@ -7,7 +7,9 @@ import '../core/theme/app_typography.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../services/auth_service.dart';
+import '../core/utils/navigation_utils.dart';
 import 'signup_next_step_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -278,8 +280,57 @@ class _LoginScreenState extends State<LoginScreen> {
                             isLoading: _isLoading,
                             buttonType: ButtonType.primary,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
+                          // Forgot Password Link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  NavigationUtils.push(
+                                    context,
+                                    ForgotPasswordScreen(),
+                                  );
+                                },
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
 
+                          const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                          const SizedBox(height: 20),
                           // Signup Links
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -305,7 +356,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          
                           // Company Signup Link
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,

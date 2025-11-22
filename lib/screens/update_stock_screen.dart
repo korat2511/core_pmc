@@ -10,12 +10,14 @@ class UpdateStockScreen extends StatefulWidget {
   final MaterialDetailModel material;
   final String currentStock;
   final String siteName;
+  final int siteId;
 
   const UpdateStockScreen({
     super.key,
     required this.material,
     required this.currentStock,
     required this.siteName,
+    required this.siteId,
   });
 
   @override
@@ -54,6 +56,7 @@ class _UpdateStockScreenState extends State<UpdateStockScreen> {
     try {
       final success = await ApiService.updateMaterialStock(
         materialId: widget.material.id,
+        siteId: widget.siteId,
         quantity: quantity,
         description: _commentsController.text.isEmpty 
             ? (_isUsedFromStock ? 'Manual used from stock out api' : 'Manual added from stock in api')
@@ -70,10 +73,17 @@ class _UpdateStockScreenState extends State<UpdateStockScreen> {
         );
         Navigator.of(context).pop(true); // Return true to indicate success
       } else {
-        SnackBarUtils.showError(context, message: 'Failed to update stock');
+        SnackBarUtils.showError(
+          context, 
+          message: 'Failed to update stock. Please check if material exists for this site.'
+        );
       }
     } catch (e) {
-      SnackBarUtils.showError(context, message: 'Error updating stock: $e');
+      print('Exception updating stock: $e');
+      SnackBarUtils.showError(
+        context, 
+        message: 'Error updating stock: ${e.toString()}'
+      );
     } finally {
       setState(() {
         _isLoading = false;

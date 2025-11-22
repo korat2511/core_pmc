@@ -24,9 +24,11 @@ class POModel {
   final String? termsAndConditions;
   final String? paymentTerms;
   final String status;
+  final String? status2;
   final String? deletedAt;
   final String createdAt;
   final String updatedAt;
+  final String? creatorName;
 
   POModel({
     required this.id,
@@ -54,9 +56,11 @@ class POModel {
     this.termsAndConditions,
     this.paymentTerms,
     required this.status,
+    this.status2,
     this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.creatorName,
   });
 
   factory POModel.fromJson(Map<String, dynamic> json) {
@@ -85,10 +89,12 @@ class POModel {
       vendorPhoneNo: json['vendor_phone_no'] ?? '',
       termsAndConditions: json['terms_and_conditions'],
       paymentTerms: json['payment_terms'],
-      status: json['status'] ?? 'pending',
+      status: json['status'] ?? 'open',
+      status2: json['status_2'] ?? 'pending',
       deletedAt: json['deleted_at'],
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
+      creatorName: json['creator_name'] ?? (json['user'] != null ? (json['user']['first_name'] ?? '') + ' ' + (json['user']['last_name'] ?? '') : null),
     );
   }
 
@@ -119,9 +125,11 @@ class POModel {
       'terms_and_conditions': termsAndConditions,
       'payment_terms': paymentTerms,
       'status': status,
+      'status_2': status2,
       'deleted_at': deletedAt,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'creator_name': creatorName,
     };
   }
 
@@ -151,9 +159,11 @@ class POModel {
     String? termsAndConditions,
     String? paymentTerms,
     String? status,
+    String? status2,
     String? deletedAt,
     String? createdAt,
     String? updatedAt,
+    String? creatorName,
   }) {
     return POModel(
       id: id ?? this.id,
@@ -181,9 +191,11 @@ class POModel {
       termsAndConditions: termsAndConditions ?? this.termsAndConditions,
       paymentTerms: paymentTerms ?? this.paymentTerms,
       status: status ?? this.status,
+      status2: status2 ?? this.status2,
       deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      creatorName: creatorName ?? this.creatorName,
     );
   }
 }

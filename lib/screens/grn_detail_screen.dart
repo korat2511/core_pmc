@@ -4,6 +4,7 @@ import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/navigation_utils.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/number_formatter.dart';
 import '../models/grn_detail_model.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
@@ -287,19 +288,21 @@ class _GrnDetailScreenState extends State<GrnDetailScreen> {
                   Expanded(
                     child: _buildDetailRow(
                       'Invoice Total Amount',
-                      '₹${_calculateInvoiceTotal()}',
+                      NumberFormatter.formatFullAmount(_calculateInvoiceTotal()),
                     ),
                   ),
                   Expanded(
                     child: _buildDetailRow(
                       'Invoice Number',
-                      _grnDetail!.deliveryChallanNumber,
+                      _grnDetail!.deliveryChallanNumber.isNotEmpty 
+                          ? _grnDetail!.deliveryChallanNumber 
+                          : '-',
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 15),
-              _buildDetailRow('Total Cost', '₹${_calculateTotalCost()}'),
+              _buildDetailRow('Total Cost', NumberFormatter.formatFullAmount(_calculateTotalCost())),
             ],
           ),
         ),
@@ -536,7 +539,7 @@ class _GrnDetailScreenState extends State<GrnDetailScreen> {
     return DateFormat('dd MMM, yyyy hh:mm a').format(date);
   }
 
-  String _calculateInvoiceTotal() {
+  double _calculateInvoiceTotal() {
     // Calculate total from materials
     double total = 0;
     for (final material in _grnDetail!.grnDetail) {
@@ -545,10 +548,10 @@ class _GrnDetailScreenState extends State<GrnDetailScreen> {
           double.tryParse(material.material?.unitPrice ?? '0') ?? 0;
       total += quantity * unitPrice;
     }
-    return total.toStringAsFixed(2);
+    return total;
   }
 
-  String _calculateTotalCost() {
+  double _calculateTotalCost() {
     // Same as invoice total for now
     return _calculateInvoiceTotal();
   }

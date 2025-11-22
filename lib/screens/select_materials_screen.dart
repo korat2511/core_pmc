@@ -11,10 +11,12 @@ import '../widgets/custom_search_bar.dart';
 import 'add_material_quantity_screen.dart';
 
 class SelectMaterialsScreen extends StatefulWidget {
+  final int siteId;
   final List<Map<String, dynamic>>? preSelectedMaterials;
 
   const SelectMaterialsScreen({
     super.key,
+    required this.siteId,
     this.preSelectedMaterials,
   });
 
@@ -50,7 +52,11 @@ class _SelectMaterialsScreenState extends State<SelectMaterialsScreen> {
     });
 
     try {
-      final response = await ApiService.getMaterials(page: 1);
+      final response = await ApiService.getMaterials(
+        siteId: widget.siteId,
+        page: 1,
+        search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+      );
       
       if (response != null && response.status == 1) {
         setState(() {

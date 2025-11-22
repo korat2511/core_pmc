@@ -30,7 +30,11 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
     with TickerProviderStateMixin {
   late TabController _mainTabController;
   late TabController _poGrnTabController;
+  late TabController _inventoryTabController;
   int _currentMainTabIndex = 0;
+  int _previousMainTabIndex = 0;
+  int _previousPOGrnTabIndex = 0;
+  int _previousInventoryTabIndex = 0;
 
   // Materials data
   List<MaterialModel> _materials = [];
@@ -53,22 +57,61 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   bool _isRefreshingGRN = false;
   final _grnSearchController = TextEditingController();
 
+  // Expanded state for PO and GRN cards
+  Set<int> _expandedPOIds = {};
+  Set<int> _expandedGrnIds = {};
+
   @override
   void initState() {
     super.initState();
     _mainTabController = TabController(length: 2, vsync: this);
     _poGrnTabController = TabController(length: 2, vsync: this);
-    
+    _inventoryTabController = TabController(length: 3, vsync: this);
+
     _mainTabController.addListener(() {
-      setState(() {
-        _currentMainTabIndex = _mainTabController.index;
-      });
+      if (_mainTabController.index != _previousMainTabIndex) {
+        _previousMainTabIndex = _mainTabController.index;
+        setState(() {
+          _currentMainTabIndex = _mainTabController.index;
+        });
+        // Refresh data when switching main tabs
+        if (_mainTabController.index == 0) {
+          // PO & Delivery tab selected - refresh PO and GRN based on current sub-tab
+          if (_poGrnTabController.index == 0) {
+            _loadPOOrders();
+          } else {
+            _loadGrnOrders();
+          }
+        } else if (_mainTabController.index == 1) {
+          // Inventory tab selected - refresh materials
+          _loadMaterials();
+        }
+      }
     });
 
     _poGrnTabController.addListener(() {
-      setState(() {
-        // Trigger rebuild when switching between PO and GRN tabs
-      });
+      if (_poGrnTabController.index != _previousPOGrnTabIndex) {
+        _previousPOGrnTabIndex = _poGrnTabController.index;
+        // Refresh data when switching between PO and GRN tabs
+        if (_poGrnTabController.index == 0) {
+          // PO tab selected - refresh PO orders
+          _loadPOOrders();
+        } else if (_poGrnTabController.index == 1) {
+          // GRN tab selected - refresh GRN orders
+          _loadGrnOrders();
+        }
+      }
+    });
+
+    _inventoryTabController.addListener(() {
+      if (_inventoryTabController.index != _previousInventoryTabIndex) {
+        _previousInventoryTabIndex = _inventoryTabController.index;
+        // Refresh data when switching between Inventory sub-tabs
+        if (_inventoryTabController.index == 0) {
+          // Materials tab selected - refresh materials
+          _loadMaterials();
+        }
+      }
     });
 
     // Load materials when inventory tab is selected
@@ -83,6 +126,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   void dispose() {
     _mainTabController.dispose();
     _poGrnTabController.dispose();
+    _inventoryTabController.dispose();
     _searchController.dispose();
     _poSearchController.dispose();
     _grnSearchController.dispose();
@@ -95,7 +139,13 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
     });
 
     try {
-      final response = await ApiService.getMaterials(page: 1);
+      final response = await ApiService.getMaterials(
+        siteId: widget.site.id,
+        page: 1,
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
 
       if (response != null && response.status == 1) {
         setState(() {
@@ -266,10 +316,15 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
         } else {
           _filteredGrnOrders = _grnOrders.where((grn) {
             return grn['grn_number']?.toLowerCase().contains(
-                  query.toLowerCase(),
-                ) == true ||
-                grn['delivery_challan_number']?.toLowerCase().contains(query.toLowerCase()) == true ||
-                grn['remarks']?.toLowerCase().contains(query.toLowerCase()) == true;
+                      query.toLowerCase(),
+                    ) ==
+                    true ||
+                grn['delivery_challan_number']?.toLowerCase().contains(
+                      query.toLowerCase(),
+                    ) ==
+                    true ||
+                grn['remarks']?.toLowerCase().contains(query.toLowerCase()) ==
+                    true;
           }).toList();
         }
       });
@@ -302,7 +357,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            
+
             // Header
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
@@ -323,9 +378,9 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                 ],
               ),
             ),
-            
+
             SizedBox(height: 20),
-            
+
             // Options
             Expanded(
               child: Padding(
@@ -334,12 +389,16 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                   children: [
                     // Option 1: Select Materials through Inventory
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        NavigationUtils.push(
+                        final result = await NavigationUtils.push(
                           context,
                           GrnMaterialSelectionScreen(site: widget.site),
                         );
+                        // Refresh GRN list if GRN was created successfully
+                        if (result == true) {
+                          _loadGrnOrders();
+                        }
                       },
                       child: Container(
                         width: double.infinity,
@@ -396,18 +455,23 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                         ),
                       ),
                     ),
-                    
+
                     // Option 2: Upload photos to create GRN
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        NavigationUtils.push(
+                        final result = await NavigationUtils.push(
                           context,
                           RecordGrnScreen(
                             site: widget.site,
-                            selectedMaterials: null, // No materials needed for photo upload flow
+                            selectedMaterials:
+                                null, // No materials needed for photo upload flow
                           ),
                         );
+                        // Refresh GRN list if GRN was created successfully
+                        if (result == true) {
+                          _loadGrnOrders();
+                        }
                       },
                       child: Container(
                         width: double.infinity,
@@ -467,7 +531,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                 ),
               ),
             ),
-            
+
             SizedBox(height: 20),
           ],
         ),
@@ -481,34 +545,42 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
       backgroundColor: AppColors.surfaceColor,
       floatingActionButton: _currentMainTabIndex == 0
           ? _poGrnTabController.index == 0
-              ? FloatingActionButton.extended(
-                  onPressed: () {
-                    NavigationUtils.push(
-                      context,
-                      CreatePOScreen(site: widget.site),
-                    );
-                  },
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  icon: Icon(Icons.add),
-                  label: Text('Add PO'),
-                )
-              : FloatingActionButton.extended(
-                  onPressed: () {
-                    _showGrnCreationOptions();
-                  },
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  icon: Icon(Icons.add),
-                  label: Text('Add GRN'),
-                )
+                ? FloatingActionButton.extended(
+                    onPressed: () async {
+                      final result = await NavigationUtils.push(
+                        context,
+                        CreatePOScreen(site: widget.site),
+                      );
+                      // Refresh PO list if PO was created successfully
+                      if (result == true) {
+                        _loadPOOrders();
+                      }
+                    },
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                    icon: Icon(Icons.add),
+                    label: Text('Add PO'),
+                  )
+                : FloatingActionButton.extended(
+                    onPressed: () {
+                      _showGrnCreationOptions();
+                    },
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                    icon: Icon(Icons.add),
+                    label: Text('Add GRN'),
+                  )
           : _currentMainTabIndex == 1
           ? FloatingActionButton.extended(
-              onPressed: () {
-                NavigationUtils.push(
+              onPressed: () async {
+                final result = await NavigationUtils.push(
                   context,
                   AddMaterialScreen(site: widget.site),
                 );
+                // Refresh materials list if material was added successfully
+                if (result == true) {
+                  _loadMaterials();
+                }
               },
               backgroundColor: AppColors.primaryColor,
               foregroundColor: Colors.white,
@@ -602,7 +674,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ],
           ),
         ),
-        
+
         // Sub-tab content
         Expanded(
           child: TabBarView(
@@ -610,7 +682,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             children: [
               // PO Tab
               _buildPOTab(),
-              
+
               // GRN Tab
               _buildGrnTab(),
             ],
@@ -623,84 +695,6 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   Widget _buildPOTab() {
     if (_isLoadingPO) {
       return Center(child: CircularProgressIndicator());
-    }
-
-    if (_filteredPOOrders.isEmpty) {
-      return Container(
-        padding: ResponsiveUtils.responsivePadding(context),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.shopping_cart_outlined,
-                size: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 64,
-                  tablet: 80,
-                  desktop: 96,
-                ),
-                color: AppColors.textSecondary,
-              ),
-              SizedBox(
-                height: ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 16,
-                  tablet: 20,
-                  desktop: 24,
-                ),
-              ),
-              Text(
-                'You do not have any Purchase order',
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 18,
-                    tablet: 20,
-                    desktop: 22,
-                  ),
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Create your first purchase order to get started',
-                style: AppTypography.bodyMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 14,
-                    tablet: 16,
-                    desktop: 18,
-                  ),
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  NavigationUtils.push(
-                    context,
-                    CreatePOScreen(site: widget.site),
-                  );
-                },
-                icon: Icon(Icons.add),
-                label: Text('Create Purchase Order'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
     }
 
     return GestureDetector(
@@ -721,19 +715,109 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ),
           ),
 
-          // PO Orders List
+          // PO Orders List or Empty State
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshPOOrders,
-              child: ListView.builder(
-                padding: ResponsiveUtils.responsivePadding(context),
-                itemCount: _filteredPOOrders.length,
-                itemBuilder: (context, index) {
-                  final poOrder = _filteredPOOrders[index];
-                  return _buildPOCard(poOrder);
-                },
-              ),
-            ),
+            child: _filteredPOOrders.isEmpty
+                ? RefreshIndicator(
+                    onRefresh: _refreshPOOrders,
+                    child: SingleChildScrollView(
+                      physics: AlwaysScrollableScrollPhysics(),
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shopping_cart_outlined,
+                                size: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 64,
+                                  tablet: 80,
+                                  desktop: 96,
+                                ),
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 20,
+                                  desktop: 24,
+                                ),
+                              ),
+                              Text(
+                                'You do not have any Purchase order',
+                                style: AppTypography.titleMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 18,
+                                    tablet: 20,
+                                    desktop: 22,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Create your first purchase order to get started',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 14,
+                                    tablet: 16,
+                                    desktop: 18,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final result = await NavigationUtils.push(
+                                    context,
+                                    CreatePOScreen(site: widget.site),
+                                  );
+                                  // Refresh PO list if PO was created successfully
+                                  if (result == true) {
+                                    _loadPOOrders();
+                                  }
+                                },
+                                icon: Icon(Icons.add),
+                                label: Text('Create Purchase Order'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshPOOrders,
+                    child: ListView.builder(
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      itemCount: _filteredPOOrders.length,
+                      itemBuilder: (context, index) {
+                        final poOrder = _filteredPOOrders[index];
+                        return _buildPOCard(poOrder);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -743,65 +827,6 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   Widget _buildGrnTab() {
     if (_isLoadingGRN) {
       return Center(child: CircularProgressIndicator());
-    }
-
-    if (_filteredGrnOrders.isEmpty) {
-      return Container(
-        padding: ResponsiveUtils.responsivePadding(context),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 64,
-                  tablet: 80,
-                  desktop: 96,
-                ),
-                color: AppColors.textSecondary,
-              ),
-              SizedBox(
-                height: ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 16,
-                  tablet: 20,
-                  desktop: 24,
-                ),
-              ),
-              Text(
-                'No GRN records found',
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 18,
-                    tablet: 20,
-                    desktop: 22,
-                  ),
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'GRN records will appear here once materials are received',
-                style: AppTypography.bodyMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 14,
-                    tablet: 16,
-                    desktop: 18,
-                  ),
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
     }
 
     return GestureDetector(
@@ -822,19 +847,83 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ),
           ),
 
-          // GRN Orders List
+          // GRN Orders List or Empty State
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshGrnOrders,
-              child: ListView.builder(
-                padding: ResponsiveUtils.responsivePadding(context),
-                itemCount: _filteredGrnOrders.length,
-                itemBuilder: (context, index) {
-                  final grnOrder = _filteredGrnOrders[index];
-                  return _buildGrnCard(grnOrder);
-                },
-              ),
-            ),
+            child: _filteredGrnOrders.isEmpty
+                ? RefreshIndicator(
+                    onRefresh: _refreshGrnOrders,
+                    child: SingleChildScrollView(
+                      physics: AlwaysScrollableScrollPhysics(),
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.receipt_long_outlined,
+                                size: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 64,
+                                  tablet: 80,
+                                  desktop: 96,
+                                ),
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 20,
+                                  desktop: 24,
+                                ),
+                              ),
+                              Text(
+                                'No GRN records found',
+                                style: AppTypography.titleMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 18,
+                                    tablet: 20,
+                                    desktop: 22,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'GRN records will appear here once materials are received',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 14,
+                                    tablet: 16,
+                                    desktop: 18,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshGrnOrders,
+                    child: ListView.builder(
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      itemCount: _filteredGrnOrders.length,
+                      itemBuilder: (context, index) {
+                        final grnOrder = _filteredGrnOrders[index];
+                        return _buildGrnCard(grnOrder);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -842,86 +931,56 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
   }
 
   Widget _buildInventoryTab() {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-
-    if (_filteredMaterials.isEmpty) {
-      return Container(
-        padding: ResponsiveUtils.responsivePadding(context),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: ResponsiveUtils.responsiveFontSize(
-                  context,
-                  mobile: 64,
-                  tablet: 80,
-                  desktop: 96,
-                ),
-                color: AppColors.textSecondary,
-              ),
-              SizedBox(
-                height: ResponsiveUtils.responsiveSpacing(
-                  context,
-                  mobile: 16,
-                  tablet: 20,
-                  desktop: 24,
-                ),
-              ),
-              Text(
-                'Inventory is empty',
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 18,
-                    tablet: 20,
-                    desktop: 22,
-                  ),
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Add materials to your inventory to track stock levels',
-                style: AppTypography.bodyMedium.copyWith(
-                  fontSize: ResponsiveUtils.responsiveFontSize(
-                    context,
-                    mobile: 14,
-                    tablet: 16,
-                    desktop: 18,
-                  ),
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  NavigationUtils.push(
-                    context,
-                    AddMaterialScreen(site: widget.site),
-                  );
-                },
-                icon: Icon(Icons.add),
-                label: Text('Add to Inventory'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
+    return Column(
+      children: [
+        // Sub-tab bar for Materials, Issue, Returns
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _inventoryTabController,
+            labelColor: AppColors.primaryColor,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primaryColor,
+            indicatorWeight: 2,
+            labelStyle: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            unselectedLabelStyle: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+            tabs: [
+              Tab(text: 'Materials'),
+              Tab(text: 'Transfer'),
+              Tab(text: 'Returns'),
             ],
           ),
         ),
-      );
+
+        // Sub-tab content
+        Expanded(
+          child: TabBarView(
+            controller: _inventoryTabController,
+            children: [
+              // Materials Tab
+              _buildMaterialsTab(),
+
+              // Transfer Tab
+              _buildTransferTab(),
+
+              // Returns Tab
+              _buildReturnsTab(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMaterialsTab() {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
     }
 
     return GestureDetector(
@@ -942,21 +1001,225 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             ),
           ),
 
-          // Materials List
+          // Materials List or Empty State
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshMaterials,
-              child: ListView.builder(
-                padding: ResponsiveUtils.responsivePadding(context),
-                itemCount: _filteredMaterials.length,
-                itemBuilder: (context, index) {
-                  final material = _filteredMaterials[index];
-                  return _buildMaterialCard(material);
-                },
-              ),
-            ),
+            child: _filteredMaterials.isEmpty
+                ? RefreshIndicator(
+                    onRefresh: _refreshMaterials,
+                    child: SingleChildScrollView(
+                      physics: AlwaysScrollableScrollPhysics(),
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: ResponsiveUtils.responsiveFontSize(
+                                  context,
+                                  mobile: 64,
+                                  tablet: 80,
+                                  desktop: 96,
+                                ),
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(
+                                height: ResponsiveUtils.responsiveSpacing(
+                                  context,
+                                  mobile: 16,
+                                  tablet: 20,
+                                  desktop: 24,
+                                ),
+                              ),
+                              Text(
+                                'Inventory is empty',
+                                style: AppTypography.titleMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 18,
+                                    tablet: 20,
+                                    desktop: 22,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add materials to your inventory to track stock levels',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context,
+                                    mobile: 14,
+                                    tablet: 16,
+                                    desktop: 18,
+                                  ),
+                                  color: AppColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  NavigationUtils.push(
+                                    context,
+                                    AddMaterialScreen(site: widget.site),
+                                  );
+                                },
+                                icon: Icon(Icons.add),
+                                label: Text('Add to Inventory'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshMaterials,
+                    child: ListView.builder(
+                      padding: ResponsiveUtils.responsivePadding(context),
+                      itemCount: _filteredMaterials.length,
+                      itemBuilder: (context, index) {
+                        final material = _filteredMaterials[index];
+                        return _buildMaterialCard(material);
+                      },
+                    ),
+                  ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTransferTab() {
+    return Container(
+      padding: ResponsiveUtils.responsivePadding(context),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.send_outlined,
+              size: ResponsiveUtils.responsiveFontSize(
+                context,
+                mobile: 64,
+                tablet: 80,
+                desktop: 96,
+              ),
+              color: AppColors.textSecondary,
+            ),
+            SizedBox(
+              height: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 16,
+                tablet: 20,
+                desktop: 24,
+              ),
+            ),
+            Text(
+              'Material Transfer',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 18,
+                  tablet: 20,
+                  desktop: 22,
+                ),
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Material transfer functionality coming soon',
+              style: AppTypography.bodyMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 14,
+                  tablet: 16,
+                  desktop: 18,
+                ),
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReturnsTab() {
+    return Container(
+      padding: ResponsiveUtils.responsivePadding(context),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.assignment_return_outlined,
+              size: ResponsiveUtils.responsiveFontSize(
+                context,
+                mobile: 64,
+                tablet: 80,
+                desktop: 96,
+              ),
+              color: AppColors.textSecondary,
+            ),
+            SizedBox(
+              height: ResponsiveUtils.responsiveSpacing(
+                context,
+                mobile: 16,
+                tablet: 20,
+                desktop: 24,
+              ),
+            ),
+            Text(
+              'Material Returns',
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 18,
+                  tablet: 20,
+                  desktop: 22,
+                ),
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Material returns functionality coming soon',
+              style: AppTypography.bodyMedium.copyWith(
+                fontSize: ResponsiveUtils.responsiveFontSize(
+                  context,
+                  mobile: 14,
+                  tablet: 16,
+                  desktop: 18,
+                ),
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -970,6 +1233,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             materialId: material.id,
             materialName: material.name,
             siteName: widget.site.name,
+            siteId: widget.site.id,
           ),
         );
       },
@@ -987,7 +1251,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
               ),
             ),
             if (material.specification != null) ...[
-              SizedBox(height: 2,),
+              SizedBox(height: 2),
               Text(
                 "${material.specification}",
                 style: AppTypography.bodyLarge.copyWith(
@@ -998,7 +1262,7 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
               ),
             ],
             if (material.brandName != null) ...[
-              SizedBox(height: 2,),
+              SizedBox(height: 2),
               RichText(
                 text: TextSpan(
                   children: [
@@ -1039,32 +1303,32 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
               ),
             ],
             ...[
-            SizedBox(height: 2,),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: "UOM: ",
-                    style: AppTypography.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
+              SizedBox(height: 2),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "UOM: ",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  TextSpan(
-                    text: "${material.unitOfMeasurement}",
-                    style: AppTypography.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 11,
-                      color: AppColors.textLight,
+                    TextSpan(
+                      text: "${material.unitOfMeasurement}",
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textLight,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
             if (material.currentStock != null) ...[
-              SizedBox(height: 2,),
+              SizedBox(height: 2),
               RichText(
                 text: TextSpan(
                   children: [
@@ -1088,10 +1352,9 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
                 ),
               ),
             ],
-            SizedBox(height: 2,),
+            SizedBox(height: 2),
             Divider(),
-            SizedBox(height: 10,)
-
+            SizedBox(height: 10),
           ],
         ),
       ),
@@ -1102,21 +1365,49 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
     Color _getStatusColor(String status) {
       switch (status.toLowerCase()) {
         case 'open':
-          return Colors.blue;
+          return const Color(0xFF2196F3); // Blue - solid color
         case 'closed':
-          return Colors.green;
+          return const Color(0xFF4CAF50); // Green - solid color
         case 'ordered':
-          return Colors.grey;
+          return const Color(0xFF2196F3); // Blue - solid color
         case 'delivered':
-          return Colors.lightGreen;
+          return const Color(0xFF4CAF50); // Green - solid color
         case 'pending':
-          return Colors.orange;
+          return const Color(0xFFFF9800); // Orange - solid color
         case 'approved':
-          return Colors.green;
+          return const Color(0xFF4CAF50); // Green - solid color
         case 'rejected':
-          return Colors.red;
+          return const Color(0xFFF44336); // Red - solid color
         default:
-          return AppColors.textSecondary;
+          return const Color(0xFF9E9E9E); // Grey - solid color
+      }
+    }
+
+    Color _getStatus2Color(String? status2) {
+      if (status2 == null) return const Color(0xFF9E9E9E); // Grey - solid color
+      switch (status2.toLowerCase()) {
+        case 'pending':
+          return const Color(0xFFFF9800); // Orange - solid color
+        case 'partially_delivered':
+          return const Color(0xFFFFC107); // Amber/Yellow - solid color
+        case 'delivered':
+          return const Color(0xFF4CAF50); // Green - solid color
+        default:
+          return const Color(0xFF9E9E9E); // Grey - solid color
+      }
+    }
+
+    String _getStatus2Label(String? status2) {
+      if (status2 == null) return 'PENDING';
+      switch (status2.toLowerCase()) {
+        case 'pending':
+          return 'PENDING';
+        case 'partially_delivered':
+          return 'PARTIALLY DELIVERED';
+        case 'delivered':
+          return 'DELIVERED';
+        default:
+          return 'PENDING';
       }
     }
 
@@ -1143,7 +1434,113 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
       }
     }
 
-    String _formatDateTime(String dateString) {
+
+
+
+
+
+    return GestureDetector(
+      onTap: () async {
+        final result = await NavigationUtils.push(
+          context,
+          PODetailScreen(
+            materialPoId: poOrder.id,
+            poNumber: poOrder.purchaseOrderId,
+          ),
+        );
+
+        if (result == true) {
+          _loadPOOrders();
+        }
+      },
+      child: Container(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              poOrder.purchaseOrderId,
+              style: AppTypography.titleSmall.copyWith(color: Colors.grey[800]),
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(poOrder.status),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    poOrder.status.toUpperCase(),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getStatus2Color(poOrder.status2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _getStatus2Label(poOrder.status2),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDetailColumn(
+                    'Issue By',
+                    poOrder.creatorName?.trim().isNotEmpty == true 
+                        ? poOrder.creatorName! 
+                        : (poOrder.billingCompanyName.isNotEmpty ? poOrder.billingCompanyName : '-'),
+                  ),
+                ),
+
+                Expanded(
+                  child: _buildDetailColumn(
+                    'Vendor',
+                    poOrder.vendorName,
+                  ),
+                ),
+
+              ],
+
+            ),
+            SizedBox(height: 10),
+            Text(
+              "Expected Delivery : ${_formatDate(poOrder.expectedDeliveryDate)}",
+              style: AppTypography.bodyMedium.copyWith(
+                color: Colors.grey[700],
+                fontSize: 14,
+              ),
+            ),
+            SizedBox(height: 10),
+            Divider(),
+            SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+  }
+
+  Widget _buildGrnCard(dynamic grnOrder) {
+
+    String _formatDateTime(String? dateString) {
+      if (dateString == null || dateString.isEmpty) return '-';
       try {
         final date = DateTime.parse(dateString);
         final months = [
@@ -1168,186 +1565,66 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
       }
     }
 
-    return GestureDetector(
-      onTap: () {
-        NavigationUtils.push(
-          context,
-          PODetailScreen(
-            materialPoId: poOrder.id,
-            poNumber: poOrder.purchaseOrderId,
-          ),
-        );
-      },
-      child: Card(
-        margin: EdgeInsets.only(bottom: 16),
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // PO Number at the top
-              Text(
-                poOrder.purchaseOrderId,
-                style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                  fontSize: 18,
-                ),
-              ),
+    final grnId = grnOrder['id'];
+    final _ = _expandedGrnIds.contains(grnId);
 
-              SizedBox(height: 12),
-
-              // Status Badges
-              Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(poOrder.status),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      poOrder.status.toUpperCase(),
-                      style: AppTypography.bodySmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'ORDERED',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 16),
-
-              // Details Section with Label-Value pairs
-              _buildDetailRow(
-                'Created By',
-                'Rutvik | ${_formatDateTime(poOrder.createdAt)}',
-              ),
-              SizedBox(height: 8),
-              _buildDetailRow('Vendor', poOrder.vendorName),
-              SizedBox(height: 8),
-              _buildDetailRow('Material', 'Asian Paint'),
-              // Placeholder - you'll need to add material info to your model
-              SizedBox(height: 8),
-              _buildDetailRowWithIcon(
-                'Expected delivery',
-                _formatDate(poOrder.expectedDeliveryDate),
-                Icons.local_shipping,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGrnCard(dynamic grnOrder) {
-
-    String _formatDate(String? dateString) {
-      if (dateString == null || dateString.isEmpty) return '-';
-      try {
-        final date = DateTime.parse(dateString);
-        final months = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-        ];
-        return '${date.day} ${months[date.month - 1]}, ${date.year}';
-      } catch (e) {
-        return dateString;
-      }
-    }
-
-    String _formatDateTime(String? dateString) {
-      if (dateString == null || dateString.isEmpty) return '-';
-      try {
-        final date = DateTime.parse(dateString);
-        final months = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-        ];
-        final hour = date.hour > 12 ? date.hour - 12 : date.hour;
-        final ampm = date.hour >= 12 ? 'PM' : 'AM';
-        return '${date.day} ${months[date.month - 1]}, ${date.year} ${hour}:${date.minute.toString().padLeft(2, '0')} ${ampm}';
-      } catch (e) {
-        return dateString;
-      }
-    }
 
     return GestureDetector(
-      onTap: () {
-        NavigationUtils.push(
+      onTap: () async {
+        final result = await NavigationUtils.push(
           context,
-          GrnDetailScreen(grnId: grnOrder['id']),
+          GrnDetailScreen(grnId: grnId),
         );
+
+        if (result == true) {
+          _loadPOOrders();
+        }
       },
-      child: Card(
-        margin: EdgeInsets.only(bottom: 16),
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // GRN Number at the top
-              Text(
-                grnOrder['grn_number'] ?? 'GRN-Unknown',
-                style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                  fontSize: 18,
+      child: Container(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              grnOrder['grn_number'] ?? 'GRN-Unknown',
+              style: AppTypography.titleSmall.copyWith(color: Colors.grey[800]),
+            ),
+
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDetailColumn(
+                    'Created By',
+                    '${grnOrder['creator_name'] ?? 'User'} | ${_formatDateTime(grnOrder['created_at'])}',
+                  ),
                 ),
-              ),
 
-              SizedBox(height: 12),
+                Expanded(
+                  child: _buildDetailColumn(
+                    'Vendor',
+                    grnOrder['vendor_name'] ?? grnOrder['vendor_id']?.toString() ?? '-',
+                  ),
+                ),
 
-
-              // Details Section with Label-Value pairs
-              _buildDetailRow(
-                'Created By',
-                'User | ${_formatDateTime(grnOrder['created_at'])}',
-              ),
-              SizedBox(height: 8),
-              _buildDetailRow('Vendor ID', grnOrder['vendor_id']?.toString() ?? '-'),
-              SizedBox(height: 8),
-              _buildDetailRow('Delivery Challan', grnOrder['delivery_challan_number'] ?? '-'),
-              SizedBox(height: 8),
-              _buildDetailRowWithIcon(
-                'GRN Date',
-                _formatDate(grnOrder['grn_date']),
-                Icons.calendar_today,
-              ),
-              if (grnOrder['remarks'] != null && 
-                  grnOrder['remarks'].toString().toLowerCase() != 'na' && 
-                  grnOrder['remarks'].toString().isNotEmpty) ...[
-                SizedBox(height: 8),
-                _buildDetailRow('Remarks', grnOrder['remarks']),
               ],
-            ],
-          ),
+
+            ),
+            SizedBox(height: 10),
+            // Text(
+            //   "Expected Delivery : ${_formatDate(poOrder.expectedDeliveryDate)}",
+            //   style: AppTypography.bodyMedium.copyWith(
+            //     color: Colors.grey[700],
+            //     fontSize: 14,
+            //   ),
+            // ),
+            SizedBox(height: 10),
+            Divider(),
+            SizedBox(height: 8),
+          ],
         ),
       ),
     );
+
   }
 
   Widget _buildDetailRow(String label, String value) {
@@ -1370,6 +1647,34 @@ class _SiteMaterialScreenState extends State<SiteMaterialScreen>
             style: AppTypography.bodyMedium.copyWith(
               color: Colors.grey[800],
               fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailColumn(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.bodyLarge.copyWith(
+            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        SizedBox(height: 2),
+        Container(
+          width: 150,
+          child: Text(
+            value,
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: AppColors.textPrimary,
             ),
           ),
         ),

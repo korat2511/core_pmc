@@ -17,6 +17,7 @@ import 'meeting_screen.dart';
 import 'quantity_screen.dart';
 import 'petty_cash_screen.dart';
 import 'site_gallery_screen.dart';
+import 'issues_screen.dart';
 
 
 class SiteMoreScreen extends StatefulWidget {
@@ -98,12 +99,12 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
               'icon': Icons.verified_outlined,
               'color': AppColors.successColor,
             },
-            // {'title': 'Tags', 'icon': Icons.label_outlined, 'color': AppColors.secondaryColor},
             {
               'title': 'Issues',
               'icon': Icons.report_problem_outlined,
               'color': AppColors.errorColor,
             },
+            // {'title': 'Tags', 'icon': Icons.label_outlined, 'color': AppColors.secondaryColor},
           ]),
 
           SizedBox(height: 24),
@@ -292,6 +293,12 @@ class _SiteMoreScreenState extends State<SiteMoreScreen> {
         break;
       case 'QC Categories':
         NavigationUtils.push(context, SiteQcCategoryScreen(site: widget.site));
+        break;
+      case 'Issues':
+        NavigationUtils.push(
+          context,
+          IssuesScreen(site: widget.site),
+        );
         break;
       case 'Quantity':
         NavigationUtils.push(context, QuantityScreen(site: widget.site));

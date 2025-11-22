@@ -324,6 +324,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
         unitOfMeasurement: _selectedUOM!,
         specification: _specificationController.text.trim(),
         categoryId: _selectedCategory!.id,
+        siteId: widget.site.id,
         sku: _itemCodeController.text.trim(),
         unitPrice: _unitPriceController.text.trim(),
         gst: _selectedGST,
@@ -361,7 +362,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
 
       if (response != null && response.status == 1) {
         SnackBarUtils.showSuccess(context, message: response.message);
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true); // Return true to indicate success
       } else {
         SnackBarUtils.showError(context, message: 'Failed to save material');
       }

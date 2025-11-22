@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/navigation_utils.dart';
+import '../core/utils/number_formatter.dart';
 import '../models/po_detail_model.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
@@ -33,6 +34,8 @@ class _PODetailScreenState extends State<PODetailScreen>
   String? _errorMessage;
   final _receivedQuantityController = TextEditingController();
   bool _isExpandedPayments = true;
+  bool _isExpandedPendingItems = true;
+  bool _isExpandedDeliveredItems = true;
 
   @override
   void initState() {
@@ -146,25 +149,66 @@ class _PODetailScreenState extends State<PODetailScreen>
   }
 
   String _getTotalOrderedQuantity(int materialId) {
-    // Find the pending item with the same material ID and get its ordered quantity
-    final pendingItem = _poDetail!.pendingItems.firstWhere(
-      (item) => item.materialId == materialId,
-      orElse: () =>
-          _poDetail!.pendingItems.first, // Fallback to first item if not found
-    );
-    return pendingItem.quantityForDelivery;
+    // First try to find in pending items
+    if (_poDetail!.pendingItems.isNotEmpty) {
+      try {
+        final pendingItem = _poDetail!.pendingItems.firstWhere(
+          (item) => item.materialId == materialId,
+        );
+        return pendingItem.quantityForDelivery;
+      } catch (e) {
+        // Material not found in pending items, continue to check delivered items
+      }
+    }
+    
+    // If not found in pending items (all items delivered), 
+    // try to get original ordered quantity from delivered items
+    try {
+      final deliveredItem = _poDetail!.deliveredItems.firstWhere(
+        (item) => item.materialId == materialId,
+      );
+      
+      // Use orderedQuantity if available from backend, otherwise use received quantity as fallback
+      if (deliveredItem.orderedQuantity != null && deliveredItem.orderedQuantity!.isNotEmpty) {
+        return deliveredItem.orderedQuantity!;
+      }
+      
+      // Fallback: sum all received quantities for this material
+      final deliveredItemsForMaterial = _poDetail!.deliveredItems
+          .where((item) => item.materialId == materialId)
+          .toList();
+      
+      if (deliveredItemsForMaterial.isNotEmpty) {
+        final totalReceived = deliveredItemsForMaterial
+            .fold<int>(0, (sum, item) => sum + item.quantity);
+        return totalReceived.toString();
+      }
+    } catch (e) {
+      // Fallback if calculation fails
+    }
+    
+    // Final fallback
+    return '0';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: _poDetail?.purchaseOrderId ?? 'PO Details',
-        showDrawer: false,
-        showBackButton: true,
-      ),
-
-      body: GestureDetector(
+    return WillPopScope(
+      onWillPop: () async {
+        // Return true to indicate data might have changed
+        Navigator.of(context).pop(true);
+        return false; // Prevent default back navigation
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: _poDetail?.purchaseOrderId ?? 'PO Details',
+          showDrawer: false,
+          showBackButton: true,
+          onBackPressed: () {
+            Navigator.of(context).pop(true);
+          },
+        ),
+        body: GestureDetector(
         onTap: () {
           // Close keyboard when tapping outside
           FocusScope.of(context).unfocus();
@@ -178,6 +222,7 @@ class _PODetailScreenState extends State<PODetailScreen>
             ? _buildEmptyState()
             : _buildContent(),
       ),
+    ),
     );
   }
 
@@ -355,24 +400,53 @@ class _PODetailScreenState extends State<PODetailScreen>
           if (_poDetail!.pendingItems.isNotEmpty)
             Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: AppColors.surfaceColor),
-                  child: Text(
-                    'Pending Items',
-                    style: AppTypography.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: AppColors.textLight,
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isExpandedPendingItems = !_isExpandedPendingItems;
+                    });
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppColors.surfaceColor),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Pending Items',
+                          style: AppTypography.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              '${_poDetail!.pendingItems.length}',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(
+                              _isExpandedPendingItems
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: Colors.grey[600],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 SizedBox(height: 3),
 
-                _buildPendingItemsSection(),
-                SizedBox(height: 3),
-                _buildReceivedQuantitySection(),
+                if (_isExpandedPendingItems) ...[
+                  _buildPendingItemsSection(),
+                  SizedBox(height: 3),
+                  _buildReceivedQuantitySection(),
+                ],
                 SizedBox(height: 10),
               ],
             ),
@@ -380,22 +454,51 @@ class _PODetailScreenState extends State<PODetailScreen>
           if (_poDetail!.deliveredItems.isNotEmpty)
             Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: AppColors.surfaceColor),
-                  child: Text(
-                    'Delivered Items',
-                    style: AppTypography.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: AppColors.textLight,
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isExpandedDeliveredItems = !_isExpandedDeliveredItems;
+                    });
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppColors.surfaceColor),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Delivered Items',
+                          style: AppTypography.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              '${_poDetail!.deliveredItems.length}',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(
+                              _isExpandedDeliveredItems
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: Colors.grey[600],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 SizedBox(height: 3),
 
-                _buildDeliveredItemsSection(),
+                if (_isExpandedDeliveredItems) ...[
+                  _buildDeliveredItemsSection(),
+                ],
                 SizedBox(height: 10),
               ],
             ),
@@ -636,7 +739,7 @@ class _PODetailScreenState extends State<PODetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      '₹${payment.paymentAmount}',
+                      NumberFormatter.formatFullAmount(double.tryParse(payment.paymentAmount.toString()) ?? 0),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -667,17 +770,9 @@ class _PODetailScreenState extends State<PODetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            material.name ?? 'Unknown Material',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
+
           SizedBox(height: 8),
-          _buildItemDetail('Specification', material.specification ?? 'N/A'),
-          _buildItemDetail('Brand', material.brandName ?? 'N/A'),
+
           _buildItemDetail(
             'Ordered Qty',
             '${_getTotalOrderedQuantity(material.id)} ${material.unitOfMeasurement ?? 'nos'}',
@@ -708,7 +803,7 @@ class _PODetailScreenState extends State<PODetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            material.name ?? 'Unknown Material',
+            material.name,
             style: AppTypography.bodyLarge.copyWith(
               fontWeight: FontWeight.w500,
               fontSize: 13,

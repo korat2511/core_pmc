@@ -120,6 +120,7 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
       final response = await ApiService.generateOrderId(
         apiToken: user.apiToken,
         type: 'grn',
+        siteId: widget.site?.id ?? widget.poDetail?.siteId,
       );
       
       if (response.status == 1) {
@@ -303,7 +304,9 @@ class _RecordGrnScreenState extends State<RecordGrnScreen> {
       final response = await ApiService.saveGrn(
         grnDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
         grnNumber: _grnIdController.text,
-        deliveryChallanNumber: _showDeliveryChallan ? _deliveryChallanController.text : 'INV000001',
+        deliveryChallanNumber: _showDeliveryChallan && _deliveryChallanController.text.isNotEmpty 
+            ? _deliveryChallanController.text 
+            : null,
         poId: widget.poDetail?.id ?? 0, // Use 0 for direct GRN creation
         vendorId: widget.poDetail?.vendorId ?? 1, // Default vendor for direct GRN
         siteId: widget.poDetail?.siteId ?? widget.site!.id,

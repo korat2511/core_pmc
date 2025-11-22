@@ -181,7 +181,10 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
         return;
       }
 
-      final response = await ApiService.getMaterials(page: 1);
+      final response = await ApiService.getMaterials(
+        siteId: widget.task.siteId,
+        page: 1,
+      );
       
       if (response != null && response.status == 1) {
         setState(() {
@@ -1089,6 +1092,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
               final result = await NavigationUtils.push(
                 context,
                 SelectMaterialsScreen(
+                  siteId: widget.task.siteId,
                   preSelectedMaterials: _selectedMaterials.isNotEmpty ? _selectedMaterials : null,
                 ),
               );
@@ -1826,6 +1830,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                 : null,
             images: _updateProgressImages,
             usedMaterials: usedMaterials,
+            siteId: widget.task.siteId,
           );
         } else {
           // No progress mode
@@ -1840,6 +1845,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
             unskilledWorkers: "0",
             remark: _noProgressRemarkController.text.trim(),
             images: _noProgressImages,
+            siteId: widget.task.siteId,
           );
         }
       }

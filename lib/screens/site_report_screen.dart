@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:fl_downloader/fl_downloader.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -12,6 +14,7 @@ import '../models/site_user_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../core/utils/snackbar_utils.dart';
+import '../core/utils/navigation_utils.dart';
 
 class SiteReportScreen extends StatefulWidget {
   final SiteModel site;
@@ -36,6 +39,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   bool _isAnimating = false;
+  String? _lastGeneratedPdfUrl;
+  bool _manualDownloadDialogShown = false;
 
   // Report sections with sub-parts
   final Map<String, bool> _reportSections = {
@@ -47,6 +52,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
     'Quotation': true,
     'Selection': true,
     'Work Updates': true,
+    'Quality Check': true,
     'Material': true,
     'Survey': true,
     'Manpower': true,
@@ -66,6 +72,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
     'Quotation': ['Architect', 'Structure', 'Other'],
     'Selection': ['Architect', 'Client', 'Other'],
     'Work Updates': [],
+    'Quality Check': [],
     'Material': [],
     'Survey': [],
     'Manpower': [],
@@ -97,7 +104,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     // Initialize animations
     _scaleAnimation = Tween<double>(
       begin: 0.0,
@@ -106,7 +113,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       parent: _overlayAnimationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -114,7 +121,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       parent: _overlayAnimationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Add status listener to handle animation completion
     _overlayAnimationController.addStatusListener((status) {
       if (mounted) {
@@ -129,7 +136,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         }
       }
     });
-    
+
     FlDownloader.initialize();
     progressStream = FlDownloader.progressStream.listen((event) {
       if (mounted) {
@@ -154,7 +161,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       } else if (event.status == DownloadStatus.running) {
         debugPrint('event.progress: ${event.progress}');
         _showProgressOverlaySmoothly();
-        
+
         // Close overlay when progress reaches 100%
         if (event.progress >= 100) {
           debugPrint('Progress reached 100%, closing overlay');
@@ -177,18 +184,19 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           if (event.statusReason != null) {
             errorMessage += 'Reason: ${event.statusReason.toString()}';
           } else {
-            errorMessage += 'Please check your internet connection and try again.';
+            errorMessage;
           }
           SnackBarUtils.showError(
             context,
             message: errorMessage,
           );
         }
+        _showManualDownloadDialog();
       } else if (event.status == DownloadStatus.paused) {
         debugPrint('Download paused');
         Future.delayed(
           const Duration(milliseconds: 250),
-          () => FlDownloader.attachDownloadProgress(event.downloadId),
+              () => FlDownloader.attachDownloadProgress(event.downloadId),
         );
       } else if (event.status == DownloadStatus.pending) {
         debugPrint('Download pending');
@@ -324,9 +332,9 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                             Text(
                               duration,
                               style: AppTypography.bodySmall.copyWith(
-                                                              color: isSelected
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -442,7 +450,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                     subParts: _subParts[entry.key] ?? [],
                     isExpanded: _expandedSections.contains(entry.key),
                     selectedSubParts:
-                        _selectedSubParts[entry.key] ?? <String>{},
+                    _selectedSubParts[entry.key] ?? <String>{},
                     onChanged: (value) {
                       setState(() {
                         final newValue = value ?? false;
@@ -476,7 +484,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                       setState(() {
                         _selectedSubParts.putIfAbsent(
                           entry.key,
-                          () => <String>{},
+                              () => <String>{},
                         );
                         if (selected) {
                           _selectedSubParts[entry.key]!.add(subPart);
@@ -520,7 +528,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               ),
             ),
           ),
-          
+
           // Progress Overlay
           AnimatedBuilder(
             animation: _overlayAnimationController,
@@ -533,101 +541,105 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                   }
                 });
               }
-              
+
               return _showProgressOverlay
                   ? FadeTransition(
-                      opacity: _fadeAnimation,
+                opacity: _fadeAnimation,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+                  child: Center(
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
                       child: Container(
-                        color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
-                        child: Center(
-                          child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: Container(
-                              margin: EdgeInsets.all(20),
-                              padding: EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Progress indicator
-                                  SizedBox(
-                                    width: 60,
-                                    height: 60,
-                                    child: TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(
-                                        begin: 0.0,
-                                        end: progress / 100,
-                                      ),
-                                      duration: const Duration(milliseconds: 200),
-                                      curve: Curves.easeInOut,
-                                      builder: (context, value, child) {
-                                        return CircularProgressIndicator(
-                                          value: value,
-                                          strokeWidth: 6,
-                                          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Theme.of(context).colorScheme.primary,
-                                          ),
-                                        );
-                                      },
+                        margin: EdgeInsets.all(20),
+                        padding: EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Progress indicator
+                            SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  begin: 0.0,
+                                  end: progress / 100,
+                                ),
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeInOut,
+                                builder: (context, value, child) {
+                                  return CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: 6,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
                                     ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  
-                                  // Progress text
-                                  Text(
-                                    progress >= 100 ? 'Download completed' : 'Downloading PDF...',
-                                    style: AppTypography.titleMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  
-                                  // Percentage with animation
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(
-                                      begin: 0.0,
-                                      end: progress.toDouble(),
-                                    ),
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: Curves.easeInOut,
-                                    builder: (context, value, child) {
-                                      return Text(
-                                        '${value.round()}%',
-                                        style: AppTypography.bodyLarge.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  SizedBox(height: 4),
-                                  
-                                  // Status
-                                  Text(
-                                    progress >= 100 ? 'Opening PDF...' : _getStatusText(status),
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
                             ),
-                          ),
+                            SizedBox(height: 16),
+
+                            // Progress text
+                            Text(
+                              status == 'preparing'
+                                  ? 'Preparing report...'
+                                  : (progress >= 100
+                                  ? 'Download completed'
+                                  : 'Downloading PDF...'),
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+
+                            // Percentage with animation
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(
+                                begin: 0.0,
+                                end: progress.toDouble(),
+                              ),
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              builder: (context, value, child) {
+                                return Text(
+                                  '${value.round()}%',
+                                  style: AppTypography.bodyLarge.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                );
+                              },
+                            ),
+                            SizedBox(height: 4),
+
+                            // Status
+                            Text(
+                              progress >= 100 ? 'Opening PDF...' : _getStatusText(status),
+                              style: AppTypography.bodySmall.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    )
+                    ),
+                  ),
+                ),
+              )
                   : SizedBox.shrink();
             },
           ),
@@ -676,13 +688,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             child: Row(
               children: [
                 Expanded(
-                                  child: Text(
-                  _formatDate(date),
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 13,
+                  child: Text(
+                    _formatDate(date),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
                 ),
                 Icon(
                   Icons.calendar_today,
@@ -735,16 +747,16 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                         title,
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w600,
-                                                  color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 14,
                         ),
                       ),
                       SizedBox(height: 2),
                       Text(
                         description,
                         style: AppTypography.bodySmall.copyWith(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -793,8 +805,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                           child: Text(
                             subPart,
                             style: AppTypography.bodySmall.copyWith(
-                                                          color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -807,7 +819,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                             borderRadius: BorderRadius.circular(4),
                           ),
                           materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                          MaterialTapTargetSize.shrinkWrap,
                           visualDensity: VisualDensity.compact,
                         ),
                       ],
@@ -840,6 +852,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         return 'Includes all selections';
       case 'Work Updates':
         return 'Includes all work updates';
+      case 'Quality Check':
+        return 'Includes quality check data';
       case 'Material':
         return 'Includes material requirements';
       case 'Survey':
@@ -873,7 +887,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _toDate = now;
         break;
       case 'Specific Date':
-        // Keep current dates for manual selection
+      // Keep current dates for manual selection
         break;
     }
   }
@@ -915,8 +929,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _isAnimating = false;
         _showProgressOverlay = false;
         _isLoading = true;
+        progress = 0;
+        status = 'preparing';
+        _lastGeneratedPdfUrl = null;
+        _manualDownloadDialogShown = false;
       });
     }
+    _showProgressOverlaySmoothly();
 
     try {
       // Prepare parameters
@@ -925,8 +944,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       // Determine API endpoint based on date range
       final isSameDate =
           _fromDate.year == _toDate.year &&
-          _fromDate.month == _toDate.month &&
-          _fromDate.day == _toDate.day;
+              _fromDate.month == _toDate.month &&
+              _fromDate.day == _toDate.day;
 
       Map<String, dynamic>? response;
 
@@ -953,6 +972,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           selection: params['selection'] ?? '',
           selectionByAgency: params['selectionByAgency'] ?? '',
           workUpdate: params['workUpdate'] ?? '',
+          qualityCheck: params['quality_check'] ?? '',
         );
       } else
       {
@@ -991,7 +1011,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         debugPrint('API Response received: $response');
         final status = response['status'];
         debugPrint('Response status: $status');
-        
+
         if (status == 1 ) {
           // Handle PDF response
           final pdfUrl = response['pdfurl'];
@@ -1009,6 +1029,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
             if (pdfUrl.toString().isEmpty || !pdfUrl.toString().startsWith('http')) {
               debugPrint('Invalid PDF URL: $pdfUrl');
               if (mounted) {
+                _hideProgressOverlaySmoothly();
                 SnackBarUtils.showError(
                   context,
                   message: 'Invalid PDF URL received from server.',
@@ -1017,20 +1038,27 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
               return;
             }
 
+            if (mounted) {
+              setState(() {
+                _lastGeneratedPdfUrl = pdfUrl.toString();
+                _manualDownloadDialogShown = false;
+              });
+            }
+
             // Request permission
             final permission = await FlDownloader.requestPermission();
             debugPrint('Storage permission status: $permission');
-            
+
             if (permission == StoragePermissionStatus.granted) {
               try {
                 debugPrint('Starting download...');
                 var downloadId = await FlDownloader.download(
-                  pdfUrl.toString(),
+                  pdfUrl,
                   fileName: "$pdfName.pdf",
                 );
-                
+
                 debugPrint('Download ID: $downloadId');
-                
+
                 if (downloadId == null || downloadId <= 0) {
                   _hideProgressOverlaySmoothly();
                   if (mounted) {
@@ -1039,9 +1067,11 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                       message: 'Failed to start download. Please check your internet connection.',
                     );
                   }
+                  _showManualDownloadDialog();
                 }
+
               } catch (e) {
-                debugPrint('Download error: $e');
+                log('Download error: $e');
                 _hideProgressOverlaySmoothly();
                 if (mounted) {
                   SnackBarUtils.showError(
@@ -1049,6 +1079,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                     message: 'Download failed: ${e.toString()}',
                   );
                 }
+                _showManualDownloadDialog();
               }
             } else {
               _hideProgressOverlaySmoothly();
@@ -1058,10 +1089,12 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
                   message: 'Storage permission denied. Cannot download PDF.',
                 );
               }
+              _showManualDownloadDialog();
             }
           } else {
             debugPrint('Invalid PDF response - URL: $pdfUrl, Name: $pdfName');
             if (mounted) {
+              _hideProgressOverlaySmoothly();
               SnackBarUtils.showError(
                 context,
                 message: 'Invalid PDF response from server.',
@@ -1071,11 +1104,13 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         } else {
 
           if (mounted) {
+            _hideProgressOverlaySmoothly();
             SnackBarUtils.showError(context, message: "Failed to generate report. Please try again.");
           }
         }
       } else {
         if (mounted) {
+          _hideProgressOverlaySmoothly();
           SnackBarUtils.showError(
             context,
             message: 'Failed to generate report. Please try again.',
@@ -1084,6 +1119,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       }
     } catch (e) {
 
+      _hideProgressOverlaySmoothly();
       if (e is TypeError) {
         print('TypeError details: ${e.toString()}');
       }
@@ -1093,6 +1129,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
           message: 'Error generating report: ${e.toString()}',
         );
       }
+      _showManualDownloadDialog();
     } finally {
       if (mounted) {
         setState(() {
@@ -1116,7 +1153,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       final selectedCategoryIds = <String>[];
       for (final categoryName in selectedCategories) {
         final category = _categories.firstWhere(
-          (cat) => cat.name == categoryName,
+              (cat) => cat.name == categoryName,
           orElse: () => CategoryModel(
             id: 0,
             name: '',
@@ -1144,7 +1181,7 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
       final selectedUserIds = <String>[];
       for (final userName in selectedUsers) {
         final user = _users.firstWhere(
-          (user) => user.fullName == userName,
+              (user) => user.fullName == userName,
           orElse: () => SiteUserModel(
             id: 0,
             firstName: '',
@@ -1262,6 +1299,8 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         return 'Preparing download...';
       case 'running':
         return 'Downloading...';
+      case 'preparing':
+        return 'Preparing report...';
       case 'paused':
         return 'Download paused';
       case 'failed':
@@ -1279,7 +1318,6 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         _showProgressOverlay = true;
         _isAnimating = true;
       });
-      // Small delay to ensure smooth appearance
       Future.delayed(const Duration(milliseconds: 50), () {
         if (mounted) {
           _overlayAnimationController.forward();
@@ -1301,5 +1339,97 @@ class _SiteReportScreenState extends State<SiteReportScreen> with TickerProvider
         }
       });
     }
+  }
+
+  Future<void> _showManualDownloadDialog() async {
+    if (!mounted || _lastGeneratedPdfUrl == null || _manualDownloadDialogShown) {
+      return;
+    }
+
+    setState(() {
+      _manualDownloadDialogShown = true;
+    });
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            'Manual Download Available',
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'We could not download the PDF automatically. You can use the link below to download it manually:',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.borderColor),
+                ),
+                child: SelectableText(
+                  _lastGeneratedPdfUrl ?? '',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final url = _lastGeneratedPdfUrl;
+                if (url != null && url.isNotEmpty) {
+                  await Clipboard.setData(ClipboardData(text: url));
+                  NavigationUtils.pop(dialogContext);
+                  if (mounted) {
+                    SnackBarUtils.showSuccess(
+                      context,
+                      message: 'Link copied to clipboard',
+                    );
+                  }
+                } else {
+                  NavigationUtils.pop(dialogContext);
+                }
+              },
+              child: Text(
+                'Copy link',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => NavigationUtils.pop(dialogContext),
+              child: Text(
+                'Close',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

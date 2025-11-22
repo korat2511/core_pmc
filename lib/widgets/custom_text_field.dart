@@ -53,7 +53,7 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       inputFormatters: inputFormatters,
       textCapitalization: textCapitalization,
-      maxLines: maxLines,
+      maxLines: obscureText ? 1 : (maxLines ?? 1), // Obscured fields cannot be multiline
       style: AppTypography.bodyLarge.copyWith(
         color: Theme.of(context).colorScheme.onSurface,
       ),

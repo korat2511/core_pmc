@@ -4,6 +4,7 @@ class MaterialModel {
   final String unitOfMeasurement;
   final String? specification;
   final int categoryId;
+  final int? siteId;
   final String sku;
   final String unitPrice;
   final String gst;
@@ -26,6 +27,7 @@ class MaterialModel {
     required this.unitOfMeasurement,
     this.specification,
     required this.categoryId,
+    this.siteId,
     required this.sku,
     required this.unitPrice,
     required this.gst,
@@ -50,6 +52,7 @@ class MaterialModel {
       unitOfMeasurement: json['unit_of_measurement'] ?? '',
       specification: json['specification'],
       categoryId: int.tryParse(json['category_id'].toString()) ?? 0,
+      siteId: json['site_id'] != null ? int.tryParse(json['site_id'].toString()) : null,
       sku: json['sku'] ?? '',
       unitPrice: json['unit_price']?.toString() ?? '0',
       gst: json['gst'] ?? '',
@@ -75,6 +78,7 @@ class MaterialModel {
       'unit_of_measurement': unitOfMeasurement,
       'specification': specification,
       'category_id': categoryId,
+      'site_id': siteId,
       'sku': sku,
       'unit_price': unitPrice,
       'gst': gst,

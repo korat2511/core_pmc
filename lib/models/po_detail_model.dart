@@ -247,6 +247,7 @@ class DeliveredItem {
   final String? deletedAt;
   final User? user;
   final MaterialModel material;
+  final String? orderedQuantity; // Original ordered quantity from PO
 
   DeliveredItem({
     required this.id,
@@ -258,6 +259,7 @@ class DeliveredItem {
     this.deletedAt,
     this.user,
     required this.material,
+    this.orderedQuantity,
   });
 
   factory DeliveredItem.fromJson(Map<String, dynamic> json) {
@@ -271,6 +273,7 @@ class DeliveredItem {
       deletedAt: json['deleted_at'],
       user: json['user'] != null ? User.fromJson(json['user']) : null,
       material: MaterialModel.fromJson(json['material'] ?? {}),
+      orderedQuantity: json['ordered_quantity']?.toString(),
     );
   }
 

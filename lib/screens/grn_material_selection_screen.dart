@@ -50,7 +50,10 @@ class _GrnMaterialSelectionScreenState
     });
 
     try {
-      final response = await ApiService.getMaterials(page: 1);
+      final response = await ApiService.getMaterials(
+        siteId: widget.site.id,
+        page: 1,
+      );
 
       if (response != null && response.status == 1) {
         setState(() {
@@ -134,7 +137,7 @@ class _GrnMaterialSelectionScreenState
     return selected;
   }
 
-  void _proceedToRecordGrn() {
+  Future<void> _proceedToRecordGrn() async {
     // Close keyboard first
     FocusScope.of(context).unfocus();
 
@@ -149,10 +152,14 @@ class _GrnMaterialSelectionScreenState
     }
 
     // Navigate to Record GRN screen with selected materials
-    NavigationUtils.push(
+    final result = await NavigationUtils.push(
       context,
       RecordGrnScreen(site: widget.site, selectedMaterials: selectedMaterials),
     );
+    // Return the result to parent screen
+    if (result == true) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override

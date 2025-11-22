@@ -12,6 +12,7 @@ class SiteAgencyModel {
   final String updatedAt;
   final String? deletedAt;
   final CategoryModel? category;
+  final Map<String, dynamic>? company;
 
   SiteAgencyModel({
     required this.id,
@@ -25,6 +26,7 @@ class SiteAgencyModel {
     required this.updatedAt,
     this.deletedAt,
     this.category,
+    this.company,
   });
 
   factory SiteAgencyModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +44,9 @@ class SiteAgencyModel {
       category: json['category'] != null 
           ? CategoryModel.fromJson(json['category']) 
           : null,
+      company: json['company'] != null && json['company'] is Map 
+          ? Map<String, dynamic>.from(json['company']) 
+          : null,
     );
   }
 
@@ -58,6 +63,7 @@ class SiteAgencyModel {
       'updated_at': updatedAt,
       'deleted_at': deletedAt,
       'category': category?.toJson(),
+      'company': company,
     };
   }
 }

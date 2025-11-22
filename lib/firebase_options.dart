@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyANTL0cYSvblWuqRqlPjCTIRuZZnxzZm0M',
-    appId: '1:963319091501:android:51a5825e7060d98427c3a4',
+    appId: '1:963319091501:android:644f0940c133b74d27c3a4',
     messagingSenderId: '963319091501',
     projectId: 'pmc-projects-18ba4',
     storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
@@ -60,11 +60,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyC4QUn55JgXstv20wjoAZU8bfuMSQUXMo0',
-    appId: '1:963319091501:ios:ee2ee4c4866b5c0927c3a4',
+    appId: '1:963319091501:ios:c186e27e0eb3352127c3a4',
     messagingSenderId: '963319091501',
     projectId: 'pmc-projects-18ba4',
     storageBucket: 'pmc-projects-18ba4.firebasestorage.app',
-    iosBundleId: 'com.pmcprojects.pmcstaging',
+    iosBundleId: 'com.corepmc.corePmc',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
